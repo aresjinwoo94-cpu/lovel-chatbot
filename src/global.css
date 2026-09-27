@@ -1,0 +1,4 @@
+/* Estilos globales de Lovel House (Tailwind vía NativeWind) */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

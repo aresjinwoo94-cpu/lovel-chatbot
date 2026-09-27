@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "Lovel House",
+    "slug": "lovel-house",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "lovelhouse",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.lovelhouse.app",
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Lovel House usa el micrófono para que puedas enviarle notas de voz a tu avatar.",
+        "NSPhotoLibraryUsageDescription": "Lovel House usa tus fotos solo para inspirar la apariencia de tu avatar."
+      }
+    },
+    "android": {
+      "package": "com.lovelhouse.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#F6E3E0",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "permissions": ["android.permission.RECORD_AUDIO"],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "single",
+      "bundler": "metro",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FBF6F2",
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 120
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Lovel House usa el micrófono para que puedas enviarle notas de voz a tu avatar."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Lovel House usa tus fotos solo para inspirar la apariencia de tu avatar."
+        }
+      ],
+      "expo-sharing",
+      "expo-localization",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

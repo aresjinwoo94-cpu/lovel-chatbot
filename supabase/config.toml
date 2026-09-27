@@ -1,0 +1,23 @@
+# Configuración de Supabase CLI para Lovel House.
+project_id = "lovel-house"
+
+[auth]
+site_url = "lovelhouse://"
+additional_redirect_urls = [
+  "lovelhouse://auth/callback",
+  "lovelhouse://**",
+  "exp://**",
+  "http://localhost:8081/**",
+]
+
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+
+# Estas dos las llama Stripe (no la app), así que no llevan JWT de Supabase.
+[functions.checkout-return]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
