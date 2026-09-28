@@ -43,6 +43,7 @@ serve(async (req) => {
       for (const s of subs.data) await stripe.subscriptions.cancel(s.id);
     }
     await removeFolder('avatar-portraits', user.id);
+    await removeFolder('vrm-custom', user.id);
     // Borra el usuario: por cascada se van perfil, avatares, conversaciones y mensajes.
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id);
     if (delErr) throw delErr;

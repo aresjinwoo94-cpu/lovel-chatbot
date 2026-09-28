@@ -2,7 +2,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 
-import { avatarToSvgString } from './avatarGeometry';
 import { fetchAllMessages, signedAudioUrl } from './data';
 import type { TFunction } from './i18n';
 import type { Avatar, Message } from './types';
@@ -39,7 +38,9 @@ function mimeFromPath(path: string) {
 
 /** HTML autocontenido: texto + audios incrustados, con el retrato del avatar. */
 async function buildHtml(avatar: Avatar, messages: Message[], t: TFunction): Promise<string> {
-  const portrait = avatarToSvgString(avatar.appearance, avatar.gender, avatar.age, 'smile', 96);
+  const portrait = avatar.avatar_image_url
+    ? `<img src="${escapeHtml(avatar.avatar_image_url)}" width="96" height="96" style="border-radius:50%;object-fit:cover" alt=""/>`
+    : '';
   const rows: string[] = [];
   for (const m of messages) {
     const who = m.role === 'user' ? t('export.you') : escapeHtml(avatar.name);
@@ -59,7 +60,7 @@ async function buildHtml(avatar: Avatar, messages: Message[], t: TFunction): Pro
 body{font-family:Georgia,serif;background:#F3ECE4;color:#2E2A2B;margin:0;padding:24px}
 .wrap{max-width:640px;margin:0 auto}
 header{display:flex;gap:16px;align-items:center;margin-bottom:8px}
-header svg{border-radius:50%}
+header img{border-radius:50%}
 h1{font-size:22px;margin:0}
 .situation{background:#fff;border:1px solid #EADFD8;border-radius:12px;padding:12px 14px;margin:12px 0 20px;font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px}
 .msg{max-width:80%;padding:10px 14px;border-radius:18px;margin:8px 0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.45}

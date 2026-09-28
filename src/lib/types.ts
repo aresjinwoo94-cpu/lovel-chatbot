@@ -5,20 +5,18 @@
 
 export type Gender = 'female' | 'male' | 'other';
 
-export type HairStyle = 'side' | 'long' | 'bob' | 'short' | 'curly' | 'bun' | 'buzz';
-
-/** Rasgos visuales del avatar 2D. Todo se dibuja a mano en SVG a partir de esto. */
+/**
+ * Apariencia del avatar VRM (estilo VTuber).
+ * `model` es un modelo base (shibu, shino, mei, aria) o la URL de un VRM propio.
+ */
 export interface AvatarAppearance {
-  skinTone: string;
+  model: string;
   hairColor: string;
-  hairStyle: HairStyle;
   eyeColor: string;
+  skinTone: string;
   outfitColor: string;
-  /** Escena de fondo: [cielo arriba, (cielo medio), horizonte]. Acepta 2 o 3 colores. */
+  /** Escena de fondo: [cielo arriba, (cielo medio), horizonte]. */
   background: string[];
-  glasses: boolean;
-  freckles: boolean;
-  beard: boolean;
 }
 
 export type Expression = 'neutral' | 'smile' | 'thinking' | 'talking';

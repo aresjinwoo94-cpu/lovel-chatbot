@@ -1,22 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedAvatar } from '@/components/AnimatedAvatar';
 import { AppearancePicker } from '@/components/AppearancePicker';
 import { SituationField } from '@/components/SituationField';
 import { StepDiagram } from '@/components/StepDiagram';
-import { Body, Button, Chip, Muted, SectionLabel, Title, ToggleRow } from '@/components/ui';
+import { Button, Chip, Muted, SectionLabel, Title } from '@/components/ui';
+import { VrmAvatar, type VrmAvatarHandle } from '@/components/VrmAvatar';
 import { colors, serif } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { defaultAppearanceFor, REFERENCE_APPEARANCE } from '@/lib/avatarGeometry';
-import { createAvatar, generatePortrait } from '@/lib/data';
+import { DEFAULT_APPEARANCE } from '@/lib/avatarOptions';
+import { createAvatar, saveAvatarThumbnail } from '@/lib/data';
 import { useI18n } from '@/lib/i18n';
-import { supabase } from '@/lib/supabase';
 import type { AvatarAppearance, Gender } from '@/lib/types';
 
 /**
@@ -34,19 +33,16 @@ export default function AvatarCreatorScreen() {
   const [gender, setGender] = useState<Gender | null>(null);
   const [name, setName] = useState('');
   const [age, setAge] = useState(26);
-  const [appearance, setAppearance] = useState<AvatarAppearance>(REFERENCE_APPEARANCE);
+  const [appearance, setAppearance] = useState<AvatarAppearance>(DEFAULT_APPEARANCE);
+  const stage = useRef<VrmAvatarHandle>(null);
   const [description, setDescription] = useState('');
   const [situation, setSituation] = useState('');
-  const [wantPortrait, setWantPortrait] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const steps = [t('create.step.gender'), t('create.step.age'), t('create.step.appearance'), t('create.step.situation')];
   const displayName = name.trim() || t('create.defaultName');
 
-  const chooseGender = (g: Gender) => {
-    setGender(g);
-    setAppearance(defaultAppearanceFor(g));
-  };
+  const chooseGender = (g: Gender) => setGender(g);
 
   const canContinue = step === 0 ? gender !== null : step === 3 ? situation.trim().length > 0 : true;
 
@@ -54,6 +50,8 @@ export default function AvatarCreatorScreen() {
     if (!gender) return;
     setSaving(true);
     try {
+      // Captura del avatar tal como lo ve la persona (se usa como foto de perfil)
+      const snapshot = await stage.current?.snapshot().catch(() => null);
       const avatar = await createAvatar({
         name: displayName,
         gender,
@@ -62,12 +60,7 @@ export default function AvatarCreatorScreen() {
         appearance_description: description.trim(),
         situation_description: situation.trim(),
       });
-      if (wantPortrait && isPro) {
-        // El retrato ilustrado tarda ~20 s: se genera en segundo plano y aparece solo.
-        generatePortrait(avatar.id)
-          .then(() => supabase.from('avatars').update({ use_portrait: true }).eq('id', avatar.id))
-          .catch(() => undefined);
-      }
+      if (snapshot) await saveAvatarThumbnail(avatar.id, snapshot).catch(() => undefined);
       router.replace({ pathname: '/chat/[avatarId]', params: { avatarId: avatar.id } });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -101,9 +94,14 @@ export default function AvatarCreatorScreen() {
         <StepDiagram steps={steps} current={step} />
 
         <ScrollView className="flex-1" contentContainerClassName="px-6 pb-8" keyboardShouldPersistTaps="handled">
-          {/* Vista previa viva */}
-          <View className="my-5 items-center">
-            <AnimatedAvatar avatar={{ appearance, gender: gender ?? 'female', age }} size={132} ring mood={step === 3 ? 'happy' : 'idle'} />
+          {/* Vista previa viva: el avatar VRM se actualiza al personalizarlo */}
+          <View className="my-4 items-center">
+            <VrmAvatar
+              ref={stage}
+              appearance={appearance}
+              mood={step === 3 ? 'happy' : 'idle'}
+              style={{ width: '100%', height: step === 2 ? 300 : 240, borderRadius: 24 }}
+            />
             <Text style={{ fontFamily: serif }} className="mt-3 text-lg text-ink">
               {displayName}
               {step >= 1 ? <Text className="text-muted">{`  ·  ${t('create.age.years', { n: age })}`}</Text> : null}
@@ -168,6 +166,7 @@ export default function AvatarCreatorScreen() {
                   onChange={setAppearance}
                   description={description}
                   onDescriptionChange={setDescription}
+                  isPro={isPro}
                 />
               </View>
             ) : null}
@@ -175,16 +174,6 @@ export default function AvatarCreatorScreen() {
             {step === 3 ? (
               <View>
                 <SituationField value={situation} onChange={setSituation} />
-                <View className="mt-4">
-                  {isPro ? (
-                    <ToggleRow label={t('create.portrait')} value={wantPortrait} onChange={setWantPortrait} />
-                  ) : (
-                    <Pressable onPress={() => router.push('/pro')} className="flex-row items-center py-3">
-                      <Ionicons name="lock-closed-outline" size={16} color={colors.muted} />
-                      <Body className="ml-2 text-muted">{t('create.portraitPro')}</Body>
-                    </Pressable>
-                  )}
-                </View>
               </View>
             ) : null}
           </Animated.View>

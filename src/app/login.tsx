@@ -3,11 +3,10 @@ import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedAvatar } from '@/components/AnimatedAvatar';
+import { Logo } from '@/components/Logo';
 import { Button, Muted } from '@/components/ui';
 import { colors, serif } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { REFERENCE_APPEARANCE } from '@/lib/avatarGeometry';
 import { useI18n } from '@/lib/i18n';
 
 /** Registro / Login: Google o correo + contraseña. */
@@ -62,7 +61,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerClassName="flex-grow justify-center px-8 py-10" keyboardShouldPersistTaps="handled">
           <View className="items-center">
-            <AnimatedAvatar avatar={{ appearance: REFERENCE_APPEARANCE, gender: 'female', age: 26 }} size={120} ring mood="happy" />
+            <Logo size={96} />
             <Text style={{ fontFamily: serif }} className="mt-5 text-3xl text-ink">
               {t('appName')}
             </Text>

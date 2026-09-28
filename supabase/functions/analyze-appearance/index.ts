@@ -1,13 +1,13 @@
 /**
  * POST /analyze-appearance  { imageBase64, mediaType, gender, note? }
  * "Subir foto + descripción simple": la IA (visión de Gemini o Claude) traduce
- * la foto a rasgos del avatar 2D. La foto NO se guarda en ningún lado.
+ * la foto a colores del avatar VRM (pelo, ojos, piel, ropa). La foto NO se guarda.
  */
 import { z } from 'npm:zod@4';
 
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
 import { analyzeImageToJson, type JsonSchema } from '../_shared/llm.ts';
-import { EYES, HAIR, HAIR_STYLES, OUTFIT, SKIN } from '../_shared/palette.ts';
+import { EYES, HAIR, OUTFIT, SKIN } from '../_shared/palette.ts';
 import { requireUser } from '../_shared/supabase.ts';
 import { APPEARANCE_ANALYSIS_PROMPT } from '../_shared/systemPrompts.tsx';
 
@@ -19,27 +19,19 @@ const SCHEMA: JsonSchema = {
   properties: {
     skin: { type: 'string', enum: keys(SKIN) },
     hair_color: { type: 'string', enum: keys(HAIR) },
-    hair_style: { type: 'string', enum: [...HAIR_STYLES] },
     eyes: { type: 'string', enum: keys(EYES) },
     outfit: { type: 'string', enum: keys(OUTFIT) },
-    glasses: { type: 'boolean' },
-    freckles: { type: 'boolean' },
-    beard: { type: 'boolean' },
     description: { type: 'string' },
   },
-  required: ['skin', 'hair_color', 'hair_style', 'eyes', 'outfit', 'glasses', 'freckles', 'beard', 'description'],
+  required: ['skin', 'hair_color', 'eyes', 'outfit', 'description'],
 };
 
 /** Validación estricta de lo que devuelve la IA. */
 const Traits = z.object({
   skin: z.enum(keys(SKIN)),
   hair_color: z.enum(keys(HAIR)),
-  hair_style: z.enum(HAIR_STYLES),
   eyes: z.enum(keys(EYES)),
   outfit: z.enum(keys(OUTFIT)),
-  glasses: z.boolean(),
-  freckles: z.boolean(),
-  beard: z.boolean(),
   description: z.string(),
 });
 
@@ -72,12 +64,8 @@ serve(async (req) => {
     appearance: {
       skinTone: SKIN[t.skin],
       hairColor: HAIR[t.hair_color],
-      hairStyle: t.hair_style,
       eyeColor: EYES[t.eyes],
       outfitColor: OUTFIT[t.outfit],
-      glasses: t.glasses,
-      freckles: t.freckles,
-      beard: gender === 'female' ? false : t.beard,
     },
     description: t.description,
   });

@@ -14,11 +14,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedAvatar, type AvatarMood } from '@/components/AnimatedAvatar';
+import type { AvatarMood } from '@/components/AnimatedAvatar';
 import { ChatBubble } from '@/components/ChatBubble';
 import { PaywallModal } from '@/components/PaywallModal';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
+import { VrmAvatar } from '@/components/VrmAvatar';
 import { colors, serif } from '@/constants/theme';
 import { callFunction, isPaywall } from '@/lib/api';
 import { base64ToPlayableUri, fileToBase64, recordingMimeType } from '@/lib/audio';
@@ -280,8 +281,18 @@ export default function ChatScreen() {
         <Pressable onPress={onExport} hitSlop={10} className="mr-3" accessibilityLabel={t('chat.export')}>
           <Ionicons name="share-outline" size={22} color={colors.ink} />
         </Pressable>
-        {/* Foto de perfil grande, arriba a la derecha: se mueve, parpadea y "habla" */}
-        <AnimatedAvatar avatar={avatar} size={58} ring mood={mood} badge={badge} />
+        {/* Foto de perfil grande, arriba a la derecha: el avatar VRM en vivo parpadea,
+            mueve la cabeza, sonríe y mueve los labios cuando responde o habla */}
+        <View style={{ width: 66, height: 66 }}>
+          <View style={{ width: 66, height: 66, borderRadius: 33, borderWidth: 2, borderColor: colors.rose, padding: 2 }}>
+            <VrmAvatar appearance={avatar.appearance} mood={mood} framing="face" circle style={{ width: 58, height: 58, borderRadius: 29 }} />
+          </View>
+          {badge ? (
+            <View style={{ position: 'absolute', right: -4, top: -4, backgroundColor: colors.paper, borderRadius: 12, paddingHorizontal: 4, borderWidth: 1, borderColor: colors.line }}>
+              <Text style={{ fontSize: 13 }}>{badge}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
 
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -326,7 +337,15 @@ export default function ChatScreen() {
 
         {/* ------------------------------------------------ Barra de escritura / voz */}
         {recording ? (
-          <VoiceRecorder avatar={avatar} onSend={sendVoice} onClose={() => setRecording(false)} />
+          <VoiceRecorder
+            avatar={avatar}
+            onSend={sendVoice}
+            onClose={() => {
+              setRecording(false);
+              setMood('idle');
+            }}
+            onPreviewPlaying={(playing) => setMood(playing ? 'speaking' : 'idle')}
+          />
         ) : (
           <SafeAreaView edges={['bottom']} className="bg-cream">
             {!isPro ? (

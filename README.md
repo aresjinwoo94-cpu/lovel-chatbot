@@ -2,8 +2,8 @@
 
 Lovel House es una app minimalista de acompañantes: creas un avatar 2D de caricatura simple y conversas con él por texto o por voz, dentro de una situación que tú eliges ("Estoy abrazando a mi mamá después de una pelea", "Tu profesor explicando matemáticas con voz cálida"…).
 
-![Onboarding](docs/screens-onboarding.png)
-![Chat](docs/screens-chat.png)
+![App](docs/screens-chat.png)
+![Estilos de avatar](docs/avatar-styles.png)
 
 ---
 
@@ -24,7 +24,7 @@ Lovel House es una app minimalista de acompañantes: creas un avatar 2D de caric
 ### Plan gratuito y plan Pro
 
 - **Gratis:** 1 avatar y un periodo de prueba de 5 mensajes o 2 minutos de conversación (lo que ocurra primero). El backend lo aplica con un 402 `PAYWALL`, así que no se puede saltar desde la app.
-- **Pro ($9.90 USD/mes):** mensajes y notas de voz ilimitados, avatares ilimitados, memoria de largo plazo (el avatar recuerda lo que le cuentas) y retratos ilustrados con Leonardo.ai.
+- **Pro ($9.90 USD/mes):** mensajes y notas de voz ilimitados, avatares ilimitados, memoria de largo plazo (el avatar recuerda lo que le cuentas) y subir tu propio avatar VRM.
 
 ---
 
@@ -39,12 +39,11 @@ Lovel House es una app minimalista de acompañantes: creas un avatar 2D de caric
 └──────────────────────────────┘        │  Storage (voice-messages, portraits)       │
                                          │  Edge Functions (Deno) ─┬─▶ Claude API     │
                                          │                         ├─▶ ElevenLabs     │
-                                         │                         ├─▶ Leonardo.ai    │
                                          │                         └─▶ Stripe         │
                                          └───────────────────────────────────────────┘
 ```
 
-- **Ninguna clave secreta llega al teléfono.** La app solo tiene la URL de Supabase y la anon key. Claude, ElevenLabs, Leonardo y Stripe se llaman desde las Edge Functions.
+- **Ninguna clave secreta llega al teléfono.** La app solo tiene la URL de Supabase y la anon key. Gemini/Claude, ElevenLabs y Stripe se llaman desde las Edge Functions.
 - **Los mensajes los escribe solo el backend** (con service role), para que el límite gratuito no se pueda saltar. La app solo puede leer sus propios datos (RLS).
 
 ### Tecnologías elegidas
@@ -53,23 +52,28 @@ Lovel House es una app minimalista de acompañantes: creas un avatar 2D de caric
 | --- | --- | --- |
 | Frontend | **Expo SDK 57 + React Native 0.86 + Expo Router** | Una base de código para iOS, Android y web |
 | Estilos | **NativeWind 4 (Tailwind)** + componentes propios (`src/components/ui.tsx`) | shadcn/Radix son solo para web; en móvil hacemos lo mismo con Tailwind |
-| Animación | **Reanimated 4** (springs y transiciones declarativas) + **Lottie** | Framer Motion no funciona en React Native; Reanimated es el equivalente nativo |
+| Avatares | **VRM + three.js + @pixiv/three-vrm** (MToon) en un WebView | El mismo formato y sombreado que usan los VTubers (VRoid) |
+| Animación de la interfaz | **Reanimated 4** (springs y transiciones declarativas) + **Lottie** | Framer Motion no funciona en React Native; Reanimated es el equivalente nativo |
 | Backend | **Supabase** (Auth, Postgres, Storage, Edge Functions) | Lo recomendado en el brief; RLS y funciones en un solo lugar |
 | Chat IA | **Google Gemini 3.5 Flash-Lite** (por defecto, plan gratuito, ~1 s por respuesta) o **Claude Opus 5**. Se elige con el secreto `AI_PROVIDER` | Gemini: gratis para probar, con cambio automático de modelo si está saturado. Claude: pensamiento adaptativo, caché del prompt y `fallbacks: "default"` |
 | Voz | **ElevenLabs**: `eleven_multilingual_v2` (TTS) + `scribe_v1` (STT) | Voz cálida en varios idiomas y transcripción precisa |
-| Retratos | **Leonardo.ai** con prompt negativo (sin realismo, 3D, anime pesado ni artefactos de IA) | Soporta prompts negativos |
 | Pagos | **Stripe Checkout** (suscripción) + Customer Portal | Suscripción mensual, cancelable |
 
-### El avatar 2D
+### Los avatares (estilo VTuber)
 
-El avatar se dibuja en SVG a partir de rasgos (`src/lib/avatarGeometry.ts`): líneas limpias, fondo en degradado y expresión suave. Por eso se puede animar pieza por pieza (`src/components/CartoonAvatar.tsx`, `AnimatedAvatar.tsx`):
+Los avatares son modelos **VRM**, el formato abierto de VRoid que usan los VTubers, con sombreado anime (MToon). Se dibujan en 3D en tiempo real dentro de la app (`avatar-stage/stage.html`, con three.js y three-vrm) y se personalizan como en VRoid:
 
-- **Parpadeo** natural cada 2–5 s.
-- **Cabeza:** respira en reposo, se inclina al pensar ("escribiendo…") y asiente al hablar.
-- **Expresiones:** neutral, sonriendo, pensando (ceja levantada) y hablando (boca animada).
-- **Indicador:** ❤️ al responder por texto y 🗣️ al responder por voz.
+- **Estilo base:** 4 modelos oficiales de VRoid/pixiv con licencia que permite uso comercial (`avatar-stage/MODELS.md`), o **tu propio VRM** hecho en VRoid Studio (Pro).
+- **Colores:** pelo, ojos, piel y ropa. Se recolorean las texturas conservando sus luces y sombras.
+- **Escena de fondo:** atardecer (como la referencia), noche, lavanda, amanecer o día.
+- **Desde una foto:** la IA elige los colores que mejor la representan; la foto no se guarda.
+- **Animación en vivo:** parpadeo natural, respiración, movimientos de cabeza, sonrisa, gesto de "pensando" mientras escribe y labios que se mueven cuando habla o responde. Se muestra ❤️ al responder por texto y 🗣️ al responder por voz.
 
-El avatar de referencia (`REFERENCE_APPEARANCE`) es la chica de pelo castaño largo, suéter crema y fondo durazno→lavanda. Es el que aparece en la bienvenida y el que se usa por defecto. Los iconos de la app (`assets/images/*`) se generan desde ese mismo SVG con `bun scripts/render-avatar.ts`.
+Al guardar el avatar, la app captura una miniatura que se usa en la lista de chats y en otros lugares pequeños.
+
+### El logo
+
+Una casa con un corazón dentro, sobre el degradado de atardecer (`src/constants/logo.ts`). Los iconos se generan con `bun scripts/render-brand.ts`.
 
 ---
 
@@ -81,11 +85,14 @@ lovel-chatbot/
 ├── package.json
 ├── babel.config.js · metro.config.js · tailwind.config.js · nativewind-env.d.ts
 ├── .env.example                  # Variables públicas de la app
+├── avatar-stage/                 # Escenario 3D del avatar (stage.html) y modelos VRM base + licencias
 ├── assets/
-│   ├── images/                   # Icono, splash, favicon, retrato de referencia
+│   ├── images/                   # Icono, splash, favicon (logo)
+│   ├── models/                   # Miniaturas de los modelos base
 │   └── lottie/                   # typing.json (puntitos) · soundwave.json (ondas)
 ├── scripts/
-│   ├── render-avatar.ts          # Genera los PNG desde el SVG del avatar
+│   ├── render-brand.ts           # Genera los iconos PNG desde el logo
+│   ├── build-stage.mjs           # Empaqueta avatar-stage/stage.html para la app
 │   └── make-lottie.mjs           # Genera las animaciones Lottie
 ├── src/
 │   ├── app/                      # Pantallas (Expo Router)
@@ -96,12 +103,12 @@ lovel-chatbot/
 │   │   ├── avatar/create.tsx     # Creador de avatar (4 pasos)
 │   │   ├── chat/[avatarId].tsx   # Chat principal
 │   │   └── (tabs)/               # Chats · Perfil · Ajustes
-│   ├── components/               # CartoonAvatar, AnimatedAvatar, ChatBubble, VoiceRecorder,
+│   ├── components/               # VrmAvatar (3D), AnimatedAvatar (miniatura), Logo, ChatBubble, VoiceRecorder,
 │   │                             # VoicePlayer, PaywallModal, SituationField, StepDiagram, ui…
 │   ├── constants/theme.ts
 │   ├── global.css
 │   └── lib/                      # supabase, auth, i18n (es/en), data, billing, audio,
-│                                 # exportConversation, avatarGeometry, types
+│                                 # exportConversation, avatarOptions, avatarStageHtml, types
 └── supabase/
     ├── config.toml · deploy.sh · .env.example
     ├── migrations/0001_init.sql  # Tablas, RLS, triggers, vista de chats, buckets
@@ -110,7 +117,6 @@ lovel-chatbot/
         ├── chat/                 # Texto → respuesta del avatar
         ├── voice-chat/           # Voz → transcripción → respuesta → voz
         ├── analyze-appearance/   # Foto → rasgos del avatar (Claude visión; la foto no se guarda)
-        ├── generate-avatar/      # Retrato ilustrado (Leonardo.ai, Pro)
         ├── create-checkout/      # Stripe Checkout $9.90/mes
         ├── checkout-return/      # Redirige de Stripe a la app
         ├── billing-portal/       # Portal de Stripe
@@ -122,7 +128,7 @@ lovel-chatbot/
 
 ## Estado del proyecto de Supabase
 
-Ya está desplegado en el proyecto **lovel-house** (`snzcphkpzbjdzqjhzgzu`): tablas, reglas de seguridad, buckets, las 9 Edge Functions y los secretos de Gemini y ElevenLabs. La app ya trae la URL y la clave pública de ese proyecto (`src/constants/supabaseConfig.ts`), así que no hace falta crear `.env`.
+Ya está desplegado en el proyecto **lovel-house** (`snzcphkpzbjdzqjhzgzu`): tablas, reglas de seguridad, buckets, las 8 Edge Functions y los secretos de Gemini y ElevenLabs. La app ya trae la URL y la clave pública de ese proyecto (`src/constants/supabaseConfig.ts`), así que no hace falta crear `.env`.
 
 Mientras estés en pruebas, la confirmación por correo está desactivada, porque el correo gratuito de Supabase solo envía a los miembros de tu equipo. Antes de lanzar, configura un SMTP propio en Authentication → Emails y vuelve a activarla.
 
@@ -132,7 +138,7 @@ Mientras estés en pruebas, la confirmación por correo está desactivada, porqu
 
 - Node 20 o superior
 - [Supabase CLI](https://supabase.com/docs/guides/cli)
-- Cuentas en Anthropic, ElevenLabs, Leonardo.ai y Stripe
+- Cuentas en Google AI Studio (Gemini) o Anthropic, ElevenLabs y Stripe
 - Expo Go en tu teléfono o un simulador
 
 ### 2. Supabase
@@ -179,7 +185,6 @@ Escanea el QR con Expo Go, o pulsa `i` (iOS), `a` (Android) o `w` (web).
 | `CLAUDE_MODEL` · `CLAUDE_EFFORT` (opcional) | Modelo (`claude-opus-5`) y esfuerzo (`low` por defecto) | — |
 | `ELEVENLABS_API_KEY` | Voz del avatar y transcripción de notas de voz | elevenlabs.io → Profile → API Keys |
 | `ELEVENLABS_VOICE_*` (opcional) | Voces por género y edad. También puedes poner una voz clonada en `avatars.voice_id` | ElevenLabs → Voices |
-| `LEONARDO_API_KEY` | Retratos ilustrados (Pro) | app.leonardo.ai → API Access |
 | `STRIPE_SECRET_KEY` · `STRIPE_WEBHOOK_SECRET` | Suscripción Pro | dashboard.stripe.com |
 | `ALLOWED_RETURN_URLS` | A dónde puede volver el usuario tras pagar (evita redirecciones abiertas) | Añade tu dominio web si publicas la versión web |
 

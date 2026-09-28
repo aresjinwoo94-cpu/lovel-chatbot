@@ -4,11 +4,10 @@ import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedAvatar } from '@/components/AnimatedAvatar';
+import { Logo } from '@/components/Logo';
 import { Button, Muted } from '@/components/ui';
 import { colors, serif } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { REFERENCE_APPEARANCE } from '@/lib/avatarGeometry';
 import { openBillingPortal, startProCheckout, waitForPro } from '@/lib/billing';
 import { useI18n } from '@/lib/i18n';
 
@@ -61,7 +60,7 @@ export default function ProScreen() {
       </View>
       <ScrollView contentContainerClassName="px-7 pb-10">
         <View className="items-center">
-          <AnimatedAvatar avatar={{ appearance: REFERENCE_APPEARANCE, gender: 'female', age: 26 }} size={110} ring mood="happy" badge="❤️" />
+          <Logo size={88} />
           <Text style={{ fontFamily: serif }} className="mt-5 text-center text-2xl leading-8 text-ink">
             Lovel House Pro
           </Text>

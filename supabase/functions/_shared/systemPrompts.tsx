@@ -103,45 +103,6 @@ ${previousMemory?.trim() || '(vacía)'}`;
  * Prompt para traducir una foto de referencia en rasgos del dibujo 2D.
  * La foto no se guarda: solo se usa para esta descripción.
  */
-export const APPEARANCE_ANALYSIS_PROMPT = `Vas a inspirar un avatar 2D estilo anime (tipo VTuber, sombreado plano) a partir de esta foto.
-Elige, de las opciones permitidas, los rasgos que mejor la representen, y escribe una descripción breve y amable (máx. 20 palabras, en español) de su estilo: peinado, ropa y expresión.
+export const APPEARANCE_ANALYSIS_PROMPT = `Vas a inspirar un avatar VRM estilo anime (tipo VTuber) a partir de esta foto.
+Elige, de las opciones permitidas, los colores que mejor la representen (pelo, ojos, piel y ropa) y escribe una descripción breve y amable (máx. 20 palabras, en español) de su estilo: peinado, ropa y expresión.
 No describas rasgos sensibles ni hagas juicios sobre el cuerpo. Si en la foto no hay una persona, elige opciones neutras y cálidas.`;
-
-/**
- * Prompt de imagen para los retratos ilustrados (Leonardo.ai). Replica el estilo
- * de la referencia de Lovel House: avatar 2D estilo anime tipo VTuber, sombreado
- * plano (cel), líneas limpias, fondo de atardecer con nubes alargadas.
- */
-export function buildPortraitPrompt(a: {
-  gender: 'female' | 'male' | 'other';
-  age: number;
-  appearance: { hairStyle: string; hairColorName: string; skinToneName: string; outfitColorName: string; glasses: boolean; freckles: boolean; beard: boolean };
-  appearance_description: string | null;
-}): { prompt: string; negativePrompt: string } {
-  const subject = a.gender === 'female' ? 'young woman' : a.gender === 'male' ? 'young man' : 'androgynous person';
-  const ageText = a.age >= 45 ? `${a.age} years old, gentle mature features` : `${a.age} years old`;
-  const outfit = a.gender === 'female' ? `${a.appearance.outfitColorName} sleeveless high-neck top` : `${a.appearance.outfitColorName} crew-neck t-shirt`;
-  const extras = [a.appearance.glasses && 'round glasses', a.appearance.freckles && 'light freckles', a.appearance.beard && 'short neat beard']
-    .filter(Boolean)
-    .join(', ');
-  const prompt = [
-    `2D anime-style VTuber avatar of a ${subject}, ${ageText}, upper body, centered, facing the viewer`,
-    `${a.appearance.hairStyle} ${a.appearance.hairColorName} hair, ${a.appearance.skinToneName} skin, ${outfit}`,
-    extras,
-    a.appearance_description ?? '',
-    'big expressive anime eyes with soft highlights, small gentle open smile, soft blush',
-    'clean thin lineart, cel shading with soft hard-edged shadows, glossy hair highlights',
-    'background: dreamy sunset sky gradient from deep purple to magenta to orange, long streaked clouds, a few stars, calm water and tree silhouettes on the horizon',
-    'warm, delicate, friendly mood',
-  ]
-    .filter(Boolean)
-    .join(', ');
-  const negativePrompt = [
-    'photorealistic, realistic, photo, 3d render, cgi, clay, plastic skin',
-    'chibi, exaggerated proportions, heavy manga screentone, harsh black shadows',
-    'ai artifacts, glitch, extra fingers, deformed hands, distorted face, asymmetrical eyes, extra limbs',
-    'text, watermark, logo, signature, frame, border, noise, grain, blurry',
-    'nsfw, cleavage, suggestive, revealing clothes',
-  ].join(', ');
-  return { prompt, negativePrompt };
-}

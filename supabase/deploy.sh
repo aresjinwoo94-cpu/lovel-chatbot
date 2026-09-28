@@ -12,7 +12,7 @@ if [ -f supabase/.env ]; then
 fi
 
 echo "→ Desplegando Edge Functions…"
-for fn in chat voice-chat analyze-appearance generate-avatar create-checkout billing-portal delete-data; do
+for fn in chat voice-chat analyze-appearance create-checkout billing-portal delete-data; do
   supabase functions deploy "$fn"
 done
 supabase functions deploy checkout-return --no-verify-jwt

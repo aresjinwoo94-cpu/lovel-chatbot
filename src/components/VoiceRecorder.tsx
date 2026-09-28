@@ -21,6 +21,8 @@ interface Props {
   avatar: AvatarLike;
   onSend: (uri: string, durationMs: number) => void;
   onClose: () => void;
+  /** Avisa si la vista previa está sonando (el avatar 3D del encabezado mueve los labios). */
+  onPreviewPlaying?: (playing: boolean) => void;
 }
 
 const MIN_MS = 700;
@@ -32,7 +34,7 @@ const MIN_MS = 700;
  *     con ondas de sonido animadas.
  *  3. Enviar o descartar.
  */
-export function VoiceRecorder({ avatar, onSend, onClose }: Props) {
+export function VoiceRecorder({ avatar, onSend, onClose, onPreviewPlaying }: Props) {
   const { t } = useI18n();
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
   const state = useAudioRecorderState(recorder, 90);
@@ -129,7 +131,16 @@ export function VoiceRecorder({ avatar, onSend, onClose }: Props) {
             {/* El avatar "escucha" tu nota: labios y cabeza se mueven mientras suena */}
             <AnimatedAvatar avatar={avatar} size={64} mood={previewPlaying ? 'speaking' : 'idle'} badge={previewPlaying ? '🗣️' : null} />
             <View className="ml-3 flex-1">
-              <VoicePlayer localUri={uri} durationMs={duration} autoPlay onPlayingChange={setPreviewPlaying} tint={colors.sage} />
+              <VoicePlayer
+                localUri={uri}
+                durationMs={duration}
+                autoPlay
+                onPlayingChange={(p) => {
+                  setPreviewPlaying(p);
+                  onPreviewPlaying?.(p);
+                }}
+                tint={colors.sage}
+              />
             </View>
           </View>
           <View className="mt-1 h-10 items-center justify-center">

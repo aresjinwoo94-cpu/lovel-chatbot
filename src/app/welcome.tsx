@@ -3,29 +3,23 @@ import { Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedAvatar } from '@/components/AnimatedAvatar';
+import { VrmAvatar } from '@/components/VrmAvatar';
 import { Button, Muted } from '@/components/ui';
 import { serif } from '@/constants/theme';
-import { REFERENCE_APPEARANCE } from '@/lib/avatarGeometry';
+import { DEFAULT_APPEARANCE } from '@/lib/avatarOptions';
 import { useI18n } from '@/lib/i18n';
 
 /**
  * Onboarding inicial: "Bienvenido a Lovel House. ¿Quieres crear tu primer avatar?"
- * Muestra el avatar de referencia (la chica 2D del diseño) saludando.
+ * Muestra un avatar VRM en vivo (estilo VTuber) con la escena de atardecer.
  */
 export default function WelcomeScreen() {
   const { t } = useI18n();
   return (
     <SafeAreaView className="flex-1 bg-cream">
       <View className="flex-1 items-center justify-center px-8">
-        <Animated.View entering={FadeInUp.duration(500)}>
-          <AnimatedAvatar
-            avatar={{ appearance: REFERENCE_APPEARANCE, gender: 'female', age: 26 }}
-            size={180}
-            ring
-            mood="happy"
-            badge="❤️"
-          />
+        <Animated.View entering={FadeInUp.duration(500)} style={{ width: '100%' }}>
+          <VrmAvatar appearance={DEFAULT_APPEARANCE} mood="happy" style={{ width: '100%', height: 340, borderRadius: 28 }} />
         </Animated.View>
         <Animated.View entering={FadeInDown.delay(200).duration(500)} className="mt-8 items-center">
           <Text style={{ fontFamily: serif }} className="text-center text-3xl leading-10 text-ink">
