@@ -9,16 +9,17 @@ const TTS_MODEL = Deno.env.get('ELEVENLABS_TTS_MODEL') ?? 'eleven_multilingual_v
 const STT_MODEL = Deno.env.get('ELEVENLABS_STT_MODEL') ?? 'scribe_v1';
 
 /**
- * Voces prediseñadas de ElevenLabs según género y edad del avatar.
+ * Voces prediseñadas de ElevenLabs según género y edad del avatar
+ * (todas disponibles en el plan gratuito de ElevenLabs).
  * Puedes cambiarlas con secretos (ELEVENLABS_VOICE_FEMALE, …) o poner una voz
  * propia/clonada por avatar en la columna avatars.voice_id.
  */
 const DEFAULT_VOICES = {
-  female: '21m00Tcm4TlvDq8ikWAM', // Rachel: cálida, joven
+  female: 'EXAVITQu4vr4xnSDxMaL', // Sarah: cálida, joven
   female_mature: 'XrExE9yKIg1WjnnlVkGX', // Matilda: cálida, madura
   male: 'TX3LPaxmHKxFdv7VOQHJ', // Liam: joven, cercano
-  male_mature: 'pNInz6obpgDQGcFmaJgB', // Adam: grave, sereno
-  other: 'EXAVITQu4vr4xnSDxMaL', // Sarah: suave, neutra
+  male_mature: 'nPczCjzI2devNBz1zQrb', // Brian: grave, sereno
+  other: 'SAz9YHcvj6GT2YYXdXww', // River: suave, neutra
 };
 
 export function pickVoice(gender: 'female' | 'male' | 'other', age: number, custom: string | null): string {

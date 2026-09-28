@@ -55,7 +55,7 @@ Lovel House es una app minimalista de acompañantes: creas un avatar 2D de caric
 | Estilos | **NativeWind 4 (Tailwind)** + componentes propios (`src/components/ui.tsx`) | shadcn/Radix son solo para web; en móvil hacemos lo mismo con Tailwind |
 | Animación | **Reanimated 4** (springs y transiciones declarativas) + **Lottie** | Framer Motion no funciona en React Native; Reanimated es el equivalente nativo |
 | Backend | **Supabase** (Auth, Postgres, Storage, Edge Functions) | Lo recomendado en el brief; RLS y funciones en un solo lugar |
-| Chat IA | **Claude Opus 5** (`claude-opus-5`) con SDK oficial `@anthropic-ai/sdk` | Pensamiento adaptativo, caché del prompt y `fallbacks: "default"` (si una petición se rechaza, la API la reintenta en el modelo recomendado) |
+| Chat IA | **Google Gemini 3.5 Flash-Lite** (por defecto, plan gratuito, ~1 s por respuesta) o **Claude Opus 5**. Se elige con el secreto `AI_PROVIDER` | Gemini: gratis para probar, con cambio automático de modelo si está saturado. Claude: pensamiento adaptativo, caché del prompt y `fallbacks: "default"` |
 | Voz | **ElevenLabs**: `eleven_multilingual_v2` (TTS) + `scribe_v1` (STT) | Voz cálida en varios idiomas y transcripción precisa |
 | Retratos | **Leonardo.ai** con prompt negativo (sin realismo, 3D, anime pesado ni artefactos de IA) | Soporta prompts negativos |
 | Pagos | **Stripe Checkout** (suscripción) + Customer Portal | Suscripción mensual, cancelable |
@@ -120,7 +120,13 @@ lovel-chatbot/
 
 ---
 
-## Cómo ponerlo en marcha
+## Estado del proyecto de Supabase
+
+Ya está desplegado en el proyecto **lovel-house** (`snzcphkpzbjdzqjhzgzu`): tablas, reglas de seguridad, buckets, las 9 Edge Functions y los secretos de Gemini y ElevenLabs. La app ya trae la URL y la clave pública de ese proyecto (`src/constants/supabaseConfig.ts`), así que no hace falta crear `.env`.
+
+Mientras estés en pruebas, la confirmación por correo está desactivada, porque el correo gratuito de Supabase solo envía a los miembros de tu equipo. Antes de lanzar, configura un SMTP propio en Authentication → Emails y vuelve a activarla.
+
+## Cómo ponerlo en marcha (desde cero, en otro proyecto)
 
 ### 1. Requisitos
 
@@ -166,9 +172,11 @@ Escanea el QR con Expo Go, o pulsa `i` (iOS), `a` (Android) o `w` (web).
 
 | Secreto | Para qué | Dónde se consigue |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | Respuestas del avatar, memoria y análisis de fotos | console.anthropic.com |
-| `CLAUDE_MODEL` (opcional) | Modelo; por defecto `claude-opus-5` | — |
-| `CLAUDE_EFFORT` (opcional) | `low` (por defecto, respuestas rápidas), `medium` o `high` | — |
+| `AI_PROVIDER` | `gemini` (gratis) o `anthropic` (Claude). Cambia de IA sin tocar código | — |
+| `GEMINI_API_KEY` | Respuestas del avatar, memoria y análisis de fotos con Gemini | aistudio.google.com/apikey |
+| `GEMINI_MODEL` (opcional) | Por defecto `gemini-3.5-flash-lite` | — |
+| `ANTHROPIC_API_KEY` | Lo mismo con Claude (si `AI_PROVIDER=anthropic`) | console.anthropic.com |
+| `CLAUDE_MODEL` · `CLAUDE_EFFORT` (opcional) | Modelo (`claude-opus-5`) y esfuerzo (`low` por defecto) | — |
 | `ELEVENLABS_API_KEY` | Voz del avatar y transcripción de notas de voz | elevenlabs.io → Profile → API Keys |
 | `ELEVENLABS_VOICE_*` (opcional) | Voces por género y edad. También puedes poner una voz clonada en `avatars.voice_id` | ElevenLabs → Voices |
 | `LEONARDO_API_KEY` | Retratos ilustrados (Pro) | app.leonardo.ai → API Access |

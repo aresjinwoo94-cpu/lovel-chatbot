@@ -2,19 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import { AppState, Platform } from 'react-native';
 
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/supabaseConfig';
+
 /**
  * Cliente de Supabase.
- * Las claves públicas vienen de .env (EXPO_PUBLIC_*). Las claves secretas
- * (Anthropic, ElevenLabs, Leonardo, Stripe) viven SOLO en las Edge Functions.
+ * Solo usa valores públicos (URL + anon key). Las claves secretas
+ * (Gemini/Claude, ElevenLabs, Leonardo, Stripe) viven SOLO en las Edge Functions.
  */
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Faltan EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_ANON_KEY. Copia .env.example a .env y complétalo (ver README).',
-  );
-}
+const supabaseUrl = SUPABASE_URL;
+const supabaseAnonKey = SUPABASE_ANON_KEY;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

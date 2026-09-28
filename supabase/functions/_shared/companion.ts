@@ -1,10 +1,10 @@
-import { generateReply, loadHistory, maybeUpdateMemory } from './claude.ts';
+import { generateReply, loadHistory, maybeUpdateMemory } from './llm.ts';
 import { consumeFreeMessage, type QuotaState } from './quota.ts';
 import { background } from './runtime.ts';
 import { admin, type AvatarRow, type ProfileRow } from './supabase.ts';
 import { buildCompanionSystemPrompt } from './systemPrompts.tsx';
 
-/** Pide a Claude la respuesta del avatar con su personalidad y situación. */
+/** Pide a la IA (Gemini o Claude) la respuesta del avatar con su personalidad y situación. */
 export async function replyAsAvatar(opts: { avatar: AvatarRow; profile: ProfileRow; userText: string; voice?: boolean }) {
   const { avatar, profile } = opts;
   const system = buildCompanionSystemPrompt({

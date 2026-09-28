@@ -1,19 +1,36 @@
 /**
  * POST /analyze-appearance  { imageBase64, mediaType, gender, note? }
- * "Subir foto + descripción simple": Claude (visión) traduce la foto a rasgos
- * del avatar 2D. La foto NO se guarda en ningún lado.
+ * "Subir foto + descripción simple": la IA (visión de Gemini o Claude) traduce
+ * la foto a rasgos del avatar 2D. La foto NO se guarda en ningún lado.
  */
-import { betaZodOutputFormat } from 'npm:@anthropic-ai/sdk@0.128.0/helpers/beta/zod';
 import { z } from 'npm:zod@4';
 
-import { anthropic, CLAUDE_MODEL } from '../_shared/claude.ts';
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
+import { analyzeImageToJson, type JsonSchema } from '../_shared/llm.ts';
 import { EYES, HAIR, HAIR_STYLES, OUTFIT, SKIN } from '../_shared/palette.ts';
 import { requireUser } from '../_shared/supabase.ts';
 import { APPEARANCE_ANALYSIS_PROMPT } from '../_shared/systemPrompts.tsx';
 
 const keys = <T extends Record<string, string>>(o: T) => Object.keys(o) as [keyof T & string, ...(keyof T & string)[]];
 
+/** Esquema que se pide a la IA (mismo formato para ambos proveedores). */
+const SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    skin: { type: 'string', enum: keys(SKIN) },
+    hair_color: { type: 'string', enum: keys(HAIR) },
+    hair_style: { type: 'string', enum: [...HAIR_STYLES] },
+    eyes: { type: 'string', enum: keys(EYES) },
+    outfit: { type: 'string', enum: keys(OUTFIT) },
+    glasses: { type: 'boolean' },
+    freckles: { type: 'boolean' },
+    beard: { type: 'boolean' },
+    description: { type: 'string' },
+  },
+  required: ['skin', 'hair_color', 'hair_style', 'eyes', 'outfit', 'glasses', 'freckles', 'beard', 'description'],
+};
+
+/** Validación estricta de lo que devuelve la IA. */
 const Traits = z.object({
   skin: z.enum(keys(SKIN)),
   hair_color: z.enum(keys(HAIR)),
@@ -40,31 +57,17 @@ serve(async (req) => {
   if (!imageBase64) throw new HttpError(400, 'Falta la imagen');
   const media: MediaType = (MEDIA_TYPES as readonly string[]).includes(mediaType) ? (mediaType as MediaType) : 'image/jpeg';
 
-  const response = await anthropic.beta.messages.parse({
-    model: CLAUDE_MODEL,
-    max_tokens: 4000,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    thinking: { type: 'adaptive' },
-    output_config: { effort: 'low', format: betaZodOutputFormat(Traits) },
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: media, data: imageBase64 } },
-          {
-            type: 'text',
-            text: `${APPEARANCE_ANALYSIS_PROMPT}\nGénero elegido para el avatar: ${gender}.${note?.trim() ? `\nNota de la persona: ${note.trim()}` : ''}`,
-          },
-        ],
-      },
-    ],
+  const raw = await analyzeImageToJson({
+    prompt: `${APPEARANCE_ANALYSIS_PROMPT}\nGénero elegido para el avatar: ${gender}.${note?.trim() ? `\nNota de la persona: ${note.trim()}` : ''}`,
+    imageBase64,
+    mediaType: media,
+    schema: SCHEMA,
   });
-
-  if (response.stop_reason === 'refusal' || !response.parsed_output) {
+  const parsed = Traits.safeParse(raw);
+  if (!parsed.success) {
     throw new HttpError(422, 'No pudimos inspirarnos en esta foto. Prueba con otra o elige los rasgos a mano.');
   }
-  const t = response.parsed_output;
+  const t = parsed.data;
   return json({
     appearance: {
       skinTone: SKIN[t.skin],

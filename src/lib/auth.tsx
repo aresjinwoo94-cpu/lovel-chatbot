@@ -60,7 +60,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      if (next) loadProfile(next.user.id);
+      // Importante: no consultar Supabase dentro de este callback (bloquea el cliente).
+      // Lo diferimos al siguiente ciclo, como recomienda supabase-js.
+      if (next) setTimeout(() => loadProfile(next.user.id), 0);
       else setProfile(null);
     });
     return () => sub.subscription.unsubscribe();

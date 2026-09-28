@@ -36,8 +36,10 @@ serve(async (req) => {
   const transcript = await speechToText(audio, mimeType);
   if (!transcript) throw new HttpError(422, 'No pudimos entender el audio. ¿Lo intentas de nuevo?', 'EMPTY_TRANSCRIPT');
 
-  // 2) Respuesta del avatar pensada para ser dicha en voz alta
-  const reply = await replyAsAvatar({ avatar, profile, userText: transcript, voice: true });
+  // 2) Respuesta del avatar pensada para ser dicha en voz alta.
+  //    Quitamos gestos entre asteriscos para que la voz no los lea.
+  const raw = await replyAsAvatar({ avatar, profile, userText: transcript, voice: true });
+  const reply = raw.replace(/\*[^*]+\*/g, ' ').replace(/\s+/g, ' ').trim() || raw;
 
   // 3) Texto → voz del avatar
   const replyAudio = await textToSpeech(reply, pickVoice(avatar.gender, avatar.age, avatar.voice_id));
