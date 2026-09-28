@@ -8,13 +8,13 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Ellipse, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { buildAvatarParts, LINE, TALKING_MOUTH, type Shape } from '@/lib/avatarGeometry';
 import type { AvatarAppearance, Expression, Gender } from '@/lib/types';
 
 const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+const AnimatedG = Animated.createAnimatedComponent(G);
 
 export interface CartoonAvatarProps {
   appearance: AvatarAppearance;
@@ -43,10 +43,18 @@ function ShapeEl({ s }: { s: Shape }) {
   return <Circle cx={s.cx} cy={s.cy} r={s.r} {...common} />;
 }
 
+const Shapes = ({ list, k }: { list: Shape[]; k: string }) => (
+  <>
+    {list.map((s, i) => (
+      <ShapeEl key={`${k}${i}`} s={s} />
+    ))}
+  </>
+);
+
 /**
- * Avatar 2D cartoon dibujado a mano en SVG.
- * Líneas limpias, fondo degradado y expresión suave. Anima:
- *  - parpadeo natural (ojos que se cierran un instante)
+ * Avatar 2D estilo anime (tipo VTuber) con sombreado plano, dibujado en SVG.
+ * Escena de atardecer (o la que se elija) de fondo. Anima:
+ *  - parpadeo natural (el ojo se cierra un instante)
  *  - labios que se mueven cuando habla
  */
 function CartoonAvatarBase({
@@ -58,7 +66,7 @@ function CartoonAvatarBase({
   blinking = true,
   size = 120,
 }: CartoonAvatarProps) {
-  const gradientId = `bg-${useId().replace(/:/g, '')}`;
+  const gradientId = `sky-${useId().replace(/:/g, '')}`;
   const parts = buildAvatarParts(appearance, gender, age, speaking ? 'neutral' : expression);
 
   // 0 = ojos abiertos, 1 = cerrados
@@ -72,7 +80,7 @@ function CartoonAvatarBase({
     let timer: ReturnType<typeof setTimeout>;
     const schedule = () => {
       timer = setTimeout(() => {
-        blink.value = withSequence(withTiming(1, { duration: 70 }), withTiming(0, { duration: 120 }));
+        blink.value = withSequence(withTiming(1, { duration: 60 }), withTiming(1, { duration: 70 }), withTiming(0, { duration: 60 }));
         schedule();
       }, 2200 + Math.random() * 3200);
     };
@@ -99,8 +107,8 @@ function CartoonAvatarBase({
     }
   }, [speaking, mouth]);
 
-  const eyeProps = useAnimatedProps(() => ({ ry: parts.eyes.ry * (1 - 0.9 * blink.value) }));
-  const highlightProps = useAnimatedProps(() => ({ opacity: blink.value > 0.4 ? 0 : 1 }));
+  const openEyeProps = useAnimatedProps(() => ({ opacity: blink.value > 0.5 ? 0 : 1 }));
+  const closedEyeProps = useAnimatedProps(() => ({ opacity: blink.value > 0.5 ? 1 : 0 }));
   const mouthProps = useAnimatedProps(() => ({
     ry: TALKING_MOUTH.ryMin + (TALKING_MOUTH.ryMax - TALKING_MOUTH.ryMin) * mouth.value,
   }));
@@ -108,41 +116,29 @@ function CartoonAvatarBase({
   return (
     <Svg width={size} height={size} viewBox="0 0 200 200">
       <Defs>
-        <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor={appearance.background[0]} />
-          <Stop offset="1" stopColor={appearance.background[1]} />
+        <LinearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          {parts.skyStops.map((s) => (
+            <Stop key={s.offset} offset={s.offset} stopColor={s.color} />
+          ))}
         </LinearGradient>
       </Defs>
       <Rect width="200" height="200" fill={`url(#${gradientId})`} />
 
-      {parts.back.map((s, i) => (
-        <ShapeEl key={`b${i}`} s={s} />
-      ))}
-      {parts.face.map((s, i) => (
-        <ShapeEl key={`f${i}`} s={s} />
-      ))}
-      {parts.brows.map((s, i) => (
-        <ShapeEl key={`br${i}`} s={s} />
-      ))}
+      <Shapes list={parts.scene} k="sc" />
+      <Shapes list={parts.back} k="b" />
+      <Shapes list={parts.face} k="f" />
+      <Shapes list={parts.brows} k="br" />
 
-      {/* Ojos animados (parpadeo) */}
-      {[parts.eyes.left, parts.eyes.right].map((e, i) => (
-        <AnimatedEllipse
-          key={`e${i}`}
-          cx={e.cx}
-          cy={e.cy}
-          rx={parts.eyes.rx}
-          fill={parts.eyes.color}
-          stroke={LINE}
-          strokeWidth={1.2}
-          animatedProps={eyeProps}
-        />
-      ))}
-      {[parts.eyes.left, parts.eyes.right].map((e, i) => (
-        <AnimatedCircle key={`h${i}`} cx={e.cx + 1.6} cy={e.cy - 2} r={1.6} fill="#fff" animatedProps={highlightProps} />
-      ))}
-      {parts.eyeDetails.map((s, i) => (
-        <ShapeEl key={`ed${i}`} s={s} />
+      {/* Ojos: abiertos / cerrados según el parpadeo */}
+      {parts.eyes.map((eye, i) => (
+        <G key={`eye${i}`}>
+          <AnimatedG animatedProps={openEyeProps}>
+            <Shapes list={eye.open} k={`eo${i}`} />
+          </AnimatedG>
+          <AnimatedG animatedProps={closedEyeProps} opacity={0}>
+            <Shapes list={eye.closed} k={`ec${i}`} />
+          </AnimatedG>
+        </G>
       ))}
 
       {/* Boca: estática según expresión, o animada al hablar */}
@@ -153,16 +149,14 @@ function CartoonAvatarBase({
           rx={TALKING_MOUTH.rx}
           fill={TALKING_MOUTH.fill}
           stroke={LINE}
-          strokeWidth={1.8}
+          strokeWidth={0.9}
           animatedProps={mouthProps}
         />
       ) : (
-        parts.mouth.map((s, i) => <ShapeEl key={`m${i}`} s={s} />)
+        <Shapes list={parts.mouth} k="m" />
       )}
 
-      {parts.front.map((s, i) => (
-        <ShapeEl key={`fr${i}`} s={s} />
-      ))}
+      <Shapes list={parts.front} k="fr" />
     </Svg>
   );
 }

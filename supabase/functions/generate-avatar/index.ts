@@ -1,8 +1,8 @@
 /**
  * POST /generate-avatar  { avatarId }   (solo Pro)
  * Retrato ilustrado con Leonardo.ai en el estilo exacto de la referencia:
- * 2D cartoon simple, líneas limpias, fondo degradado, expresión suave.
- * Usa prompt negativo para evitar realismo, 3D, anime pesado y artefactos de IA.
+ * 2D estilo anime tipo VTuber, sombreado plano, fondo de atardecer.
+ * Usa prompt negativo para evitar realismo, 3D, deformaciones y artefactos de IA.
  */
 import { HttpError, json, readJson, requireEnv, serve } from '../_shared/http.ts';
 import { HAIR, OUTFIT, SKIN, nameOf } from '../_shared/palette.ts';
@@ -14,6 +14,7 @@ const LEONARDO = 'https://cloud.leonardo.ai/api/rest/v1';
 const MODEL_ID = Deno.env.get('LEONARDO_MODEL_ID') ?? 'de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3';
 
 const hairStyleWords: Record<string, string> = {
+  side: 'shoulder-length with long side-swept bangs covering one eye',
   long: 'long straight side-parted',
   bob: 'chin-length bob',
   curly: 'voluminous curly',

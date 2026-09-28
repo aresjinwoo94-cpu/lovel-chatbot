@@ -137,7 +137,7 @@ export function AppearancePicker({ gender, appearance, onChange, description, on
           <Swatch
             key={bg.join()}
             color={bg[0]}
-            second={bg[1]}
+            second={bg[bg.length - 1]}
             selected={appearance.background.join() === bg.join()}
             onPress={() => set('background', bg)}
           />

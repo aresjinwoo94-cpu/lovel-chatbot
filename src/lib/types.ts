@@ -5,7 +5,7 @@
 
 export type Gender = 'female' | 'male' | 'other';
 
-export type HairStyle = 'long' | 'bob' | 'short' | 'curly' | 'bun' | 'buzz';
+export type HairStyle = 'side' | 'long' | 'bob' | 'short' | 'curly' | 'bun' | 'buzz';
 
 /** Rasgos visuales del avatar 2D. Todo se dibuja a mano en SVG a partir de esto. */
 export interface AvatarAppearance {
@@ -14,8 +14,8 @@ export interface AvatarAppearance {
   hairStyle: HairStyle;
   eyeColor: string;
   outfitColor: string;
-  /** Degradado del fondo: [arriba-izquierda, abajo-derecha]. */
-  background: [string, string];
+  /** Escena de fondo: [cielo arriba, (cielo medio), horizonte]. Acepta 2 o 3 colores. */
+  background: string[];
   glasses: boolean;
   freckles: boolean;
   beard: boolean;

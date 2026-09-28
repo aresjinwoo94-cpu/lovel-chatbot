@@ -3,36 +3,36 @@
  * prompts de Leonardo). Mantener en el MISMO orden que src/lib/avatarGeometry.ts.
  */
 export const SKIN = {
-  very_light: '#FBE3D3',
-  light: '#F5D0B5',
-  medium_light: '#E8B894',
-  medium: '#C98E66',
-  medium_dark: '#A86B45',
+  very_light: '#FCEAE0',
+  light: '#F7D9C6',
+  medium_light: '#EFC3A4',
+  medium: '#D69E78',
+  medium_dark: '#A8704B',
   dark: '#7A4A2E',
 } as const;
 
 export const HAIR = {
-  dark_brown: '#3B2A25',
-  brown: '#6B4431',
-  auburn: '#A56B43',
+  dark_brown: '#2A1D24',
+  brown: '#5A3A2E',
+  auburn: '#5A2A2E',
   blonde: '#D9B26F',
   red: '#B8452F',
-  gray: '#9A9A9A',
-  black: '#1E1B1D',
+  gray: '#B9B6C2',
+  black: '#15121A',
 } as const;
 
-export const EYES = { brown: '#3B2A25', green: '#5B7F5A', blue: '#4F6F95', hazel: '#7A5A3A' } as const;
+export const EYES = { brown: '#6B3F2A', green: '#4F8A5B', blue: '#4F78B5', hazel: '#8A6A3A', rose: '#C2366B' } as const;
 
 export const OUTFIT = {
+  black: '#1E1B22',
   cream: '#F4EDE4',
   rose: '#E7B7B3',
   blue: '#A9C0D9',
   sage: '#B9CDB4',
-  black: '#2E2A2B',
-  mustard: '#E9D29B',
+  purple: '#6B4E8C',
 } as const;
 
-export const HAIR_STYLES = ['long', 'bob', 'curly', 'bun', 'short', 'buzz'] as const;
+export const HAIR_STYLES = ['side', 'long', 'bob', 'curly', 'bun', 'short', 'buzz'] as const;
 
 /** Busca el nombre legible de un color hex (para prompts de imagen). */
 export function nameOf<T extends Record<string, string>>(map: T, hex: unknown, fallback: keyof T): string {
