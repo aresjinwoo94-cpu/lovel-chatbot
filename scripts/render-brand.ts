@@ -24,7 +24,7 @@ await shot(sized(square, 1024), 'icon.png', 1024, 1024);
 await shot(sized(LOGO_MARK_SVG, 48), 'favicon.png', 48, 48);
 await shot(sized(LOGO_MARK_SVG, 512), 'splash-icon.png', 512, 512);
 // Android adaptativo: fondo degradado + símbolo centrado en la zona segura
-await shot(`<div style="width:1024px;height:1024px;background:linear-gradient(135deg,#3A1650,#C8284F 55%,#F7923A)"></div>`, 'android-icon-background.png', 1024, 1024);
+await shot(`<div style="width:1024px;height:1024px;background:linear-gradient(135deg,#5A47B8,#6F5BD3 55%,#E6A0B4)"></div>`, 'android-icon-background.png', 1024, 1024);
 await shot(`<div style="padding:172px">${sized(LOGO_GLYPH_SVG, 680)}</div>`, 'android-icon-foreground.png', 1024, 1024);
 await shot(`<div style="padding:172px;filter:brightness(0)">${sized(LOGO_GLYPH_SVG, 680)}</div>`, 'android-icon-monochrome.png', 1024, 1024);
 await browser.close();

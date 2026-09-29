@@ -1,6 +1,5 @@
-import { Image } from 'expo-image';
 import { useEffect } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -14,21 +13,22 @@ import Animated, {
   ZoomOut,
 } from 'react-native-reanimated';
 
-import { modelThumb, normalizeAppearance } from '@/lib/avatarOptions';
-import type { AvatarAppearance } from '@/lib/types';
+import { CharacterPortrait } from './CharacterPortrait';
+import { Text } from '@/components/Themed';
+import { colors } from '@/constants/theme';
 
 /**
- * Estado de ánimo visual del avatar:
- *  - idle: respira suavemente
+ * Estado de ánimo visual del personaje:
+ *  - idle: respira suavemente (y parpadea)
  *  - thinking: inclina la cabeza (mientras "escribe…")
- *  - speaking: asiente (reproduce voz / acaba de responder)
+ *  - speaking: mueve los labios y asiente
  *  - happy: pequeño salto de alegría
  */
 export type AvatarMood = 'idle' | 'thinking' | 'speaking' | 'happy';
 
 export interface AvatarLike {
-  appearance: Partial<AvatarAppearance>;
-  avatar_image_url?: string | null;
+  appearance: unknown;
+  gender?: string;
 }
 
 interface Props {
@@ -37,16 +37,14 @@ interface Props {
   /** Pequeño indicador junto a la foto: ❤️ (texto) o 🗣️ (voz). */
   badge?: '❤️' | '🗣️' | null;
   size?: number;
-  /** Anillo suave alrededor (estilo historias de Instagram). */
+  /** Anillo de color alrededor (personaje "en línea"). */
   ring?: boolean;
+  /** Parpadeo y labios (desactívalo en listas largas). */
+  animate?: boolean;
 }
 
-/**
- * Foto de perfil del avatar para lugares pequeños (lista de chats, modales).
- * Usa la miniatura capturada del propio modelo VRM. El avatar 3D en vivo
- * está en VrmAvatar.
- */
-export function AnimatedAvatar({ avatar, mood = 'idle', badge = null, size = 56, ring = false }: Props) {
+/** Foto de perfil circular del personaje, con vida: respira, parpadea y habla. */
+export function AnimatedAvatar({ avatar, mood = 'idle', badge = null, size = 56, ring = false, animate = true }: Props) {
   const tilt = useSharedValue(0);
   const lift = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -54,6 +52,7 @@ export function AnimatedAvatar({ avatar, mood = 'idle', badge = null, size = 56,
   useEffect(() => {
     cancelAnimation(tilt);
     cancelAnimation(lift);
+    if (!animate) return;
     if (mood === 'speaking') {
       tilt.value = withRepeat(withSequence(withTiming(-3, { duration: 260 }), withTiming(3, { duration: 300 }), withTiming(0, { duration: 240 })), -1);
       lift.value = withRepeat(withSequence(withTiming(-1.5, { duration: 220 }), withTiming(0, { duration: 220 })), -1);
@@ -74,7 +73,7 @@ export function AnimatedAvatar({ avatar, mood = 'idle', badge = null, size = 56,
         true,
       );
     }
-  }, [mood, tilt, lift, scale]);
+  }, [mood, tilt, lift, scale, animate]);
 
   const headStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: lift.value }, { rotate: `${tilt.value}deg` }, { scale: scale.value }],
@@ -82,7 +81,6 @@ export function AnimatedAvatar({ avatar, mood = 'idle', badge = null, size = 56,
 
   const inner = ring ? size - 6 : size;
   const art = inner * 1.1; // un poco más grande que el círculo: al moverse nunca se ven bordes
-  const source = avatar.avatar_image_url ? { uri: avatar.avatar_image_url } : modelThumb(normalizeAppearance(avatar.appearance).model);
 
   return (
     <View style={{ width: size, height: size }}>
@@ -94,12 +92,12 @@ export function AnimatedAvatar({ avatar, mood = 'idle', badge = null, size = 56,
           alignItems: 'center',
           justifyContent: 'center',
           borderWidth: ring ? 2 : 0,
-          borderColor: '#D98C95',
+          borderColor: colors.primary,
         }}
       >
-        <View style={{ width: inner, height: inner, borderRadius: inner / 2, overflow: 'hidden', backgroundColor: '#2E1446' }}>
+        <View style={{ width: inner, height: inner, borderRadius: inner / 2, overflow: 'hidden', backgroundColor: colors.primarySoft }}>
           <Animated.View style={[{ width: art, height: art, marginLeft: -inner * 0.05, marginTop: -inner * 0.05 }, headStyle]}>
-            <Image source={source} style={{ width: art, height: art }} contentFit="cover" transition={200} />
+            <CharacterPortrait look={avatar.appearance} gender={avatar.gender} size={art} crop="face" speaking={mood === 'speaking'} animate={animate} />
           </Animated.View>
         </View>
       </View>
@@ -113,12 +111,12 @@ export function AnimatedAvatar({ avatar, mood = 'idle', badge = null, size = 56,
             position: 'absolute',
             right: -4,
             top: -4,
-            backgroundColor: '#FFFFFF',
+            backgroundColor: colors.paper,
             borderRadius: 12,
             paddingHorizontal: 4,
             paddingVertical: 1,
             borderWidth: 1,
-            borderColor: '#EADFD8',
+            borderColor: colors.line,
           }}
         >
           <Text style={{ fontSize: Math.max(11, size * 0.2) }}>{badge}</Text>

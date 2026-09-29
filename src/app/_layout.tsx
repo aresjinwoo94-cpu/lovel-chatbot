@@ -1,6 +1,15 @@
 import '@/global.css';
 import '@/lib/nativewindInterop';
 
+import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -10,35 +19,54 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/theme';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { DialogHost } from '@/lib/dialog';
 import { I18nProvider } from '@/lib/i18n';
 
 SplashScreen.preventAutoHideAsync();
 
-/** Navegación raíz: pantallas públicas (login) y protegidas (todo lo demás). */
+/**
+ * Navegación raíz.
+ *  - Públicas: explorar personajes y crear/personalizar uno (no hace falta cuenta).
+ *  - Solo sin sesión: login.
+ *  - Con sesión: historias, chat, Pro y "start" (guarda el personaje creado antes del login).
+ */
 function RootNavigator() {
   const { session, loading } = useAuth();
+  const [fontsLoaded, fontError] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+    DMSerifDisplay_400Regular,
+  });
+  const ready = !loading && (fontsLoaded || !!fontError);
 
   useEffect(() => {
-    if (!loading) SplashScreen.hideAsync();
-  }, [loading]);
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
 
-  if (loading) return null;
+  if (!ready) return null;
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.cream } }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="auth/callback" />
-      <Stack.Protected guard={!session}>
-        <Stack.Screen name="login" />
-      </Stack.Protected>
-      <Stack.Protected guard={!!session}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
+    <>
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.cream } }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="explore" options={{ animation: 'fade' }} />
         <Stack.Screen name="avatar/create" options={{ animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="chat/[avatarId]" />
-        <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
-      </Stack.Protected>
-    </Stack>
+        <Stack.Screen name="auth/callback" />
+        <Stack.Protected guard={!session}>
+          <Stack.Screen name="login" options={{ animation: 'fade' }} />
+        </Stack.Protected>
+        <Stack.Protected guard={!!session}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="start" options={{ animation: 'fade' }} />
+          <Stack.Screen name="chat/[avatarId]" />
+          <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
+        </Stack.Protected>
+      </Stack>
+      <DialogHost />
+    </>
   );
 }
 

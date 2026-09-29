@@ -19,6 +19,7 @@ export interface ProfileRow {
   stripe_customer_id: string | null;
   trial_started_at: string | null;
   free_messages_used: number;
+  free_voice_used: number;
   store_voice: boolean;
 }
 
@@ -34,6 +35,8 @@ export interface AvatarRow {
   avatar_image_url: string | null;
   voice_id: string | null;
   memory: string | null;
+  traits: string[] | null;
+  scenario_id: string | null;
 }
 
 /** Valida el JWT de Supabase que envía la app y devuelve el usuario. */

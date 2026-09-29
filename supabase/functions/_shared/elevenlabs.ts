@@ -64,7 +64,12 @@ export async function speechToText(audio: Uint8Array<ArrayBuffer>, mimeType: str
     headers: { 'xi-api-key': requireEnv('ELEVENLABS_API_KEY') },
     body: form,
   });
-  if (!res.ok) throw new HttpError(502, `ElevenLabs STT: ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    console.error('ElevenLabs STT', res.status, await res.text());
+    throw new HttpError(502, 'No pudimos procesar tu nota de voz ahora mismo. Inténtalo de nuevo en un momento.', 'VOICE_STT');
+  }
   const data = (await res.json()) as { text?: string };
-  return (data.text ?? '').trim();
+  // Scribe marca el silencio o el ruido entre paréntesis: "(silencio)", "(música)".
+  const text = (data.text ?? '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  return text;
 }

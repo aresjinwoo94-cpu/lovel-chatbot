@@ -1,5 +1,5 @@
 import { HttpError, requireEnv } from './http.ts';
-import type { ChatTurn, GenerateResult, JsonSchema } from './llm.ts';
+import type { ChatTurn, GenerateResult } from './llm.ts';
 
 /**
  * Integración con Google Gemini (API REST, sin SDK).
@@ -66,39 +66,4 @@ export function geminiGenerate(opts: { system: string; turns: ChatTurn[]; maxTok
     contents: opts.turns.map((t) => ({ role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] })),
     generationConfig: { maxOutputTokens: opts.maxTokens },
   });
-}
-
-/** Gemini usa un subconjunto de OpenAPI con tipos en mayúsculas. */
-function toGeminiSchema(schema: JsonSchema): Record<string, unknown> {
-  const out: Record<string, unknown> = { type: schema.type.toUpperCase() };
-  if (schema.enum) out.enum = schema.enum;
-  if (schema.properties) {
-    out.properties = Object.fromEntries(Object.entries(schema.properties).map(([k, v]) => [k, toGeminiSchema(v)]));
-  }
-  if (schema.required) out.required = schema.required;
-  return out;
-}
-
-/** Imagen + instrucción → JSON que cumple el esquema. */
-export async function geminiImageJson(opts: {
-  prompt: string;
-  imageBase64: string;
-  mediaType: string;
-  schema: JsonSchema;
-}): Promise<unknown | null> {
-  const result = await callGemini({
-    contents: [
-      {
-        role: 'user',
-        parts: [{ inlineData: { mimeType: opts.mediaType, data: opts.imageBase64 } }, { text: opts.prompt }],
-      },
-    ],
-    generationConfig: { responseMimeType: 'application/json', responseSchema: toGeminiSchema(opts.schema), maxOutputTokens: 4096 },
-  });
-  if (result.refused || !result.text) return null;
-  try {
-    return JSON.parse(result.text);
-  } catch {
-    return null;
-  }
 }

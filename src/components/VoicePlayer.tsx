@@ -1,11 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 
 import { colors } from '@/constants/theme';
 import { formatDuration } from '@/lib/audio';
 import { signedAudioUrl } from '@/lib/data';
+import { Text } from '@/components/Themed';
+import { showDialog } from '@/lib/dialog';
+import { useI18n } from '@/lib/i18n';
 
 interface Props {
   /** Ruta en Supabase Storage (bucket privado voice-messages). */
@@ -19,6 +22,8 @@ interface Props {
   onPlayingChange?: (playing: boolean) => void;
   tint?: string;
   seed?: string;
+  /** Sobre una burbuja de color (mensajes de la persona). */
+  onDark?: boolean;
 }
 
 /** Barras de onda "dibujadas" (pseudoaleatorias pero estables por mensaje). */
@@ -26,16 +31,19 @@ function useBars(seed: string, count = 28) {
   return useMemo(() => {
     let h = 0;
     for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-    return Array.from({ length: count }, (_, i) => {
+    const bars: number[] = [];
+    for (let i = 0; i < count; i++) {
       h = (h * 1103515245 + 12345) >>> 0;
       const base = 0.3 + ((h >>> 8) % 70) / 100;
-      return Math.min(1, base * (0.7 + 0.3 * Math.sin(i / 2.2)));
-    });
+      bars.push(Math.min(1, base * (0.7 + 0.3 * Math.sin(i / 2.2))));
+    }
+    return bars;
   }, [seed, count]);
 }
 
 /** Reproductor de nota de voz estilo WhatsApp: play/pausa, onda con progreso y duración. */
-export function VoicePlayer({ path, localUri, durationMs, autoPlay = false, onPlayingChange, tint = colors.roseDeep, seed }: Props) {
+export function VoicePlayer({ path, localUri, durationMs, autoPlay = false, onPlayingChange, tint = colors.primary, seed, onDark = false }: Props) {
+  const { t } = useI18n();
   const player = useAudioPlayer(localUri ? { uri: localUri } : null);
   const status = useAudioPlayerStatus(player);
   const [loading, setLoading] = useState(false);
@@ -44,7 +52,13 @@ export function VoicePlayer({ path, localUri, durationMs, autoPlay = false, onPl
 
   // Autoplay de la respuesta de voz del avatar.
   useEffect(() => {
-    if (autoPlay && localUri) player.play();
+    if (autoPlay && localUri) {
+      try {
+        player.play();
+      } catch {
+        // el navegador puede bloquear el autoplay: la persona puede darle a play
+      }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -70,11 +84,18 @@ export function VoicePlayer({ path, localUri, durationMs, autoPlay = false, onPl
       try {
         player.replace({ uri: await signedAudioUrl(path) });
         loadedRef.current = true;
+      } catch (e) {
+        showDialog(t('voice.playError'), e instanceof Error ? e.message : undefined);
+        return;
       } finally {
         setLoading(false);
       }
     }
-    player.play();
+    try {
+      player.play();
+    } catch (e) {
+      showDialog(t('voice.playError'), e instanceof Error ? e.message : undefined);
+    }
   };
 
   const total = status.duration > 0 ? status.duration * 1000 : (durationMs ?? 0);
@@ -88,12 +109,12 @@ export function VoicePlayer({ path, localUri, durationMs, autoPlay = false, onPl
         disabled={!canPlay}
         className="h-9 w-9 items-center justify-center rounded-full"
         style={{ backgroundColor: canPlay ? tint : colors.line }}
-        accessibilityLabel={status.playing ? 'Pausa' : 'Reproducir'}
+        accessibilityLabel={status.playing ? t('voice.pause') : t('voice.play')}
       >
         {loading ? (
-          <ActivityIndicator size="small" color="#fff" />
+          <ActivityIndicator size="small" color={onDark ? colors.primary : colors.paper} />
         ) : (
-          <Ionicons name={status.playing ? 'pause' : 'play'} size={16} color="#fff" style={{ marginLeft: status.playing ? 0 : 2 }} />
+          <Ionicons name={status.playing ? 'pause' : 'play'} size={16} color={onDark ? colors.primary : colors.paper} style={{ marginLeft: status.playing ? 0 : 2 }} />
         )}
       </Pressable>
       <View className="ml-3 h-7 flex-1 flex-row items-center">
@@ -105,12 +126,12 @@ export function VoicePlayer({ path, localUri, durationMs, autoPlay = false, onPl
               marginHorizontal: 1,
               height: `${Math.round(b * 100)}%`,
               borderRadius: 2,
-              backgroundColor: i / bars.length <= progress && progress > 0 ? tint : colors.line,
+              backgroundColor: i / bars.length <= progress && progress > 0 ? tint : onDark ? 'rgba(255,255,255,0.4)' : colors.line,
             }}
           />
         ))}
       </View>
-      <Text className="ml-2 w-10 text-right text-xs text-muted">
+      <Text className={`ml-2 w-10 text-right text-xs ${onDark ? 'text-paper' : 'text-muted'}`}>
         {formatDuration(status.playing || progress > 0 ? status.currentTime * 1000 : total)}
       </Text>
     </View>

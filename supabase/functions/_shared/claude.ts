@@ -1,7 +1,7 @@
 import Anthropic from 'npm:@anthropic-ai/sdk@0.128.0';
 
 import { requireEnv } from './http.ts';
-import type { ChatTurn, GenerateResult, JsonSchema } from './llm.ts';
+import type { ChatTurn, GenerateResult } from './llm.ts';
 
 /**
  * Integración con Claude (Anthropic).
@@ -49,36 +49,4 @@ export async function claudeGenerate(opts: {
   });
   if (response.stop_reason === 'refusal') return { text: '', refused: true };
   return { text: textOf(response.content), refused: false };
-}
-
-/** Imagen + instrucción → JSON que cumple el esquema (salida estructurada). */
-export async function claudeImageJson(opts: {
-  prompt: string;
-  imageBase64: string;
-  mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
-  schema: JsonSchema;
-}): Promise<unknown | null> {
-  const response = await anthropic().beta.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 4000,
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    thinking: { type: 'adaptive' },
-    output_config: { effort: 'low', format: { type: 'json_schema', schema: { ...opts.schema, additionalProperties: false } } },
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: opts.mediaType, data: opts.imageBase64 } },
-          { type: 'text', text: opts.prompt },
-        ],
-      },
-    ],
-  });
-  if (response.stop_reason === 'refusal') return null;
-  try {
-    return JSON.parse(textOf(response.content));
-  } catch {
-    return null;
-  }
 }

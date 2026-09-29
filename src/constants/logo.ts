@@ -1,14 +1,14 @@
 /**
- * Logo de Lovel House: una casa con un corazón dentro, sobre un degradado de
- * atardecer (morado → rosa → naranja). Una sola fuente para la app (SvgXml)
+ * Logo de Lovel House: una casa con un corazón dentro, sobre el degradado de la
+ * marca (violeta #6F5BD3 → rosa #E6A0B4). Una sola fuente para la app (SvgXml)
  * y para los iconos PNG (scripts/render-brand.ts).
  */
 export const LOGO_MARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
     <linearGradient id="lh-bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#3A1650"/>
-      <stop offset="0.55" stop-color="#C8284F"/>
-      <stop offset="1" stop-color="#F7923A"/>
+      <stop offset="0" stop-color="#5A47B8"/>
+      <stop offset="0.55" stop-color="#6F5BD3"/>
+      <stop offset="1" stop-color="#E6A0B4"/>
     </linearGradient>
   </defs>
   <rect width="100" height="100" rx="24" fill="url(#lh-bg)"/>

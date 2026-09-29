@@ -5,9 +5,9 @@ import { Platform } from 'react-native';
 import { callFunction } from './api';
 import { supabase } from './supabase';
 
-/** Límites del periodo gratuito (idénticos a supabase/functions/_shared/quota.ts). */
-export const FREE_MESSAGE_LIMIT = 5;
-export const FREE_SECONDS = 120;
+/** Límites del plan gratuito (idénticos a supabase/functions/_shared/quota.ts). */
+export const FREE_TEXT_LIMIT = 25;
+export const FREE_VOICE_LIMIT = 3;
 
 const returnUrl = () => (Platform.OS === 'web' ? `${window.location.origin}/pro` : Linking.createURL('pro'));
 

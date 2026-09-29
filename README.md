@@ -1,9 +1,12 @@
 # Lovel House
 
-Lovel House es una app minimalista de acompañantes: creas un avatar 2D de caricatura simple y conversas con él por texto o por voz, dentro de una situación que tú eliges ("Estoy abrazando a mi mamá después de una pelea", "Tu profesor explicando matemáticas con voz cálida"…).
+Lovel House es una app de **roleplay con personajes**: eliges o creas un personaje anime 2D, defines su personalidad y la escena donde empieza vuestra historia… y **el personaje te escribe primero**. Después conversáis por texto o por notas de voz.
 
-![App](docs/screens-chat.png)
-![Estilos de avatar](docs/avatar-styles.png)
+Prioridad del producto: **Personaje → Personalidad → Situación → Conversación.**
+
+![Personajes por defecto](docs/avatar-styles.png)
+![Flujo: explorar, personalizar, personalidad, escena](docs/screens-flow.png)
+![Login y chat](docs/screens-chat.png)
 
 ---
 
@@ -11,20 +14,22 @@ Lovel House es una app minimalista de acompañantes: creas un avatar 2D de caric
 
 | Flujo | Dónde está |
 | --- | --- |
-| Registro / login con Google y con email (más recuperar contraseña) | `src/app/login.tsx`, `src/lib/auth.tsx`, `src/app/auth/callback.tsx` |
-| Bienvenida: "Bienvenido a Lovel House. ¿Quieres crear tu primer avatar?" | `src/app/welcome.tsx` |
-| Creador de avatar en 4 pasos (género, edad 18–60, apariencia elegida o desde una foto, situación) | `src/app/avatar/create.tsx` |
-| Chat estilo WhatsApp: scroll infinito, "escribiendo…", foto grande arriba a la derecha que se mueve, parpadea y "habla" (❤️ / 🗣️) | `src/app/chat/[avatarId].tsx` |
-| Notas de voz: botón de micrófono grande, onda en vivo, vista previa con labios en movimiento y respuesta con voz generada | `src/components/VoiceRecorder.tsx`, `supabase/functions/voice-chat` |
-| Plan Pro de $9.90/mes (solo suscripción). El modal aparece tras 5 mensajes o 2 minutos | `src/components/PaywallModal.tsx`, `src/app/pro.tsx`, `supabase/functions/create-checkout`, `stripe-webhook` |
-| Exportar la conversación: HTML con texto y audios incrustados, o .txt | `src/lib/exportConversation.ts` |
-| Lista de avatares (historial), perfil y ajustes (idioma, privacidad, borrar datos) | `src/app/(tabs)/*` |
-| Prompt de sistema del avatar: humano, delicado y fiel a la situación | `supabase/functions/_shared/systemPrompts.tsx` |
+| **Sin cuenta:** explorar personajes, personalizar, elegir personalidad y escena, vista previa. La cuenta solo se pide al empezar la historia (el borrador se guarda en el dispositivo y sobrevive al login con Google) | `src/app/explore.tsx`, `src/app/avatar/create.tsx`, `src/lib/draft.ts`, `src/app/start.tsx` |
+| Creador de personajes 2D por capas: 10 formas de cara, 12 estilos de ojos, 12 colores de ojos, 8 cejas, 10 expresiones, 10 rasgos distintivos, 8 tonos de piel, 16 peinados, 15 colores de pelo, 19 conjuntos de rol, 19 accesorios y 8 fondos | `src/lib/character/*`, `src/components/CharacterPortrait.tsx` |
+| 6 personajes listos (3 mujeres y 3 hombres) | `PRESETS` en `src/lib/character/options.ts` |
+| Personalidad: 30 rasgos, de 1 a 5, con incompatibilidades (tímido ↔ extrovertido, dominante ↔ sumiso…) | `supabase/functions/_shared/roleplay.ts` |
+| 36 escenarios narrativos en 9 categorías (Romance, Drama, Amistad, Escuela, Trabajo, Fantasía, Misterio, Conflicto, Vida cotidiana) o una escena propia | `supabase/functions/_shared/roleplay.ts` |
+| El personaje envía el **primer mensaje**, coherente con su personalidad y la escena | `supabase/functions/start-chat`, `buildOpeningInstruction` en `systemPrompts.tsx` |
+| Chat: tus mensajes a la derecha; los del personaje a la izquierda con su foto y su nombre; parpadea y mueve los labios al hablar | `src/app/chat/[avatarId].tsx`, `src/components/ChatBubble.tsx` |
+| Notas de voz con estados claros (preparando, grabando, vista previa, enviando) y mensajes de error de permisos/micrófono en web y móvil. Si la voz falla, el personaje responde por escrito | `src/components/VoiceRecorder.tsx`, `supabase/functions/voice-chat` |
+| Login con Google y con email (más recuperar contraseña) | `src/app/login.tsx`, `src/lib/auth.tsx`, `src/app/auth/callback.tsx` |
+| Plan Pro de $9.90/mes (Stripe) | `src/components/PaywallModal.tsx`, `src/app/pro.tsx`, `supabase/functions/create-checkout`, `stripe-webhook` |
+| Exportar la conversación (HTML con audios o .txt), historias, perfil y ajustes | `src/lib/exportConversation.ts`, `src/app/(tabs)/*` |
 
 ### Plan gratuito y plan Pro
 
-- **Gratis:** 1 avatar y un periodo de prueba de 5 mensajes o 2 minutos de conversación (lo que ocurra primero). El backend lo aplica con un 402 `PAYWALL`, así que no se puede saltar desde la app.
-- **Pro ($9.90 USD/mes):** mensajes y notas de voz ilimitados, avatares ilimitados, memoria de largo plazo (el avatar recuerda lo que le cuentas) y subir tu propio avatar VRM.
+- **Gratis:** 1 personaje, **25 mensajes de texto** y **3 notas de voz** por cuenta. El contador se ve en el chat y en el perfil. Lo controla el servidor: la función `reserve_free_message` reserva el cupo de forma atómica **antes** de llamar a la IA (tres peticiones simultáneas con un solo mensaje libre → una pasa y dos reciben 402 `PAYWALL`) y lo devuelve si la respuesta falla. No se reinicia al recargar ni al borrar personajes, y solo el backend puede modificarlo. El primer mensaje del personaje no cuenta.
+- **Pro ($9.90 USD/mes):** mensajes y notas de voz ilimitados, más personajes y memoria de largo plazo.
 
 ---
 
@@ -34,46 +39,47 @@ Lovel House es una app minimalista de acompañantes: creas un avatar 2D de caric
 ┌──────────────────────────────┐        ┌───────────────────────────────────────────┐
 │  App (Expo / React Native)   │  JWT   │  Supabase                                  │
 │  Expo Router + NativeWind    │ ─────▶ │  Auth (Google + email)                     │
-│  Avatar SVG + Reanimated     │        │  Postgres + RLS (profiles, avatars,        │
-│  Lottie · expo-audio         │        │    conversations, messages)                │
-└──────────────────────────────┘        │  Storage (voice-messages, portraits)       │
-                                         │  Edge Functions (Deno) ─┬─▶ Claude API     │
+│  Personajes SVG por capas    │        │  Postgres + RLS (profiles, avatars,        │
+│  Reanimated · Lottie · audio │        │    conversations, messages)                │
+└──────────────────────────────┘        │  Storage (voice-messages)                  │
+                                         │  Edge Functions (Deno) ─┬─▶ Gemini/Claude  │
                                          │                         ├─▶ ElevenLabs     │
                                          │                         └─▶ Stripe         │
                                          └───────────────────────────────────────────┘
 ```
 
-- **Ninguna clave secreta llega al teléfono.** La app solo tiene la URL de Supabase y la anon key. Gemini/Claude, ElevenLabs y Stripe se llaman desde las Edge Functions.
-- **Los mensajes los escribe solo el backend** (con service role), para que el límite gratuito no se pueda saltar. La app solo puede leer sus propios datos (RLS).
+- **Ninguna clave secreta llega al teléfono.** La app solo tiene la URL de Supabase y la anon key.
+- **Los mensajes los escribe solo el backend** (service role), para que el plan gratuito no se pueda saltar.
 
-### Tecnologías elegidas
+### Tecnologías
 
-| Pieza | Elección | Motivo |
+| Pieza | Elección |
+| --- | --- |
+| Frontend | Expo SDK 57 + React Native 0.86 + Expo Router (iOS, Android y web) |
+| Estilos | NativeWind 4 (Tailwind) + componentes propios (`src/components/ui.tsx`) |
+| Tipografía | Plus Jakarta Sans (interfaz) y DM Serif Display (nombres de personajes y momentos emocionales), con `@expo-google-fonts` |
+| Personajes | SVG por capas generado en el dispositivo (`react-native-svg`), sin servicios externos |
+| Chat IA | Gemini 3.5 Flash-Lite por defecto o Claude (`AI_PROVIDER`) |
+| Voz | ElevenLabs `eleven_multilingual_v2` (TTS) + `scribe_v1` (STT) |
+| Pagos | Stripe Checkout + Customer Portal |
+
+### Identidad visual (modo claro)
+
+| Token | Color | Uso |
 | --- | --- | --- |
-| Frontend | **Expo SDK 57 + React Native 0.86 + Expo Router** | Una base de código para iOS, Android y web |
-| Estilos | **NativeWind 4 (Tailwind)** + componentes propios (`src/components/ui.tsx`) | shadcn/Radix son solo para web; en móvil hacemos lo mismo con Tailwind |
-| Avatares | **VRM + three.js + @pixiv/three-vrm** (MToon) en un WebView | El mismo formato y sombreado que usan los VTubers (VRoid) |
-| Animación de la interfaz | **Reanimated 4** (springs y transiciones declarativas) + **Lottie** | Framer Motion no funciona en React Native; Reanimated es el equivalente nativo |
-| Backend | **Supabase** (Auth, Postgres, Storage, Edge Functions) | Lo recomendado en el brief; RLS y funciones en un solo lugar |
-| Chat IA | **Google Gemini 3.5 Flash-Lite** (por defecto, plan gratuito, ~1 s por respuesta) o **Claude Opus 5**. Se elige con el secreto `AI_PROVIDER` | Gemini: gratis para probar, con cambio automático de modelo si está saturado. Claude: pensamiento adaptativo, caché del prompt y `fallbacks: "default"` |
-| Voz | **ElevenLabs**: `eleven_multilingual_v2` (TTS) + `scribe_v1` (STT) | Voz cálida en varios idiomas y transcripción precisa |
-| Pagos | **Stripe Checkout** (suscripción) + Customer Portal | Suscripción mensual, cancelable |
+| `cream` | `#F9F7F3` | Fondo |
+| `paper` | `#FFFFFF` | Tarjetas y superficies |
+| `primary` / `primary-soft` | `#6F5BD3` / `#E9E4FA` | Acciones, tus mensajes, selección |
+| `accent` / `accent-soft` | `#E6A0B4` / `#F8E8ED` | Acentos emocionales, escena |
+| `ink` / `muted` | `#242229` / `#77737D` | Texto principal y secundario |
+| `line` | `#E8E4DE` | Bordes |
+| `success` | `#69B58A` | En línea |
 
-### Los avatares (estilo VTuber)
+Los tokens están en `tailwind.config.js` y `src/constants/theme.ts`. El plugin `fontWeight` de Tailwind está desactivado a propósito: `font-medium`, `font-semibold`, `font-bold`… eligen el archivo de fuente correcto (las fuentes propias no admiten peso sintético en Android). `Text` y `TextInput` se importan de `src/components/Themed.tsx` para usar la fuente de la marca por defecto.
 
-Los avatares son modelos **VRM**, el formato abierto de VRoid que usan los VTubers, con sombreado anime (MToon). Se dibujan en 3D en tiempo real dentro de la app (`avatar-stage/stage.html`, con three.js y three-vrm) y se personalizan como en VRoid:
+### Los personajes
 
-- **Estilo base:** 4 modelos oficiales de VRoid/pixiv con licencia que permite uso comercial (`avatar-stage/MODELS.md`), o **tu propio VRM** hecho en VRoid Studio (Pro).
-- **Colores:** pelo, ojos, piel y ropa. Se recolorean las texturas conservando sus luces y sombras.
-- **Escena de fondo:** atardecer (como la referencia), noche, lavanda, amanecer o día.
-- **Desde una foto:** la IA elige los colores que mejor la representan; la foto no se guarda.
-- **Animación en vivo:** parpadeo natural, respiración, movimientos de cabeza, sonrisa, gesto de "pensando" mientras escribe y labios que se mueven cuando habla o responde. Se muestra ❤️ al responder por texto y 🗣️ al responder por voz.
-
-Al guardar el avatar, la app captura una miniatura que se usa en la lista de chats y en otros lugares pequeños.
-
-### El logo
-
-Una casa con un corazón dentro, sobre el degradado de atardecer (`src/constants/logo.ts`). Los iconos se generan con `bun scripts/render-brand.ts`.
+Estilo anime 2D inspirado en la referencia (nivel de detalle, ojos grandes con brillos, pelo con mechones y brillo), pero con los colores de la marca, no los de la imagen. Cada categoría cambia una pieza real del dibujo (forma de la cara, forma del ojo, silueta del peinado, ropa con cuellos, solapas, delantales, armaduras…), no solo un color. El mismo dibujo se usa en la lista, el creador y el chat, y está animado: parpadea, respira y mueve los labios cuando habla.
 
 ---
 
@@ -81,50 +87,50 @@ Una casa con un corazón dentro, sobre el degradado de atardecer (`src/constants
 
 ```
 lovel-chatbot/
-├── app.json                      # Configuración de Expo (nombre, esquema lovelhouse://, permisos)
-├── package.json
-├── babel.config.js · metro.config.js · tailwind.config.js · nativewind-env.d.ts
-├── .env.example                  # Variables públicas de la app
-├── avatar-stage/                 # Escenario 3D del avatar (stage.html) y modelos VRM base + licencias
-├── assets/
-│   ├── images/                   # Icono, splash, favicon (logo)
-│   ├── models/                   # Miniaturas de los modelos base
-│   └── lottie/                   # typing.json (puntitos) · soundwave.json (ondas)
-├── scripts/
-│   ├── render-brand.ts           # Genera los iconos PNG desde el logo
-│   ├── build-stage.mjs           # Empaqueta avatar-stage/stage.html para la app
-│   └── make-lottie.mjs           # Genera las animaciones Lottie
+├── app.json · package.json · tailwind.config.js
+├── assets/            # Iconos (logo), Lottie (escribiendo…, ondas)
+├── scripts/           # render-brand.ts (iconos) · make-lottie.mjs
 ├── src/
-│   ├── app/                      # Pantallas (Expo Router)
-│   │   ├── _layout.tsx           # Proveedores + rutas protegidas
-│   │   ├── index.tsx             # Decide: login / bienvenida / chats
-│   │   ├── login.tsx · welcome.tsx · pro.tsx
+│   ├── app/
+│   │   ├── _layout.tsx           # Fuentes, diálogos y rutas públicas/protegidas
+│   │   ├── index.tsx             # Decide: explorar / crear el personaje pendiente / historias
+│   │   ├── explore.tsx           # Puerta de entrada (sin cuenta)
+│   │   ├── avatar/create.tsx     # Creador: aspecto → personalidad → escena → vista previa
+│   │   ├── login.tsx · start.tsx · pro.tsx
 │   │   ├── auth/callback.tsx     # Retorno de Google / enlaces de correo
-│   │   ├── avatar/create.tsx     # Creador de avatar (4 pasos)
-│   │   ├── chat/[avatarId].tsx   # Chat principal
-│   │   └── (tabs)/               # Chats · Perfil · Ajustes
-│   ├── components/               # VrmAvatar (3D), AnimatedAvatar (miniatura), Logo, ChatBubble, VoiceRecorder,
-│   │                             # VoicePlayer, PaywallModal, SituationField, StepDiagram, ui…
-│   ├── constants/theme.ts
-│   ├── global.css
-│   └── lib/                      # supabase, auth, i18n (es/en), data, billing, audio,
-│                                 # exportConversation, avatarOptions, avatarStageHtml, types
+│   │   ├── chat/[avatarId].tsx   # Chat
+│   │   └── (tabs)/               # Historias · Perfil · Ajustes
+│   ├── components/    # CharacterPortrait, AnimatedAvatar, ChatBubble, VoiceRecorder, VoicePlayer, PaywallModal, Themed, ui…
+│   └── lib/
+│       ├── character/            # Dibujo por capas: face, eyes, hair, outfits, extras, render, options (catálogo y presets)
+│       ├── roleplay.ts           # Rasgos y escenarios (misma fuente que el backend)
+│       ├── draft.ts · createCharacter.ts · dialog.tsx
+│       └── supabase, auth, i18n (es/en), data, billing, audio, exportConversation, types
 └── supabase/
-    ├── config.toml · deploy.sh · .env.example
-    ├── migrations/0001_init.sql  # Tablas, RLS, triggers, vista de chats, buckets
+    ├── migrations/               # 0001 esquema · 0002 buckets · 0003 roleplay + cupos
     └── functions/
-        ├── _shared/              # systemPrompts.tsx, claude.ts, elevenlabs.ts, stripe.ts, quota.ts…
-        ├── chat/                 # Texto → respuesta del avatar
-        ├── voice-chat/           # Voz → transcripción → respuesta → voz
-        ├── analyze-appearance/   # Foto → rasgos del avatar (Claude visión; la foto no se guarda)
-        ├── create-checkout/      # Stripe Checkout $9.90/mes
-        ├── checkout-return/      # Redirige de Stripe a la app
-        ├── billing-portal/       # Portal de Stripe
-        ├── stripe-webhook/       # Activa o desactiva Pro
-        └── delete-data/          # Borrar conversaciones o la cuenta
+        ├── _shared/              # roleplay.ts, systemPrompts.tsx, llm.ts, quota.ts, elevenlabs.ts…
+        ├── start-chat/           # Primer mensaje del personaje
+        ├── chat/ · voice-chat/   # Texto y voz
+        └── create-checkout/ · checkout-return/ · billing-portal/ · stripe-webhook/ · delete-data/
 ```
 
 ---
+
+## Login con Google: qué faltaba y cómo activarlo
+
+**Por qué fallaba:** en Supabase el proveedor Google estaba **desactivado y sin Client ID/Secret**. Al pulsar el botón, Supabase respondía con una página de error ("provider is not enabled"). Además había dos problemas en el código, ya corregidos: la pantalla de retorno redirigía antes de que la sesión estuviera lista, y la *Site URL* era `lovelhouse://` (en web, cualquier redirección no permitida acababa en una URL que el navegador no puede abrir; ahora es `https://lovel-house.expo.app`). Ahora la app comprueba antes si Google está activado y, si no, muestra un aviso claro en lugar de la página de error.
+
+**Para activarlo (una sola vez):**
+
+1. **Google Cloud Console** → APIs y servicios → Pantalla de consentimiento de OAuth: tipo *Externo*, nombre "Lovel House", tu correo de soporte. Publica la app (o añade tus correos como usuarios de prueba).
+2. **Credenciales → Crear credenciales → ID de cliente de OAuth → Aplicación web.**
+   - *Orígenes de JavaScript autorizados:* `https://lovel-house.expo.app`
+   - *URI de redireccionamiento autorizados:* `https://snzcphkpzbjdzqjhzgzu.supabase.co/auth/v1/callback`
+3. **Supabase → Authentication → Sign In / Providers → Google:** activa Google y pega el *Client ID* y el *Client Secret*. Guarda.
+4. Ya está: *URL Configuration* ya tiene `https://lovel-house.expo.app/**`, `lovelhouse://**`, `exp://**` y `http://localhost:8081/**` como URLs de retorno permitidas.
+
+No hace falta ninguna variable nueva en la app. El Client Secret solo va en el panel de Supabase (nunca en el código ni en el chat).
 
 ## Versión publicada
 
@@ -136,7 +142,7 @@ npx expo export --platform web && npx eas-cli@latest deploy --prod
 
 ## Estado del proyecto de Supabase
 
-Ya está desplegado en el proyecto **lovel-house** (`snzcphkpzbjdzqjhzgzu`): tablas, reglas de seguridad, buckets, las 8 Edge Functions y los secretos de Gemini y ElevenLabs. La app ya trae la URL y la clave pública de ese proyecto (`src/constants/supabaseConfig.ts`), así que no hace falta crear `.env`.
+Ya está desplegado en el proyecto **lovel-house** (`snzcphkpzbjdzqjhzgzu`): tablas, reglas de seguridad, buckets, migraciones 0001–0003, las 8 Edge Functions y los secretos de Gemini y ElevenLabs. La app ya trae la URL y la clave pública de ese proyecto (`src/constants/supabaseConfig.ts`), así que no hace falta crear `.env`.
 
 Mientras estés en pruebas, la confirmación por correo está desactivada, porque el correo gratuito de Supabase solo envía a los miembros de tu equipo. Antes de lanzar, configura un SMTP propio en Authentication → Emails y vuelve a activarla.
 
@@ -160,8 +166,8 @@ bash supabase/deploy.sh                     # migraciones + secretos + funciones
 
 En el panel de Supabase:
 
-1. **Authentication → URL Configuration:** añade `lovelhouse://**`, `exp://**` y, para web, `http://localhost:8081/**` a *Redirect URLs*.
-2. **Authentication → Providers → Google:** activa Google con el Client ID y el Secret de Google Cloud. En Google Cloud, la URL de redirección autorizada es `https://TU_PROJECT_REF.supabase.co/auth/v1/callback`.
+1. **Authentication → URL Configuration:** *Site URL* = tu dominio web; en *Redirect URLs* añade `lovelhouse://**`, `exp://**`, `http://localhost:8081/**` y `https://TU_DOMINIO/**`.
+2. **Authentication → Providers → Google:** sigue los pasos de la sección *Login con Google* de arriba.
 
 ### 3. Stripe
 
@@ -187,7 +193,7 @@ Escanea el QR con Expo Go, o pulsa `i` (iOS), `a` (Android) o `w` (web).
 | Secreto | Para qué | Dónde se consigue |
 | --- | --- | --- |
 | `AI_PROVIDER` | `gemini` (gratis) o `anthropic` (Claude). Cambia de IA sin tocar código | — |
-| `GEMINI_API_KEY` | Respuestas del avatar, memoria y análisis de fotos con Gemini | aistudio.google.com/apikey |
+| `GEMINI_API_KEY` | Respuestas del personaje y memoria con Gemini | aistudio.google.com/apikey |
 | `GEMINI_MODEL` (opcional) | Por defecto `gemini-3.5-flash-lite` | — |
 | `ANTHROPIC_API_KEY` | Lo mismo con Claude (si `AI_PROVIDER=anthropic`) | console.anthropic.com |
 | `CLAUDE_MODEL` · `CLAUDE_EFFORT` (opcional) | Modelo (`claude-opus-5`) y esfuerzo (`low` por defecto) | — |
@@ -196,21 +202,22 @@ Escanea el QR con Expo Go, o pulsa `i` (iOS), `a` (Android) o `w` (web).
 | `STRIPE_SECRET_KEY` · `STRIPE_WEBHOOK_SECRET` | Suscripción Pro | dashboard.stripe.com |
 | `ALLOWED_RETURN_URLS` | A dónde puede volver el usuario tras pagar (evita redirecciones abiertas) | Añade tu dominio web si publicas la versión web |
 
-La personalidad del avatar está en `supabase/functions/_shared/systemPrompts.tsx`. Ahí se definen el tono (cálido, frases cortas, primero escucha), la fidelidad a la situación, los gestos entre asteriscos (la app los muestra en un tono más suave) y los límites de cuidado: nada de contenido sexual explícito, trato protector si parece menor, honestidad si le preguntan en serio si es una persona real, y apoyo si alguien habla de hacerse daño.
+El comportamiento del personaje está en `supabase/functions/_shared/systemPrompts.tsx` (identidad, personalidad a partir de los rasgos, escena, estilo roleplay breve con una acción entre asteriscos, primer mensaje) y los rasgos/escenarios en `roleplay.ts`. Límites de cuidado: nada de contenido sexual explícito, conflictos solo dentro de la ficción, trato protector si parece menor, honestidad si le preguntan en serio si es una persona real, y apoyo si alguien habla de hacerse daño.
 
 ---
 
 ## Notas
 
-- **Expo Go:** todas las librerías nativas usadas (SVG, Reanimated, Lottie, expo-audio, slider) vienen incluidas en Expo Go. Para publicar en las tiendas, usa `npx eas-cli build`.
+- **Expo Go:** todas las librerías nativas usadas (SVG, Reanimated, Lottie, expo-audio, fuentes) vienen incluidas en Expo Go. Para publicar en las tiendas, usa `npx eas-cli build`.
 - **App Store y pagos:** Apple puede exigir compras dentro de la app (StoreKit) para suscripciones digitales, según el país. Stripe Checkout funciona sin cambios en web y Android. Para iOS en algunos países puede hacer falta añadir IAP (por ejemplo con RevenueCat) usando el mismo campo `profiles.is_pro`.
-- **Privacidad:** los audios se guardan en un bucket privado y se sirven con URLs firmadas. Si el usuario desactiva "Guardar mis notas de voz", su audio solo se transcribe y no se guarda. Las fotos de referencia nunca se guardan.
-- **Idioma:** la interfaz está en español e inglés (`src/lib/i18n.tsx`). El avatar responde en el idioma en que le escriben.
+- **Privacidad:** los audios se guardan en un bucket privado y se sirven con URLs firmadas. Si el usuario desactiva "Guardar mis notas de voz", su audio solo se transcribe y no se guarda.
+- **Idioma:** la interfaz está en español e inglés (`src/lib/i18n.tsx`). El personaje responde en el idioma en que le escriben.
 
 ### Comprobaciones
 
 ```bash
 npx tsc --noEmit                                 # tipos de la app
+npx expo lint                                    # lint
 deno check --no-config supabase/functions/*/index.ts   # tipos de las Edge Functions
 ```
 

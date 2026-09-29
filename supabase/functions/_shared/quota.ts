@@ -2,45 +2,55 @@ import { HttpError } from './http.ts';
 import { admin, type ProfileRow } from './supabase.ts';
 
 /**
- * Periodo gratuito: 5 mensajes o 2 minutos de conversación (lo que ocurra primero).
- * Después, la app muestra el modal de Pro y el backend responde 402 PAYWALL.
+ * Plan gratuito: 25 mensajes de texto + 3 notas de voz por cuenta.
+ * Los contadores viven en la base de datos (no se reinician al recargar ni
+ * borrando personajes) y solo el backend puede cambiarlos.
  * Mantener sincronizado con src/lib/billing.ts.
  */
-export const FREE_MESSAGE_LIMIT = 5;
-export const FREE_SECONDS = 120;
+export const FREE_TEXT_LIMIT = 25;
+export const FREE_VOICE_LIMIT = 3;
+
+export type QuotaKind = 'text' | 'voice';
 
 export interface QuotaState {
   isPro: boolean;
-  messagesUsed: number;
-  messagesLimit: number;
-  trialStartedAt: string | null;
-  secondsLimit: number;
-  exhausted: boolean;
+  textUsed: number;
+  textLimit: number;
+  voiceUsed: number;
+  voiceLimit: number;
 }
 
 export function quotaState(p: ProfileRow): QuotaState {
-  const elapsed = p.trial_started_at ? (Date.now() - new Date(p.trial_started_at).getTime()) / 1000 : 0;
   return {
     isPro: p.is_pro,
-    messagesUsed: p.free_messages_used,
-    messagesLimit: FREE_MESSAGE_LIMIT,
-    trialStartedAt: p.trial_started_at,
-    secondsLimit: FREE_SECONDS,
-    exhausted: !p.is_pro && (p.free_messages_used >= FREE_MESSAGE_LIMIT || elapsed >= FREE_SECONDS),
+    textUsed: p.free_messages_used ?? 0,
+    textLimit: FREE_TEXT_LIMIT,
+    voiceUsed: p.free_voice_used ?? 0,
+    voiceLimit: FREE_VOICE_LIMIT,
   };
 }
 
-/** Lanza 402 si la prueba gratuita terminó. */
-export function assertCanChat(p: ProfileRow) {
-  if (quotaState(p).exhausted) {
-    throw new HttpError(402, '¿Quieres continuar hablando ilimitadamente con este avatar?', 'PAYWALL');
-  }
+const PAYWALL_MESSAGE: Record<QuotaKind, string> = {
+  text: 'Usaste tus 25 mensajes gratis. Con Pro la historia sigue sin límites.',
+  voice: 'Usaste tus 3 notas de voz gratis. Con Pro puedes hablar sin límites.',
+};
+
+/**
+ * Reserva el mensaje ANTES de llamar a la IA, de forma atómica en SQL:
+ * si no queda cupo responde 402 PAYWALL. Pro no consume nada.
+ */
+export async function reserveFree(p: ProfileRow, kind: QuotaKind): Promise<QuotaState> {
+  if (p.is_pro) return quotaState(p);
+  const limit = kind === 'voice' ? FREE_VOICE_LIMIT : FREE_TEXT_LIMIT;
+  const { data, error } = await admin.rpc('reserve_free_message', { p_user: p.id, p_kind: kind, p_limit: limit });
+  if (error) throw error;
+  const row = (Array.isArray(data) ? data[0] : data) as ProfileRow | undefined;
+  if (!row) throw new HttpError(402, PAYWALL_MESSAGE[kind], 'PAYWALL');
+  return quotaState(row);
 }
 
-/** Cuenta un mensaje gratuito (atómico en SQL) y devuelve el estado actualizado. */
-export async function consumeFreeMessage(p: ProfileRow): Promise<QuotaState> {
-  if (p.is_pro) return quotaState(p);
-  const { data, error } = await admin.rpc('consume_free_message', { p_user: p.id });
-  if (error) throw error;
-  return quotaState(data as ProfileRow);
+/** Si la respuesta falló, devolvemos el cupo (la persona no pierde su mensaje). */
+export async function refundFree(p: ProfileRow, kind: QuotaKind) {
+  if (p.is_pro) return;
+  await admin.rpc('refund_free_message', { p_user: p.id, p_kind: kind });
 }

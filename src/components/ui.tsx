@@ -1,16 +1,27 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, Switch, Text, View, type TextProps } from 'react-native';
+import { ActivityIndicator, Pressable, Switch, View, type TextProps } from 'react-native';
 
-import { colors, serif } from '@/constants/theme';
+import { Text } from '@/components/Themed';
+import { colors } from '@/constants/theme';
 
 /**
- * Piezas básicas de interfaz, minimalistas y consistentes.
- * Títulos en serif clásica, cuerpo en sans-serif del sistema, sin cursivas.
+ * Piezas básicas de interfaz con la identidad de Lovel House.
+ * Plus Jakarta Sans para la interfaz; DM Serif Display solo para titulares emocionales.
  */
 
+/** Titular emocional (DM Serif Display). */
 export function Title({ children, className = '', ...rest }: TextProps & { className?: string }) {
   return (
-    <Text {...rest} style={[{ fontFamily: serif }, rest.style]} className={`text-2xl text-ink ${className}`}>
+    <Text {...rest} className={`font-serif text-[28px] leading-[34px] text-ink ${className}`}>
+      {children}
+    </Text>
+  );
+}
+
+/** Título de sección de interfaz (Plus Jakarta Sans). */
+export function Heading({ children, className = '', ...rest }: TextProps & { className?: string }) {
+  return (
+    <Text {...rest} className={`font-bold text-xl text-ink ${className}`}>
       {children}
     </Text>
   );
@@ -32,7 +43,7 @@ export function Muted({ children, className = '', ...rest }: TextProps & { class
   );
 }
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'soft';
 
 export function Button({
   title,
@@ -51,70 +62,87 @@ export function Button({
   icon?: ReactNode;
   className?: string;
 }) {
-  const base = 'h-12 flex-row items-center justify-center rounded-full px-6';
+  const base = 'h-14 flex-row items-center justify-center rounded-full px-6';
   const styles: Record<ButtonVariant, string> = {
-    primary: 'bg-ink',
+    primary: 'bg-primary',
     secondary: 'bg-paper border border-line',
+    soft: 'bg-primary-soft',
     ghost: 'bg-transparent',
-    danger: 'bg-paper border border-rose-deep',
+    danger: 'bg-paper border border-accent',
   };
   const text: Record<ButtonVariant, string> = {
-    primary: 'text-cream',
+    primary: 'text-paper',
     secondary: 'text-ink',
+    soft: 'text-primary-deep',
     ghost: 'text-muted',
-    danger: 'text-rose-deep',
+    danger: 'text-ink',
   };
   const off = disabled || loading;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: off }}
       onPress={onPress}
       disabled={off}
       className={`${base} ${styles[variant]} ${off ? 'opacity-50' : 'active:opacity-80'} ${className}`}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? colors.cream : colors.ink} />
+        <ActivityIndicator color={variant === 'primary' ? colors.paper : colors.primary} />
       ) : (
         <>
           {icon ? <View className="mr-2">{icon}</View> : null}
-          <Text className={`text-base font-semibold ${text[variant]}`}>{title}</Text>
+          <Text className={`font-semibold text-base ${text[variant]}`}>{title}</Text>
         </>
       )}
     </Pressable>
   );
 }
 
-export function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+export function Chip({
+  label,
+  selected,
+  onPress,
+  disabled = false,
+  emoji,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  disabled?: boolean;
+  emoji?: string;
+}) {
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      className={`mb-2 mr-2 rounded-full border px-4 py-2 ${selected ? 'border-ink bg-ink' : 'border-line bg-paper'}`}
+      disabled={disabled}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected, disabled }}
+      className={`mb-2 mr-2 flex-row items-center rounded-full border px-4 py-2 ${
+        selected ? 'border-primary bg-primary-soft' : 'border-line bg-paper'
+      } ${disabled ? 'opacity-35' : 'active:opacity-80'}`}
     >
-      <Text className={`text-sm ${selected ? 'text-cream' : 'text-ink'}`}>{label}</Text>
+      {emoji ? <Text className="mr-1.5 text-sm">{emoji}</Text> : null}
+      <Text className={`text-sm ${selected ? 'font-semibold text-primary-deep' : 'text-ink'}`}>{label}</Text>
     </Pressable>
   );
 }
 
-export function Swatch({ color, selected, onPress, second }: { color: string; second?: string; selected: boolean; onPress: () => void }) {
+export function Swatch({ color, selected, onPress, label }: { color: string; selected: boolean; onPress: () => void; label?: string }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="radio"
+      accessibilityLabel={label}
       accessibilityState={{ selected }}
-      className={`mb-2 mr-2 h-9 w-9 items-center justify-center rounded-full border-2 ${selected ? 'border-ink' : 'border-transparent'}`}
+      className={`mb-2 mr-2 h-11 w-11 items-center justify-center rounded-full border-2 ${selected ? 'border-primary' : 'border-transparent'}`}
     >
-      <View className="h-7 w-7 flex-row overflow-hidden rounded-full border border-line">
-        <View style={{ flex: 1, backgroundColor: color }} />
-        {second ? <View style={{ flex: 1, backgroundColor: second }} /> : null}
-      </View>
+      <View className="h-8 w-8 rounded-full border border-line" style={{ backgroundColor: color }} />
     </Pressable>
   );
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <View className={`rounded-2xl border border-line bg-paper p-4 ${className}`}>{children}</View>;
+  return <View className={`rounded-3xl border border-line bg-paper p-4 ${className}`}>{children}</View>;
 }
 
 export function ToggleRow({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
@@ -127,7 +155,7 @@ export function ToggleRow({ label, hint, value, onChange }: { label: string; hin
       <Switch
         value={value}
         onValueChange={onChange}
-        trackColor={{ true: colors.rose, false: colors.line }}
+        trackColor={{ true: colors.primary, false: colors.line }}
         thumbColor={colors.paper}
         {...({ activeThumbColor: colors.paper } as object)}
       />
@@ -135,6 +163,6 @@ export function ToggleRow({ label, hint, value, onChange }: { label: string; hin
   );
 }
 
-export function SectionLabel({ children }: { children: ReactNode }) {
-  return <Text className="mb-2 mt-5 text-xs font-semibold uppercase tracking-widest text-muted">{children}</Text>;
+export function SectionLabel({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <Text className={`mb-2 mt-5 font-semibold text-xs uppercase tracking-widest text-muted ${className}`}>{children}</Text>;
 }

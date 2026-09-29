@@ -4,6 +4,8 @@ import * as WebBrowser from 'expo-web-browser';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/supabaseConfig';
+
 import { supabase } from './supabase';
 import type { Profile } from './types';
 
@@ -29,11 +31,39 @@ export const authRedirectUrl = (next?: string) => {
   return next ? `${base}?next=${next}` : base;
 };
 
+/** Errores de login con un código que la interfaz traduce. */
+export class AuthFlowError extends Error {
+  constructor(public code: 'GOOGLE_DISABLED' | 'CANCELLED') {
+    super(code);
+  }
+}
+
+/**
+ * ¿Está activado Google en Supabase? (Authentication → Providers → Google).
+ * Si no lo está, Supabase muestra una página de error en JSON; lo comprobamos antes.
+ */
+async function googleEnabled(): Promise<boolean> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_ANON_KEY } });
+    if (!res.ok) return true; // ante la duda, intentamos igualmente
+    const data = (await res.json()) as { external?: { google?: boolean } };
+    return data.external?.google !== false;
+  } catch {
+    return true;
+  }
+}
+
+/** Lee ?error_description= o #error_description= de una URL de retorno. */
+export function authErrorFromUrl(url: string): string | null {
+  const m = url.match(/[?#&]error_description=([^&#]+)/);
+  return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : null;
+}
+
 /** Intercambia el ?code= (PKCE) de una URL de retorno por una sesión. */
 export async function completeAuthFromUrl(url: string) {
   const { queryParams } = Linking.parse(url);
   const code = typeof queryParams?.code === 'string' ? queryParams.code : null;
-  const errorDescription = typeof queryParams?.error_description === 'string' ? queryParams.error_description : null;
+  const errorDescription = authErrorFromUrl(url);
   if (errorDescription) throw new Error(errorDescription);
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
@@ -90,6 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session, loadProfile]);
 
   const signInWithGoogle = useCallback(async () => {
+    if (!(await googleEnabled())) throw new AuthFlowError('GOOGLE_DISABLED');
     const redirectTo = authRedirectUrl();
     if (Platform.OS === 'web') {
       const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
@@ -102,7 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     if (error) throw error;
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    if (result.type === 'success') await completeAuthFromUrl(result.url);
+    if (result.type !== 'success') throw new AuthFlowError('CANCELLED');
+    await completeAuthFromUrl(result.url);
   }, []);
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {

@@ -1,10 +1,11 @@
 /**
  * POST /chat  { avatarId, text }
- * Mensaje de texto → respuesta cálida del avatar (Claude) según su situación.
+ * Mensaje de texto → respuesta del personaje, fiel a su personalidad y a la escena.
+ * El cupo gratuito se reserva antes (atómico) y se devuelve si algo falla.
  */
 import { replyAsAvatar, saveExchange } from '../_shared/companion.ts';
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
-import { assertCanChat } from '../_shared/quota.ts';
+import { refundFree, reserveFree } from '../_shared/quota.ts';
 import { getConversationId, getOwnedAvatar, getProfile, requireUser } from '../_shared/supabase.ts';
 
 serve(async (req) => {
@@ -15,18 +16,23 @@ serve(async (req) => {
   if (body.length > 4000) throw new HttpError(400, 'Mensaje demasiado largo');
 
   const profile = await getProfile(user.id);
-  assertCanChat(profile);
   const avatar = await getOwnedAvatar(user.id, avatarId);
   const conversationId = await getConversationId(avatarId);
+  const quota = await reserveFree(profile, 'text');
 
-  const reply = await replyAsAvatar({ avatar, profile, userText: body });
-
-  const result = await saveExchange({
-    avatar,
-    profile,
-    conversationId,
-    user: { role: 'user', kind: 'text', content: body },
-    reply: { role: 'avatar', kind: 'text', content: reply },
-  });
-  return json(result);
+  try {
+    const reply = await replyAsAvatar({ avatar, profile, userText: body });
+    const result = await saveExchange({
+      avatar,
+      profile,
+      conversationId,
+      quota,
+      user: { role: 'user', kind: 'text', content: body },
+      reply: { role: 'avatar', kind: 'text', content: reply },
+    });
+    return json(result);
+  } catch (e) {
+    await refundFree(profile, 'text');
+    throw e;
+  }
 });

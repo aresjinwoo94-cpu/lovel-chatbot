@@ -1,32 +1,44 @@
-import { Platform } from 'react-native';
-
 /**
- * Tokens de diseño compartidos (los mismos que tailwind.config.js) para
- * los lugares donde necesitamos colores en JS: SVG, animaciones, iconos.
+ * Tokens de diseño de Lovel House (los mismos que tailwind.config.js) para
+ * los lugares donde necesitamos colores o fuentes en JS: SVG, iconos, estilos.
  */
 export const colors = {
-  cream: '#FBF6F2',
+  /** Fondo general */
+  cream: '#F9F7F3',
+  /** Tarjetas y superficies */
   paper: '#FFFFFF',
-  ink: '#2E2A2B',
-  muted: '#7C7270',
-  line: '#EADFD8',
-  blush: '#F6E3E0',
-  rose: '#D98C95',
-  roseDeep: '#B96671',
-  roseSoft: '#FCE8E6',
-  sage: '#8FAE95',
-  wall: '#F3ECE4',
+  primary: '#6F5BD3',
+  primarySoft: '#E9E4FA',
+  primaryDeep: '#5A47B8',
+  accent: '#E6A0B4',
+  accentSoft: '#F8E8ED',
+  /** Texto principal y secundario */
+  ink: '#242229',
+  muted: '#77737D',
+  line: '#E8E4DE',
+  /** En línea / éxito */
+  success: '#69B58A',
 } as const;
 
-/** Serif clásica para títulos (Georgia en iOS/web, serif del sistema en Android). */
-export const serif = Platform.select({ ios: 'Georgia', android: 'serif', default: 'Georgia, serif' });
+/** Familias cargadas con expo-font en src/app/_layout.tsx. */
+export const fonts = {
+  regular: 'PlusJakartaSans_400Regular',
+  medium: 'PlusJakartaSans_500Medium',
+  semibold: 'PlusJakartaSans_600SemiBold',
+  bold: 'PlusJakartaSans_700Bold',
+  extrabold: 'PlusJakartaSans_800ExtraBold',
+  /** Solo para nombres de personajes, frases destacadas y momentos emocionales. */
+  serif: 'DMSerifDisplay_400Regular',
+} as const;
+
+/** Compatibilidad: la serif de la marca. */
+export const serif = fonts.serif;
 
 /**
- * Lado de las burbujas, tal como pide el diseño:
- * mensajes del usuario a la izquierda, respuestas del avatar a la derecha.
- * Cambia estos valores si prefieres el orden clásico de WhatsApp.
+ * Lado de las burbujas: como en cualquier chat, lo que escribes va a la
+ * derecha y el personaje te responde desde la izquierda, con su foto al lado.
  */
 export const BUBBLE_SIDE: Record<'user' | 'avatar', 'left' | 'right'> = {
-  user: 'left',
-  avatar: 'right',
+  user: 'right',
+  avatar: 'left',
 };

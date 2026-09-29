@@ -1,15 +1,17 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Muted, SectionLabel, Title } from '@/components/ui';
-import { colors, serif } from '@/constants/theme';
+import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { openBillingPortal } from '@/lib/billing';
+import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT, openBillingPortal } from '@/lib/billing';
 import { countUserMessages, updateProfile } from '@/lib/data';
 import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
+import { Text, TextInput } from '@/components/Themed';
+import { showDialog } from '@/lib/dialog';
 
 /** Perfil del usuario: nombre, plan, estadísticas y cerrar sesión. */
 export default function ProfileScreen() {
@@ -19,10 +21,15 @@ export default function ProfileScreen() {
   const [saved, setSaved] = useState(false);
   const [stats, setStats] = useState({ avatars: 0, messages: 0 });
 
-  useEffect(() => setName(profile?.display_name ?? ''), [profile?.display_name]);
+  const [seenName, setSeenName] = useState(profile?.display_name);
+  if (profile?.display_name !== seenName) {
+    setSeenName(profile?.display_name);
+    setName(profile?.display_name ?? '');
+  }
 
   useFocusEffect(
     useCallback(() => {
+      refreshProfile();
       (async () => {
         const [{ count }, messages] = await Promise.all([
           supabase.from('avatars').select('id', { count: 'exact', head: true }),
@@ -30,7 +37,7 @@ export default function ProfileScreen() {
         ]);
         setStats({ avatars: count ?? 0, messages });
       })();
-    }, []),
+    }, [refreshProfile]),
   );
 
   const save = async () => {
@@ -40,7 +47,7 @@ export default function ProfileScreen() {
       setSaved(true);
       setTimeout(() => setSaved(false), 1800);
     } catch (e) {
-      Alert.alert(t('common.error'), String(e));
+      showDialog(t('common.error'), String(e));
     }
   };
 
@@ -49,17 +56,15 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top']}>
-      <ScrollView contentContainerClassName="px-5 pb-10">
+      <ScrollView contentContainerClassName="w-full max-w-[640px] self-center px-5 pb-10">
         <Title className="pb-3 pt-2 text-3xl">{t('profile.title')}</Title>
 
         <View className="items-center py-4">
-          <View className="h-24 w-24 items-center justify-center rounded-full bg-blush">
-            <Text style={{ fontFamily: serif }} className="text-4xl text-rose-deep">
-              {initial}
-            </Text>
+          <View className="h-24 w-24 items-center justify-center rounded-full bg-primary-soft">
+            <Text className="font-serif text-4xl text-primary">{initial}</Text>
           </View>
-          <Text style={{ fontFamily: serif }} className="mt-3 text-xl text-ink">
-            {name || email}
+          <Text className="mt-3 font-serif text-2xl text-ink" numberOfLines={1}>
+            {name || email.split('@')[0]}
           </Text>
           <Muted>{email}</Muted>
           <Muted className="mt-1">{t('profile.stats', stats)}</Muted>
@@ -82,15 +87,23 @@ export default function ProfileScreen() {
         <SectionLabel>{t('profile.plan')}</SectionLabel>
         <Card>
           <View className="flex-row items-center justify-between">
-            <Text style={{ fontFamily: serif }} className="text-lg text-ink">
-              {profile?.is_pro ? t('profile.pro') : t('profile.free')}
-            </Text>
+            <Text className="font-bold text-lg text-ink">{profile?.is_pro ? t('profile.pro') : t('profile.free')}</Text>
             {profile?.is_pro ? (
-              <View className="rounded-full bg-rose-soft px-3 py-1">
-                <Text className="text-xs text-rose-deep">{t('pro.active')}</Text>
+              <View className="rounded-full bg-accent-soft px-3 py-1">
+                <Text className="font-semibold text-xs text-primary-deep">{t('pro.active')}</Text>
               </View>
             ) : null}
           </View>
+          {profile && !profile.is_pro ? (
+            <Muted className="mt-1">
+              {t('profile.usage', {
+                text: Math.min(profile.free_messages_used ?? 0, FREE_TEXT_LIMIT),
+                textMax: FREE_TEXT_LIMIT,
+                voice: Math.min(profile.free_voice_used ?? 0, FREE_VOICE_LIMIT),
+                voiceMax: FREE_VOICE_LIMIT,
+              })}
+            </Muted>
+          ) : null}
           {profile?.is_pro && profile.current_period_end ? (
             <Muted className="mt-1">{t('profile.renews', { date: new Date(profile.current_period_end).toLocaleDateString() })}</Muted>
           ) : null}
@@ -98,7 +111,7 @@ export default function ProfileScreen() {
             <Button
               title={t('pro.manage')}
               variant="secondary"
-              onPress={() => openBillingPortal().then(refreshProfile).catch((e) => Alert.alert(t('common.error'), String(e)))}
+              onPress={() => openBillingPortal().then(refreshProfile).catch((e) => showDialog(t('common.error'), String(e)))}
               className="mt-4"
             />
           ) : (

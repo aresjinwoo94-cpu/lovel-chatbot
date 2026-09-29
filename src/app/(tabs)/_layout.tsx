@@ -1,19 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router/js-tabs';
 
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import { useI18n } from '@/lib/i18n';
 
-/** Pestañas estilo WhatsApp: Chats · Perfil · Ajustes. */
+/** Pestañas: Historias · Perfil · Ajustes. */
 export default function TabsLayout() {
   const { t } = useI18n();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.ink,
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { backgroundColor: colors.cream, borderTopColor: colors.line },
+        tabBarStyle: { backgroundColor: colors.paper, borderTopColor: colors.line },
+        tabBarLabelStyle: { fontFamily: fonts.semibold, fontSize: 11 },
         sceneStyle: { backgroundColor: colors.cream },
       }}
     >

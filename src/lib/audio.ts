@@ -15,6 +15,24 @@ export async function fileToBase64(uri: string): Promise<string> {
   return FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
 }
 
+/**
+ * Lee la grabación y detecta su formato real. En web cada navegador graba en uno
+ * distinto (Chrome: webm/opus, Safari: mp4/aac), así que usamos el tipo del blob.
+ */
+export async function readRecording(uri: string): Promise<{ base64: string; mimeType: string }> {
+  if (Platform.OS === 'web') {
+    const blob = await (await fetch(uri)).blob();
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result).split(',')[1] ?? '');
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+    return { base64, mimeType: (blob.type || 'audio/webm').split(';')[0] };
+  }
+  return { base64: await fileToBase64(uri), mimeType: recordingMimeType(uri) };
+}
+
 /** Tipo MIME de lo que graba expo-audio en cada plataforma. */
 export function recordingMimeType(uri: string): string {
   if (Platform.OS === 'web') return 'audio/webm';

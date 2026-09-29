@@ -1,7 +1,7 @@
 import Constants from 'expo-constants';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, ScrollView, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Chip, Muted, SectionLabel, Title, ToggleRow } from '@/components/ui';
@@ -12,6 +12,8 @@ import { updateProfile } from '@/lib/data';
 import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import type { Language } from '@/lib/types';
+import { TextInput } from '@/components/Themed';
+import { showDialog } from '@/lib/dialog';
 
 /** Configuración simple: idioma, privacidad, contraseña y borrado de datos. */
 export default function SettingsScreen() {
@@ -22,10 +24,17 @@ export default function SettingsScreen() {
   const [showPassword, setShowPassword] = useState(params.password === '1');
   const [password, setPassword] = useState('');
 
-  useEffect(() => setStoreVoice(profile?.store_voice ?? true), [profile?.store_voice]);
-  useEffect(() => {
+  // Sincroniza con el perfil y con el enlace de "nueva contraseña" (ajuste de estado durante el render).
+  const [seenVoice, setSeenVoice] = useState(profile?.store_voice);
+  if (profile?.store_voice !== seenVoice) {
+    setSeenVoice(profile?.store_voice);
+    setStoreVoice(profile?.store_voice ?? true);
+  }
+  const [seenParam, setSeenParam] = useState(params.password);
+  if (params.password !== seenParam) {
+    setSeenParam(params.password);
     if (params.password === '1') setShowPassword(true);
-  }, [params.password]);
+  }
 
   const changeLanguage = async (lang: Language) => {
     setLanguage(lang);
@@ -40,31 +49,31 @@ export default function SettingsScreen() {
       await refreshProfile();
     } catch (e) {
       setStoreVoice(!v);
-      Alert.alert(t('common.error'), String(e));
+      showDialog(t('common.error'), String(e));
     }
   };
 
   const savePassword = async () => {
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) return Alert.alert(t('common.error'), error.message);
+    if (error) return showDialog(t('common.error'), error.message);
     setPassword('');
     setShowPassword(false);
-    Alert.alert(t('settings.passwordSaved'));
+    showDialog(t('settings.passwordSaved'));
   };
 
   const confirm = (title: string, body: string, action: () => Promise<void>) =>
-    Alert.alert(title, body, [
+    showDialog(title, body, [
       { text: t('common.cancel'), style: 'cancel' },
       {
         text: t('common.confirm'),
         style: 'destructive',
-        onPress: () => action().catch((e) => Alert.alert(t('common.error'), String(e))),
+        onPress: () => action().catch((e) => showDialog(t('common.error'), String(e))),
       },
     ]);
 
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top']}>
-      <ScrollView contentContainerClassName="px-5 pb-10">
+      <ScrollView contentContainerClassName="w-full max-w-[640px] self-center px-5 pb-10">
         <Title className="pb-3 pt-2 text-3xl">{t('settings.title')}</Title>
 
         <SectionLabel>{t('settings.language')}</SectionLabel>
@@ -104,7 +113,7 @@ export default function SettingsScreen() {
             onPress={() =>
               confirm(t('settings.deleteChats'), t('settings.deleteChatsConfirm'), async () => {
                 await callFunction('delete-data', { scope: 'conversations' });
-                Alert.alert(t('common.ok'));
+                showDialog(t('common.ok'));
               })
             }
           />

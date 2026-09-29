@@ -1,36 +1,49 @@
 /**
- * Tailwind de Lovel House.
- * Paleta cálida y delicada: crema, tinta suave y un rosa empolvado como acento.
- * Tipografía clásica: serif para títulos, sans-serif del sistema para el cuerpo.
- * Nada de cursivas ni fuentes "gimmick".
+ * Tailwind de Lovel House — identidad visual oficial (modo claro).
+ * Tipografía: Plus Jakarta Sans para toda la interfaz y DM Serif Display
+ * solo para nombres de personajes y momentos emocionales.
+ *
+ * Nota: el plugin fontWeight está desactivado a propósito. Las clases
+ * font-medium / font-semibold / font-bold eligen el archivo de fuente correcto
+ * (en Android e iOS las fuentes propias no admiten "peso" sintético).
  * @type {import('tailwindcss').Config}
  */
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
+  corePlugins: {
+    fontWeight: false,
+  },
   theme: {
     extend: {
       colors: {
-        cream: '#FBF6F2',
+        cream: '#F9F7F3',
         paper: '#FFFFFF',
-        ink: '#2E2A2B',
-        muted: '#7C7270',
-        line: '#EADFD8',
-        blush: '#F6E3E0',
-        rose: {
-          DEFAULT: '#D98C95',
-          deep: '#B96671',
-          soft: '#FCE8E6',
+        ink: '#242229',
+        muted: '#77737D',
+        line: '#E8E4DE',
+        primary: {
+          DEFAULT: '#6F5BD3',
+          soft: '#E9E4FA',
+          deep: '#5A47B8',
         },
-        sage: '#8FAE95',
-        wall: '#F3ECE4',
+        accent: {
+          DEFAULT: '#E6A0B4',
+          soft: '#F8E8ED',
+        },
+        success: '#69B58A',
       },
       fontFamily: {
-        serif: ['Georgia', 'serif'],
-        sans: ['System'],
+        sans: ['PlusJakartaSans_400Regular'],
+        normal: ['PlusJakartaSans_400Regular'],
+        medium: ['PlusJakartaSans_500Medium'],
+        semibold: ['PlusJakartaSans_600SemiBold'],
+        bold: ['PlusJakartaSans_700Bold'],
+        extrabold: ['PlusJakartaSans_800ExtraBold'],
+        serif: ['DMSerifDisplay_400Regular'],
       },
       borderRadius: {
-        bubble: '18px',
+        bubble: '20px',
       },
     },
   },

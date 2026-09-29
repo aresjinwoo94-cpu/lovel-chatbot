@@ -1,20 +1,59 @@
-import { generateReply, loadHistory, maybeUpdateMemory } from './llm.ts';
-import { consumeFreeMessage, type QuotaState } from './quota.ts';
+import { generateOpening, generateReply, loadHistory, maybeUpdateMemory } from './llm.ts';
+import type { QuotaState } from './quota.ts';
 import { background } from './runtime.ts';
 import { admin, type AvatarRow, type ProfileRow } from './supabase.ts';
-import { buildCompanionSystemPrompt } from './systemPrompts.tsx';
+import { buildCompanionSystemPrompt, buildOpeningInstruction } from './systemPrompts.tsx';
 
-/** Pide a la IA (Gemini o Claude) la respuesta del avatar con su personalidad y situación. */
-export async function replyAsAvatar(opts: { avatar: AvatarRow; profile: ProfileRow; userText: string; voice?: boolean }) {
-  const { avatar, profile } = opts;
-  const system = buildCompanionSystemPrompt({
+const systemFor = (avatar: AvatarRow, profile: ProfileRow) =>
+  buildCompanionSystemPrompt({
     avatar,
     userName: profile.display_name,
     language: profile.language,
     memoryEnabled: profile.is_pro,
   });
-  const history = await loadHistory(avatar.id);
-  return generateReply({ system, history, userText: opts.userText, voice: opts.voice, language: profile.language });
+
+/** Respuesta del personaje (Gemini o Claude) según su personalidad y la escena. */
+export async function replyAsAvatar(opts: { avatar: AvatarRow; profile: ProfileRow; userText: string; voice?: boolean }) {
+  const history = await loadHistory(opts.avatar.id);
+  return generateReply({
+    system: systemFor(opts.avatar, opts.profile),
+    history,
+    userText: opts.userText,
+    voice: opts.voice,
+    language: opts.profile.language,
+  });
+}
+
+const FALLBACK_OPENING = {
+  es: (name: string) => `*${name} levanta la vista y te sonríe, como si llevara un rato esperándote.* Por fin llegas… ¿Tienes un momento? Hay algo que quiero contarte.`,
+  en: (name: string) => `*${name} looks up and smiles, as if they had been waiting for you.* You're finally here… Do you have a minute? There's something I want to tell you.`,
+};
+
+/**
+ * Primer mensaje: el personaje abre la escena. Solo si la conversación está vacía
+ * (idempotente) y no cuenta para el plan gratuito.
+ */
+export async function openScene(opts: { avatar: AvatarRow; profile: ProfileRow; conversationId: string }) {
+  const { count } = await admin.from('messages').select('id', { count: 'exact', head: true }).eq('avatar_id', opts.avatar.id);
+  if (count) return null;
+  let text: string | null = null;
+  try {
+    text = await generateOpening({ system: systemFor(opts.avatar, opts.profile), instruction: buildOpeningInstruction(opts.avatar) });
+  } catch (e) {
+    console.error('opening', e);
+  }
+  // Si la IA no responde, el personaje abre igualmente con una frase propia (nunca pantalla vacía).
+  const content = text ?? FALLBACK_OPENING[opts.profile.language === 'en' ? 'en' : 'es'](opts.avatar.name);
+  // Otra petición pudo abrir la escena mientras tanto.
+  const { count: again } = await admin.from('messages').select('id', { count: 'exact', head: true }).eq('avatar_id', opts.avatar.id);
+  if (again) return null;
+  const { data, error } = await admin
+    .from('messages')
+    .insert({ conversation_id: opts.conversationId, avatar_id: opts.avatar.id, user_id: opts.profile.id, role: 'avatar', kind: 'text', content })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 interface NewMessage {
@@ -26,8 +65,8 @@ interface NewMessage {
 }
 
 /**
- * Guarda el mensaje del usuario y la respuesta del avatar (en ese orden),
- * descuenta el periodo gratuito y actualiza la memoria en segundo plano.
+ * Guarda el mensaje de la persona y la respuesta del personaje (en ese orden)
+ * y actualiza la memoria en segundo plano. El cupo gratuito ya se reservó antes.
  */
 export async function saveExchange(opts: {
   avatar: AvatarRow;
@@ -35,6 +74,7 @@ export async function saveExchange(opts: {
   conversationId: string;
   user: NewMessage;
   reply: NewMessage;
+  quota: QuotaState;
 }): Promise<{ userMessage: unknown; avatarMessage: unknown; quota: QuotaState }> {
   const base = { conversation_id: opts.conversationId, avatar_id: opts.avatar.id, user_id: opts.profile.id };
   const { data: userMessage, error: e1 } = await admin
@@ -50,7 +90,6 @@ export async function saveExchange(opts: {
     .single();
   if (e2) throw e2;
 
-  const quota = await consumeFreeMessage(opts.profile);
   background(maybeUpdateMemory(opts.avatar, opts.profile.is_pro));
-  return { userMessage, avatarMessage, quota };
+  return { userMessage, avatarMessage, quota: opts.quota };
 }
