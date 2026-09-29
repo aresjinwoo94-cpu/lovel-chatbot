@@ -59,6 +59,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "owner": "kuroashi2",
+    "extra": {
+      "eas": {
+        "projectId": "344aea45-9fc4-4f05-8a3b-00fb729396ff"
+      }
     }
   }
 }
