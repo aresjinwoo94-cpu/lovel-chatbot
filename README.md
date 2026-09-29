@@ -126,6 +126,14 @@ lovel-chatbot/
 
 ---
 
+## Versión publicada
+
+La versión web está publicada con EAS Hosting en **https://lovel-house.expo.app** (se abre en el navegador del teléfono). Para volver a publicar tras un cambio:
+
+```bash
+npx expo export --platform web && npx eas-cli@latest deploy --prod
+```
+
 ## Estado del proyecto de Supabase
 
 Ya está desplegado en el proyecto **lovel-house** (`snzcphkpzbjdzqjhzgzu`): tablas, reglas de seguridad, buckets, las 8 Edge Functions y los secretos de Gemini y ElevenLabs. La app ya trae la URL y la clave pública de ese proyecto (`src/constants/supabaseConfig.ts`), así que no hace falta crear `.env`.
