@@ -22,7 +22,8 @@ Deno.serve(async (req) => {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object;
-        if (session.mode === 'subscription' && session.subscription) {
+        // Cuenta compartida: solo las compras hechas desde Lovel House.
+        if (session.mode === 'subscription' && session.subscription && session.metadata?.app === 'lovel-house') {
           const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
           const sub = await stripe.subscriptions.retrieve(subId);
           await syncSubscription(sub, session.client_reference_id);

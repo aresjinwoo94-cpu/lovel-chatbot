@@ -46,6 +46,8 @@ export async function ensureCustomer(profile: ProfileRow, email: string | undefi
 /** Refleja el estado de la suscripción en profiles.is_pro. */
 export async function syncSubscription(sub: Stripe.Subscription, userIdHint?: string | null) {
   const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+  // Suscripciones de otros productos en la misma cuenta de Stripe: no son nuestras.
+  if (sub.metadata?.app && sub.metadata.app !== 'lovel-house') return;
   let userId = userIdHint ?? (sub.metadata?.user_id as string | undefined) ?? null;
   if (!userId) {
     const { data } = await admin.from('profiles').select('id').eq('stripe_customer_id', customerId).maybeSingle();

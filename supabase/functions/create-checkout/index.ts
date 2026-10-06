@@ -38,8 +38,9 @@ serve(async (req) => {
             },
           },
     ],
-    subscription_data: { metadata: { user_id: user.id } },
-    metadata: { user_id: user.id },
+    // La cuenta de Stripe puede ser compartida con otros productos: marcamos lo nuestro.
+    subscription_data: { metadata: { user_id: user.id, app: 'lovel-house' } },
+    metadata: { user_id: user.id, app: 'lovel-house' },
     allow_promotion_codes: true,
     success_url: returnViaFunction(to, 'success'),
     cancel_url: returnViaFunction(to, 'cancel'),
