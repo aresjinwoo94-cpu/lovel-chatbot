@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CharacterPortrait } from '@/components/CharacterPortrait';
+import { AnimatedAvatar } from '@/components/AnimatedAvatar';
 import { Text } from '@/components/Themed';
 import { Button, Muted } from '@/components/ui';
 import { colors } from '@/constants/theme';
@@ -49,10 +49,10 @@ export default function StartScreen() {
 
   return (
     <SafeAreaView className="flex-1 items-center justify-center bg-cream px-8">
-      {draft ? <CharacterPortrait look={draft.look} gender={draft.gender} size={150} crop="face" circle /> : null}
+      {draft ? <AnimatedAvatar avatar={{ appearance: draft.look, gender: draft.gender, avatar_image_url: draft.snapshot }} size={96} presence={limit ? 'idle' : 'thinking'} /> : null}
       {limit ? (
         <View className="mt-6 w-full max-w-sm items-center">
-          <Text className="text-center font-serif text-2xl text-ink">{t('start.limit')}</Text>
+          <Text className="text-center font-semibold text-[22px] leading-[28px] tracking-tighter text-ink">{t('start.limit')}</Text>
           <Muted className="mt-2 text-center">{t('create.limitReached')}</Muted>
           <Button title={t('pro.cta')} onPress={() => router.replace('/pro')} className="mt-6 w-full" />
           <Button title={t('start.goToStories')} variant="secondary" onPress={() => router.replace('/(tabs)')} className="mt-3 w-full" />

@@ -1,17 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedAvatar } from '@/components/AnimatedAvatar';
-import { Button, Muted, Title } from '@/components/ui';
+import { Text } from '@/components/Themed';
+import { Button, EmptyState, IconButton, Title } from '@/components/ui';
 import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { deleteAvatar, fetchAvatarThreads, type AvatarThread } from '@/lib/data';
-import { useI18n } from '@/lib/i18n';
-import { Text } from '@/components/Themed';
 import { showDialog } from '@/lib/dialog';
+import { useI18n } from '@/lib/i18n';
 
 const when = (iso: string | null) => {
   if (!iso) return '';
@@ -29,16 +28,18 @@ export default function ChatsScreen() {
   const [threads, setThreads] = useState<AvatarThread[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setThreads(await fetchAvatarThreads());
-    } catch (e) {
-      showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
+      setFailed(false);
+    } catch {
+      setFailed(true);
     } finally {
       setLoaded(true);
     }
-  }, [t]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -78,17 +79,15 @@ export default function ChatsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top']}>
-      <View className="w-full flex-row items-center justify-between self-center px-5 pb-3 pt-2" style={{ maxWidth: 760 }}>
-        <Title className="text-3xl">{t('chats.title')}</Title>
-        <Pressable onPress={newAvatar} hitSlop={10} accessibilityLabel={t('chats.new')} className="h-11 w-11 items-center justify-center rounded-full bg-primary">
-          <Ionicons name="add" size={24} color={colors.paper} />
-        </Pressable>
+      <View className="w-full flex-row items-center justify-between self-center px-4 pb-3 pt-4" style={{ maxWidth: 760 }}>
+        <Title className="text-[24px] leading-[30px]">{t('chats.title')}</Title>
+        <Button size="sm" variant="primary" icon="add" title={t('chats.new')} onPress={newAvatar} />
       </View>
 
       <FlatList
         data={threads}
         keyExtractor={(a) => a.id}
-        contentContainerStyle={{ width: '100%', maxWidth: 760, alignSelf: 'center' }}
+        contentContainerStyle={{ width: '100%', maxWidth: 760, alignSelf: 'center', paddingHorizontal: 8, paddingBottom: 24 }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -100,34 +99,41 @@ export default function ChatsScreen() {
             tintColor={colors.primary}
           />
         }
-        ItemSeparatorComponent={() => <View className="ml-[88px] h-px bg-line" />}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/chat/[avatarId]', params: { avatarId: item.id } })}
             onLongPress={() => confirmDelete(item)}
-            className="flex-row items-center px-5 py-3 active:bg-primary-soft"
+            accessibilityRole="button"
+            accessibilityLabel={item.name}
+            className="flex-row items-center rounded-xl px-3 py-2.5 active:bg-subtle"
           >
-            <AnimatedAvatar avatar={item} size={58} animate={false} />
-            <View className="ml-4 flex-1">
+            <AnimatedAvatar avatar={item} size={48} />
+            <View className="ml-3 flex-1">
               <View className="flex-row items-baseline justify-between">
-                <Text className="font-serif text-[19px] text-ink" numberOfLines={1}>
+                <Text className="mr-3 flex-1 font-semibold text-[15px] tracking-tight text-ink" numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Muted className="text-xs">{when(item.last_message_at ?? item.created_at)}</Muted>
+                <Text className="text-[12px] text-muted">{when(item.last_message_at ?? item.created_at)}</Text>
               </View>
-              <Text className="mt-0.5 text-sm text-muted" numberOfLines={1}>
+              <Text className="mt-0.5 text-[14px] text-muted" numberOfLines={1}>
                 {preview(item)}
               </Text>
+            </View>
+            <View className="ml-1 opacity-60">
+              <IconButton icon="ellipsis-horizontal" size={32} label={t('chats.delete')} onPress={() => confirmDelete(item)} />
             </View>
           </Pressable>
         )}
         ListEmptyComponent={
-          loaded ? (
-            <View className="items-center px-10 pt-24">
-              <Muted className="text-center text-base">{t('chats.empty')}</Muted>
-              <Button title={t('chats.new')} onPress={() => router.push('/explore')} className="mt-5" />
+          !loaded ? (
+            <View className="pt-24">
+              <ActivityIndicator color={colors.muted} />
             </View>
-          ) : null
+          ) : failed ? (
+            <EmptyState icon="cloud-offline-outline" title={t('common.error')} action={<Button size="sm" variant="secondary" title={t('common.retry')} onPress={load} />} />
+          ) : (
+            <EmptyState icon="chatbubbles-outline" title={t('chats.title')} text={t('chats.empty')} action={<Button title={t('chats.new')} icon="add" onPress={() => router.push('/explore')} />} />
+          )
         }
       />
     </SafeAreaView>

@@ -1,0 +1,523 @@
+// ARCHIVO GENERADO por scripts/build-stage.mjs a partir de avatar-stage/stage.html. No editar a mano.
+export const AVATAR_STAGE_HTML = `<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Lovel House · Personaje</title>
+<!--
+  Escenario 3D del personaje de Lovel House.
+  Modelos VRM (el formato de VRoid que usan los VTubers) con sombreado anime (MToon).
+  Lo usa la app dentro de un WebView (móvil) o un iframe (web).
+
+  Mensajes que acepta (postMessage con JSON):
+    { type: 'look', look: {...}, modelBaseUrl, framing: 'bust'|'face'|'portrait', transparent?: bool }
+    { type: 'state', mood: 'idle'|'thinking'|'listening'|'speaking'|'happy'|'offline' }
+    { type: 'snapshot', size? }  → responde { type: 'snapshot', dataUrl }
+  Envía: { type: 'ready' } · { type: 'loaded' } · { type: 'error', message }
+-->
+<script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+  "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js"
+} }
+</script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  #gl { position: fixed; inset: 0; width: 100%; height: 100%; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #loading i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(111,91,211,.2); border-top-color: #6F5BD3; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="loading"><i></i></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+// ------------------------------------------------------------------ puente con la app
+const send = (msg) => {
+  const s = JSON.stringify(msg);
+  if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(s);
+  else if (window.parent !== window) window.parent.postMessage(s, '*');
+  if (window.__onStageMessage) window.__onStageMessage(msg); // pruebas automáticas
+};
+
+// Fondos de estudio (tonos de la marca, planos con una luz suave detrás).
+const BACKDROPS = {
+  lilac: ['#EEEAF9', '#DDD6F2'], blush: ['#F7ECEF', '#ECD9E0'], cream: ['#F5F1EA', '#E6DED1'],
+  peach: ['#F7EDE5', '#ECDACC'], sky: ['#ECF1F8', '#D8E2EF'], mint: ['#EAF3EE', '#D3E6DB'],
+  twilight: ['#E2DBF4', '#C9BDEB'], night: ['#34303F', '#1F1C27'],
+};
+
+// ------------------------------------------------------------------ 3D
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(20, 1, 0.1, 20);
+
+// Iluminación de estudio: luz principal cálida, relleno frío y luz de contorno.
+const key = new THREE.DirectionalLight(0xfff6ee, 2.1);
+key.position.set(-0.7, 1.5, 1.6);
+const fill = new THREE.DirectionalLight(0xdcd6ff, 0.55);
+fill.position.set(1.2, 0.4, 1.0);
+const rim = new THREE.DirectionalLight(0xffffff, 1.2);
+rim.position.set(0.4, 1.2, -1.6);
+scene.add(key, fill, rim, new THREE.AmbientLight(0xffffff, 0.42));
+
+// Fondo: plano con degradado radial suave (no una escena pintada).
+let backdropTex = null;
+function setBackdrop(id, transparent) {
+  if (transparent) { scene.background = null; return; }
+  const [c1, c2] = BACKDROPS[id] || BACKDROPS.lilac;
+  const c = document.createElement('canvas');
+  c.width = c.height = 512;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(256, 200, 20, 256, 256, 400);
+  grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+  g.fillStyle = grad; g.fillRect(0, 0, 512, 512);
+  backdropTex?.dispose();
+  backdropTex = new THREE.CanvasTexture(c);
+  backdropTex.colorSpace = THREE.SRGBColorSpace;
+  scene.background = backdropTex;
+}
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / Math.max(1, innerHeight);
+  camera.updateProjectionMatrix();
+  if (current.vrm) frameCamera();
+}
+addEventListener('resize', resize);
+
+// ------------------------------------------------------------------ recoloreado (como en VRoid)
+const originalImages = new WeakMap();
+/** Cambia el color de una textura conservando sus luces y sombras. */
+function recolor(material, hex, strength = 1) {
+  const map = material.map;
+  if (!hex && !originalImages.has(material)) return; // nunca recoloreado: nada que restaurar
+  if (!originalImages.has(material)) originalImages.set(material, { image: map?.image, color: material.color?.clone(), shade: material.shadeColorFactor?.clone() });
+  const orig = originalImages.get(material);
+  if (!hex) {
+    // volver al color original del modelo
+    if (orig.image && map) { const tex = new THREE.Texture(orig.image); copyTex(tex, map); material.map = tex; if (material.shadeMultiplyTexture) material.shadeMultiplyTexture = tex; }
+    if (orig.color) material.color.copy(orig.color);
+    if (orig.shade && material.shadeColorFactor) material.shadeColorFactor.copy(orig.shade);
+    material.needsUpdate = true;
+    return;
+  }
+  if (!map || !orig.image) { material.color?.set(hex); return; }
+  const img = orig.image;
+  const c = document.createElement('canvas');
+  const W = (c.width = img.width), H = (c.height = img.height);
+  const g = c.getContext('2d', { willReadFrequently: true });
+  g.drawImage(img, 0, 0);
+  const d = g.getImageData(0, 0, W, H); const px = d.data;
+  const tr = parseInt(hex.slice(1, 3), 16), tg = parseInt(hex.slice(3, 5), 16), tb = parseInt(hex.slice(5, 7), 16);
+  let sum = 0, n = 0;
+  for (let i = 0; i < px.length; i += 16) { if (px[i + 3] > 10) { sum += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; n++; } }
+  const avg = Math.max(1, sum / Math.max(1, n));
+  for (let i = 0; i < px.length; i += 4) {
+    const l = Math.min(1.6, (0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]) / avg);
+    px[i] += (Math.min(255, tr * l) - px[i]) * strength;
+    px[i + 1] += (Math.min(255, tg * l) - px[i + 1]) * strength;
+    px[i + 2] += (Math.min(255, tb * l) - px[i + 2]) * strength;
+  }
+  g.putImageData(d, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  copyTex(tex, map);
+  material.map = tex;
+  if (material.shadeMultiplyTexture) material.shadeMultiplyTexture = tex;
+  if (material.color) material.color.set(0xffffff);
+  if (material.shadeColorFactor) material.shadeColorFactor.set(new THREE.Color(hex).multiplyScalar(0.72).lerp(new THREE.Color(0xffffff), 0.3));
+  material.needsUpdate = true;
+}
+function copyTex(tex, from) { tex.colorSpace = from.colorSpace; tex.flipY = from.flipY; tex.wrapS = from.wrapS; tex.wrapT = from.wrapT; tex.needsUpdate = true; }
+
+const category = (name) => {
+  const n = (name || '').toUpperCase();
+  if (n.includes('HAIR')) return 'hair';
+  if (n.includes('EYEIRIS') || n.includes('IRIS')) return 'iris';
+  if (n.includes('_SKIN') || n === 'BODY' || n === 'FACE' || n.includes('BODY_00') || n.includes('FACE_00')) return 'skin';
+  if (/TOPS|ONEPI|ONEPICE|OUTER|DRESS/.test(n)) return 'top';
+  return 'other';
+};
+
+function eachMaterial(root, fn) {
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) fn(m, o);
+  });
+}
+
+/** Contorno sutil de luz (rim) en los materiales MToon: acabado "personaje de videojuego". */
+function premiumMaterials(root) {
+  eachMaterial(root, (m) => {
+    if (m.parametricRimColorFactor) {
+      m.parametricRimColorFactor.set(0xf1ecff);
+      m.parametricRimFresnelPowerFactor = 4.5;
+      m.parametricRimLiftFactor = 0.05;
+    }
+  });
+}
+
+function applyColors(look) {
+  const targets = [current.vrm?.scene, current.hairVrm?.scene].filter(Boolean);
+  for (const root of targets) {
+    eachMaterial(root, (m) => {
+      const cat = category(m.name);
+      if (cat === 'hair') recolor(m, look.hairColor || null);
+      else if (cat === 'iris') recolor(m, look.eyeColor || null);
+      else if (cat === 'skin' && root === current.vrm.scene) recolor(m, look.skinTone || null, 0.5);
+      else if (cat === 'top' && root === current.vrm.scene) recolor(m, look.outfitColor || null, 0.9);
+    });
+  }
+}
+
+// ------------------------------------------------------------------ carga
+const loader = new GLTFLoader();
+loader.register((parser) => new VRMLoaderPlugin(parser));
+const cache = new Map();
+const current = { vrm: null, hairVrm: null, modelUrl: null, hairUrl: null, look: null, mood: 'idle', framing: 'bust', accessories: null, headScale: 1 };
+
+async function fetchVrm(url) {
+  const gltf = await loader.loadAsync(url);
+  const vrm = gltf.userData.vrm;
+  VRMUtils.removeUnnecessaryVertices(gltf.scene);
+  VRMUtils.combineSkeletons(gltf.scene);
+  VRMUtils.rotateVRM0(vrm);
+  vrm.scene.traverse((o) => { o.frustumCulled = false; });
+  premiumMaterials(vrm.scene);
+  return vrm;
+}
+
+function relaxPose(vrm) {
+  const b = (n) => vrm.humanoid.getNormalizedBoneNode(n);
+  const sgn = vrm.meta?.metaVersion === '0' ? 1 : -1;
+  b('leftUpperArm').rotation.z = 1.2 * sgn; b('rightUpperArm').rotation.z = -1.2 * sgn;
+  b('leftLowerArm').rotation.z = 0.14 * sgn; b('rightLowerArm').rotation.z = -0.14 * sgn;
+  b('leftUpperArm').rotation.x = 0.1; b('rightUpperArm').rotation.x = 0.1;
+}
+
+const isHairMesh = (o) => {
+  const mats = Array.isArray(o.material) ? o.material : [o.material];
+  return mats.some((m) => /HAIR/i.test(m.name || ''));
+};
+
+/** Ancho de la cara (para ajustar un peinado de otro modelo a esta cabeza). */
+function faceWidth(vrm) {
+  const box = new THREE.Box3();
+  let found = false;
+  vrm.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    if (mats.some((m) => /FACE_00_SKIN|^FACE$/i.test(m.name || ''))) { box.expandByObject(o); found = true; }
+  });
+  if (!found) return null;
+  return box.max.x - box.min.x;
+}
+
+/**
+ * Peinado de otro modelo VRoid: todos comparten esqueleto, así que el pelo del
+ * donante sigue a los huesos de este personaje (copiamos la pose cada fotograma)
+ * y conserva su propia física.
+ */
+function attachHair(target, donor) {
+  donor.scene.traverse((o) => { if (o.isMesh) o.visible = isHairMesh(o); });
+  target.scene.traverse((o) => { if (o.isMesh && isHairMesh(o)) o.visible = false; });
+  scene.add(donor.scene);
+  const pairs = [];
+  for (const name of Object.keys(target.humanoid.humanBones)) {
+    const t = target.humanoid.getRawBoneNode(name);
+    const d = donor.humanoid.getRawBoneNode(name);
+    if (t && d) { d.matrixWorldAutoUpdate = false; d.matrixAutoUpdate = false; pairs.push([name, t, d]); }
+  }
+  const tw = faceWidth(target), dw = faceWidth(donor);
+  // Las cabezas de VRoid son casi iguales; si la medida sale rara (orejas de elfo, etc.) no escalamos.
+  const ratio = tw && dw ? tw / dw : 1;
+  current.headScale = ratio > 0.86 && ratio < 1.16 ? ratio : 1;
+  current.hairPairs = pairs;
+}
+
+const tmp = new THREE.Matrix4();
+function followSkeleton() {
+  if (!current.hairVrm || !current.hairPairs) return;
+  const s = current.headScale;
+  for (const [name, t, d] of current.hairPairs) {
+    d.matrixWorld.copy(t.matrixWorld);
+    if (name === 'head' && s !== 1) d.matrixWorld.multiply(tmp.makeScale(s, s, s));
+  }
+  // Los huesos emparejados conservan la matriz copiada; el resto (huesos del pelo) se recalcula desde ellos.
+  current.hairVrm.scene.updateMatrixWorld(true);
+}
+
+async function load(look, base) {
+  const modelUrl = /^https?:/.test(look.model) ? look.model : \`\${base}/\${look.model}.vrm\`;
+  const hairUrl = look.hair && look.hair !== look.model ? (/^https?:/.test(look.hair) ? look.hair : \`\${base}/\${look.hair}.vrm\`) : null;
+  if (current.modelUrl === modelUrl && current.hairUrl === hairUrl) return false;
+  document.getElementById('loading').style.display = 'flex';
+  const [vrm, hairVrm] = await Promise.all([fetchVrm(modelUrl), hairUrl ? fetchVrm(hairUrl) : null]);
+  for (const v of [current.vrm, current.hairVrm]) if (v) { scene.remove(v.scene); VRMUtils.deepDispose(v.scene); }
+  current.vrm = vrm; current.hairVrm = hairVrm; current.modelUrl = modelUrl; current.hairUrl = hairUrl; current.hairPairs = null; current.headScale = 1;
+  current.accessories = null;
+  scene.add(vrm.scene);
+  relaxPose(vrm);
+  if (hairVrm) { relaxPose(hairVrm); attachHair(vrm, hairVrm); }
+  vrm.update(0);
+  scene.updateMatrixWorld(true);
+  followSkeleton();
+  for (const v of [vrm, hairVrm]) { if (!v) continue; v.springBoneManager?.setInitState(); v.springBoneManager?.reset(); }
+  // El pelo tiene física: lo dejamos asentarse antes de mostrarlo.
+  for (let i = 0; i < 120; i++) step(1 / 60, 0, true);
+  frameCamera();
+  return true;
+}
+
+// ------------------------------------------------------------------ accesorios 3D (sobre el hueso de la cabeza)
+function buildAccessories(ids) {
+  const vrm = current.vrm;
+  if (current.accessories) { current.accessories.parent?.remove(current.accessories); current.accessories = null; }
+  if (!vrm || !ids?.length) return;
+  // Huesos "raw" (los que se dibujan); los normalizados no forman parte de la escena visible.
+  const head = vrm.humanoid.getRawBoneNode('head');
+  const le = vrm.humanoid.getRawBoneNode('leftEye');
+  const re = vrm.humanoid.getRawBoneNode('rightEye');
+  scene.updateMatrixWorld(true);
+  const group = new THREE.Group();
+  const hp = new THREE.Vector3(); head.getWorldPosition(hp);
+  const eyes = new THREE.Vector3();
+  let eyeDist = 0.064;
+  if (le && re) {
+    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    le.getWorldPosition(a); re.getWorldPosition(b);
+    eyes.copy(a).add(b).multiplyScalar(0.5); eyeDist = a.distanceTo(b);
+  } else eyes.set(hp.x, hp.y + 0.06, hp.z + 0.08);
+  const local = (v) => head.worldToLocal(v.clone());
+  // Geometría real de la cabeza (caja de la malla de la cara): frente y coronilla.
+  const faceBox = new THREE.Box3();
+  vrm.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    if (mats.some((m) => /FACE_00_SKIN|^FACE$/i.test(m.name || ''))) faceBox.expandByObject(o);
+  });
+  const front = Math.max(faceBox.isEmpty() ? 0 : faceBox.max.z, eyes.z + eyeDist * 1.15);
+  const crown = faceBox.isEmpty() ? hp.y + eyeDist * 2.6 : Math.max(faceBox.max.y, eyes.y + eyeDist * 1.6);
+  const mat = (c, metal = 0.3) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.35, metalness: metal });
+  if (ids.includes('glasses_round') || ids.includes('glasses_square')) {
+    const g = new THREE.Group();
+    const r = eyeDist * 0.52;
+    const frame = mat(0x2b2733, 0.6);
+    const round = ids.includes('glasses_round');
+    for (const sx of [-1, 1]) {
+      const geo = round ? new THREE.TorusGeometry(r, r * 0.09, 10, 40) : new THREE.TorusGeometry(r, r * 0.1, 6, 4);
+      const ring = new THREE.Mesh(geo, frame);
+      if (!round) { ring.rotation.z = Math.PI / 4; ring.scale.set(1.15, 0.8, 1); }
+      ring.position.set(sx * eyeDist * 0.5, 0, 0);
+      g.add(ring);
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(r * 0.96, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, roughness: 0.05 }));
+      lens.position.copy(ring.position);
+      g.add(lens);
+    }
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.06, r * 0.06, eyeDist * 0.2, 8), frame);
+    bridge.rotation.z = Math.PI / 2; g.add(bridge);
+    g.position.copy(local(new THREE.Vector3(eyes.x, eyes.y + 0.003, front + eyeDist * 0.3)));
+    group.add(g);
+  }
+  const top = local(new THREE.Vector3(eyes.x, crown, eyes.z - eyeDist * 0.4));
+  const halfW = faceBox.isEmpty() ? eyeDist * 1.4 : (faceBox.max.x - faceBox.min.x) / 2;
+  const at = (x, y, z) => local(new THREE.Vector3(eyes.x + x, y, z));
+  if (ids.includes('cat_ears')) {
+    const color = current.look?.hairColor || '#3a3346';
+    for (const sx of [-1, 1]) {
+      const ear = new THREE.Group();
+      const outer = new THREE.Mesh(new THREE.ConeGeometry(eyeDist * 0.62, eyeDist * 1.25, 3), mat(color, 0));
+      const inner = new THREE.Mesh(new THREE.ConeGeometry(eyeDist * 0.36, eyeDist * 0.8, 3), mat(0xf2b5c5, 0));
+      inner.position.set(0, -eyeDist * 0.12, eyeDist * 0.16);
+      ear.add(outer, inner);
+      ear.position.copy(at(sx * halfW * 0.62, crown + eyeDist * 0.55, eyes.z - eyeDist * 0.3));
+      ear.rotation.z = -sx * 0.32;
+      group.add(ear);
+    }
+  }
+  if (ids.includes('halo')) {
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(eyeDist * 1.35, eyeDist * 0.09, 12, 60), new THREE.MeshBasicMaterial({ color: 0xffe9a3 }));
+    halo.rotation.x = Math.PI / 2.3;
+    halo.position.copy(at(0, crown + eyeDist * 1.1, eyes.z - eyeDist * 0.4));
+    group.add(halo);
+  }
+  if (ids.includes('headphones')) {
+    const r = halfW * 1.18;
+    const band = new THREE.Mesh(new THREE.TorusGeometry(r, eyeDist * 0.13, 10, 48, Math.PI), mat(0x2f2b38, 0.4));
+    band.position.copy(at(0, eyes.y - eyeDist * 0.3, eyes.z - eyeDist * 0.5));
+    band.scale.set(1, (crown + eyeDist * 0.5 - (eyes.y - eyeDist * 0.3)) / r, 1);
+    group.add(band);
+    for (const sx of [-1, 1]) {
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(eyeDist * 0.5, eyeDist * 0.5, eyeDist * 0.36, 24), mat(0x6f5bd3, 0.2));
+      cup.rotation.z = Math.PI / 2;
+      cup.position.copy(at(sx * (r + eyeDist * 0.05), eyes.y - eyeDist * 0.35, eyes.z - eyeDist * 0.5));
+      group.add(cup);
+    }
+  }
+  // Orientación: las piezas se construyen mirando a +Z del mundo (hacia la cámara).
+  const q = new THREE.Quaternion(); head.getWorldQuaternion(q);
+  group.quaternion.copy(q.invert());
+  group.children.forEach((c) => c.position.applyQuaternion(group.quaternion.clone().invert()));
+  head.add(group);
+  current.accessories = group;
+}
+
+// ------------------------------------------------------------------ encuadre
+function frameCamera() {
+  const vrm = current.vrm;
+  if (!vrm) return;
+  const head = vrm.humanoid.getNormalizedBoneNode('head');
+  const p = new THREE.Vector3(); head.getWorldPosition(p);
+  const portrait = innerHeight > innerWidth * 1.15;
+  if (current.framing === 'face') {
+    camera.position.set(0, p.y + 0.03, 1.35);
+    camera.lookAt(new THREE.Vector3(0, p.y + 0.02, 0));
+  } else if (current.framing === 'portrait' || portrait) {
+    // Medio cuerpo vertical (tarjetas, creador en móvil)
+    camera.position.set(0, p.y - 0.12, 2.6);
+    camera.lookAt(new THREE.Vector3(0, p.y - 0.2, 0));
+  } else {
+    // Busto con hombros
+    camera.position.set(0, p.y - 0.04, 1.75);
+    camera.lookAt(new THREE.Vector3(0, p.y - 0.09, 0));
+  }
+}
+
+// ------------------------------------------------------------------ animación y estados
+const clock = new THREE.Clock();
+let nextBlink = 1.5, blinkT = -1, talk = 0, talkTarget = 0, nextSyll = 0, nod = 0, smile = 0, think = 0, attend = 0, dim = 0;
+const baseExpr = () => current.look?.expression || 'neutral';
+
+function step(dt, t, silent = false) {
+  const vrm = current.vrm;
+  if (!vrm) return;
+  const em = vrm.expressionManager;
+  const b = (n) => vrm.humanoid.getNormalizedBoneNode(n);
+  const mood = silent ? 'idle' : current.mood;
+  // parpadeo natural
+  if (!silent) {
+    // Basado en el reloj (no en dt acumulado): si el render va lento o se pausa,
+    // el parpadeo termina igual y los ojos nunca se quedan cerrados.
+    if (t > nextBlink && blinkT < 0) blinkT = t;
+    if (blinkT >= 0) {
+      const k = t - blinkT;
+      const v = k < 0.07 ? k / 0.07 : k < 0.13 ? 1 : Math.max(0, 1 - (k - 0.13) / 0.08);
+      em?.setValue('blink', v);
+      if (k > 0.21) { blinkT = -1; nextBlink = t + 2.2 + Math.random() * 3.2; em?.setValue('blink', 0); }
+    }
+  }
+  // labios al hablar
+  const speaking = mood === 'speaking';
+  if (speaking && t > nextSyll) { talkTarget = 0.2 + Math.random() * 0.8; nextSyll = t + 0.07 + Math.random() * 0.1; }
+  if (!speaking) talkTarget = 0;
+  talk += (talkTarget - talk) * Math.min(1, dt * 20);
+  em?.setValue('aa', talk * 0.75);
+  em?.setValue('oh', speaking ? talk * 0.22 * (Math.sin(t * 7) * 0.5 + 0.5) : 0);
+  // expresión: base elegida + estado
+  const e = baseExpr();
+  // En VRoid "happy" entrecierra los ojos: lo usamos con mucha suavidad.
+  const wantSmile = mood === 'happy' ? 0.3 : e === 'smile' ? 0.16 : speaking ? 0.1 : 0;
+  smile += (wantSmile - smile) * Math.min(1, dt * 4);
+  em?.setValue('happy', smile);
+  think += ((mood === 'thinking' ? 1 : 0) - think) * Math.min(1, dt * 3);
+  attend += ((mood === 'listening' ? 1 : 0) - attend) * Math.min(1, dt * 3);
+  em?.setValue('relaxed', Math.max(think * 0.45, e === 'calm' ? 0.35 : 0));
+  em?.setValue('angry', e === 'serious' ? 0.18 : 0);
+  // cabeza y respiración
+  nod += ((speaking ? 1 : 0) - nod) * Math.min(1, dt * 3);
+  b('spine').rotation.x = Math.sin(t * 1.5) * 0.012;
+  if (b('chest')) b('chest').rotation.x = Math.sin(t * 1.5 + 0.5) * 0.01;
+  b('neck').rotation.y = Math.sin(t * 0.5) * 0.04;
+  b('head').rotation.z = think * 0.12 + attend * -0.06 + Math.sin(t * 0.7) * 0.025;
+  b('head').rotation.x = think * -0.07 + attend * (0.05 + Math.sin(t * 2.2) * 0.03) + nod * Math.sin(t * 6) * 0.05;
+  b('head').rotation.y = think * 0.12 + Math.sin(t * 0.37) * 0.035;
+  em?.update();
+  vrm.update(dt);
+  if (current.hairVrm) {
+    scene.updateMatrixWorld(true);
+    followSkeleton();
+    current.hairVrm.springBoneManager?.update(dt);
+  }
+}
+
+function frame() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+  step(dt, t);
+  // estado "no disponible": imagen atenuada
+  dim += ((current.mood === 'offline' ? 1 : 0) - dim) * Math.min(1, dt * 3);
+  canvas.style.filter = dim > 0.02 ? \`grayscale(\${dim}) opacity(\${1 - dim * 0.35})\` : '';
+  renderer.render(scene, camera);
+}
+renderer.setAnimationLoop(frame);
+
+// ------------------------------------------------------------------ mensajes
+async function handle(msg) {
+  if (msg.type === 'look') {
+    const look = msg.look || {};
+    if (msg.framing) current.framing = msg.framing;
+    setBackdrop(look.background, !!msg.transparent);
+    const prev = current.look;
+    current.look = look;
+    try {
+      const reloaded = await load(look, msg.modelBaseUrl);
+      const colorsKey = (l) => JSON.stringify([l?.hairColor, l?.eyeColor, l?.skinTone, l?.outfitColor]);
+      if (reloaded || colorsKey(prev) !== colorsKey(look)) applyColors(look);
+      if (reloaded || JSON.stringify(prev?.accessories || []) !== JSON.stringify(look.accessories || []) || colorsKey(prev) !== colorsKey(look)) buildAccessories(look.accessories || []);
+      frameCamera();
+      document.getElementById('loading').style.display = 'none';
+      send({ type: 'loaded' });
+    } catch (e) {
+      document.getElementById('loading').style.display = 'none';
+      send({ type: 'error', message: String((e && e.message) || e) });
+    }
+  } else if (msg.type === 'state') {
+    current.mood = msg.mood || 'idle';
+  } else if (msg.type === 'snapshot') {
+    const em = current.vrm?.expressionManager;
+    if (em) { blinkT = -1; nextBlink = clock.elapsedTime + 2; em.setValue('blink', 0); em.update(); }
+    // Encuadre propio para la captura (p. ej. foto de perfil "face") sin cambiar el que se ve.
+    const prevFraming = current.framing;
+    const prevAspect = camera.aspect;
+    if (msg.framing) { current.framing = msg.framing; if (!msg.width) { camera.aspect = 1; camera.updateProjectionMatrix(); } frameCamera(); }
+    renderer.render(scene, camera);
+    // Cuadrada (foto de perfil) por defecto; con width/height, el lienzo completo.
+    const out = document.createElement('canvas');
+    if (msg.width && msg.height) {
+      out.width = msg.width; out.height = msg.height;
+      out.getContext('2d').drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, msg.width, msg.height);
+    } else {
+      const size = msg.size || 512;
+      out.width = out.height = size;
+      const s = Math.min(canvas.width, canvas.height);
+      out.getContext('2d').drawImage(canvas, (canvas.width - s) / 2, (canvas.height - s) / 2, s, s, 0, 0, size, size);
+    }
+    if (msg.framing) { current.framing = prevFraming; camera.aspect = prevAspect; camera.updateProjectionMatrix(); frameCamera(); }
+    send({ type: 'snapshot', dataUrl: out.toDataURL('image/jpeg', msg.quality || 0.88) });
+  }
+}
+const onMessage = (e) => { try { handle(typeof e.data === 'string' ? JSON.parse(e.data) : e.data); } catch {} };
+window.addEventListener('message', onMessage);
+document.addEventListener('message', onMessage);
+window.__lovel = {
+  handle,
+  morphs: () => { const out = {}; current.vrm?.scene.traverse((o) => { if (o.morphTargetInfluences && o.morphTargetDictionary) { const d = o.morphTargetDictionary; for (const k in d) { const v = o.morphTargetInfluences[d[k]]; if (v > 0.01) out[o.name + ':' + k] = +v.toFixed(2); } } }); return out; },
+  debug: () => { const em = current.vrm?.expressionManager; return em ? Object.fromEntries(em.expressions.map((x) => [x.expressionName, +em.getValue(x.expressionName)?.toFixed?.(2)])) : null; },
+};
+resize();
+send({ type: 'ready' });
+</script>
+</body>
+</html>
+`;

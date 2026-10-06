@@ -16,6 +16,8 @@ export interface CharacterDraft {
   traits: string[];
   scenarioId: string | null;
   customScene: string;
+  /** Foto de perfil capturada del 3D al terminar (JPEG en data URL). */
+  snapshot?: string | null;
   /** Paso del creador donde se quedó. */
   step: number;
   /** true cuando la persona pulsó "Empezar la historia" (hay que crearlo al entrar). */

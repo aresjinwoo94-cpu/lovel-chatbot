@@ -57,17 +57,17 @@ async function buildHtml(avatar: Avatar, messages: Message[], t: TFunction): Pro
   return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>${escapeHtml(t('export.header', { name: avatar.name }))}</title>
 <style>
-body{font-family:Georgia,serif;background:#F3ECE4;color:#2E2A2B;margin:0;padding:24px}
+body{font-family:"Plus Jakarta Sans",-apple-system,"Segoe UI",Roboto,sans-serif;background:#F9F7F3;color:#242229;margin:0;padding:24px}
 .wrap{max-width:640px;margin:0 auto}
-header{display:flex;gap:16px;align-items:center;margin-bottom:8px}
+header{display:flex;gap:14px;align-items:center;margin-bottom:8px}
 header img{border-radius:50%}
-h1{font-size:22px;margin:0}
-.situation{background:#fff;border:1px solid #EADFD8;border-radius:12px;padding:12px 14px;margin:12px 0 20px;font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:14px}
-.msg{max-width:80%;padding:10px 14px;border-radius:18px;margin:8px 0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.45}
+h1{font-size:20px;font-weight:600;letter-spacing:-0.01em;margin:0}
+.situation{background:#fff;border:1px solid #E8E4DE;border-radius:12px;padding:12px 14px;margin:12px 0 20px;font-size:14px}
+.msg{max-width:80%;padding:10px 14px;border-radius:18px;margin:8px 0;font-size:15px;line-height:1.45}
 .msg p{margin:4px 0 0}
-.msg.user{background:#fff;margin-right:auto;border-bottom-left-radius:4px}
-.msg.avatar{background:#FCE8E6;margin-left:auto;border-bottom-right-radius:4px}
-.meta{font-size:11px;color:#7C7270}
+.msg.user{background:#E9E4FA;margin-left:auto;border-bottom-right-radius:6px}
+.msg.avatar{background:#fff;border:1px solid #E8E4DE;margin-right:auto;border-bottom-left-radius:6px}
+.meta{font-size:11px;color:#77737D}
 audio{width:100%;margin-top:6px}
 </style></head><body><div class="wrap">
 <header>${portrait}<h1>${escapeHtml(t('export.header', { name: avatar.name }))}</h1></header>

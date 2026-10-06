@@ -1,7 +1,6 @@
 import '@/global.css';
 import '@/lib/nativewindInterop';
 
-import { DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
 import {
   PlusJakartaSans_400Regular,
   PlusJakartaSans_500Medium,
@@ -38,7 +37,6 @@ function RootNavigator() {
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
-    DMSerifDisplay_400Regular,
   });
   const ready = !loading && (fontsLoaded || !!fontError);
 

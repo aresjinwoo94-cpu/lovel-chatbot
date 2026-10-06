@@ -4,7 +4,7 @@ import { Modal, Pressable, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 
 import { AnimatedAvatar, type AvatarLike } from './AnimatedAvatar';
-import { Button, Muted } from './ui';
+import { Button, IconButton, Muted } from './ui';
 import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { startProCheckout } from '@/lib/billing';
@@ -49,35 +49,36 @@ export function PaywallModal({ visible, avatar, onClose, onUpgraded, reason }: P
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Animated.View entering={FadeIn.duration(200)} className="flex-1 justify-end bg-black/30">
-        <Pressable className="flex-1" onPress={onClose} accessibilityLabel={t('pro.notNow')} />
-        <Animated.View entering={SlideInDown.springify().damping(18)} className="w-full max-w-lg self-center rounded-t-[32px] bg-cream px-6 pb-10 pt-6">
-          {avatar ? (
-            <View className="items-center">
-              <AnimatedAvatar avatar={avatar} size={84} ring mood="happy" badge="❤️" />
+      <Animated.View entering={FadeIn.duration(180)} className="flex-1 justify-end bg-black/30 sm:items-center sm:justify-center">
+        <Pressable className="absolute inset-0" onPress={onClose} accessibilityLabel={t('pro.notNow')} />
+        <Animated.View entering={SlideInDown.duration(240)} className="w-full self-center rounded-t-3xl border border-line bg-paper px-5 pb-8 pt-5 sm:rounded-3xl" style={{ maxWidth: 440 }}>
+          <View className="flex-row items-center">
+            {avatar ? <AnimatedAvatar avatar={avatar} size={40} presence="idle" /> : null}
+            <View className={avatar ? 'ml-3 flex-1' : 'flex-1'}>
+              {reason ? <Text className="font-medium text-[12px] text-primary">{reason}</Text> : null}
+              <Text className="font-semibold text-[20px] leading-[26px] tracking-tighter text-ink">{t('pro.title')}</Text>
             </View>
-          ) : null}
-          {reason ? <Text className="mt-4 text-center font-semibold text-xs uppercase tracking-widest text-primary">{reason}</Text> : null}
-          <Text className="mt-2 text-center font-serif text-[26px] leading-8 text-ink">{t('pro.title')}</Text>
-          {avatar ? <Muted className="mt-2 text-center">{t('pro.body', { name: avatar.name })}</Muted> : null}
+            <IconButton icon="close" size={34} label={t('pro.notNow')} onPress={onClose} />
+          </View>
+          {avatar ? <Muted className="mt-3 text-[14px] leading-[20px]">{t('pro.body', { name: avatar.name })}</Muted> : null}
 
-          <View className="mt-5 rounded-3xl border border-line bg-paper p-4">
+          <View className="mt-4 rounded-2xl border border-line p-4">
             <View className="flex-row items-baseline justify-between">
-              <Text className="font-serif text-xl text-ink">Pro</Text>
-              <Text className="font-semibold text-lg text-ink">{t('pro.price')}</Text>
+              <Text className="font-semibold text-[15px] text-ink">Pro</Text>
+              <Text className="font-semibold text-[17px] tracking-tight text-ink">{t('pro.price')}</Text>
             </View>
-            <Muted className="mt-1">{t('pro.priceNote')}</Muted>
-            <View className="mt-3">
+            <Muted className="mt-0.5 text-[13px]">{t('pro.priceNote')}</Muted>
+            <View className="mt-3 border-t border-line pt-1">
               {features.map((f) => (
-                <View key={f} className="mt-2 flex-row items-center">
-                  <Ionicons name="heart" size={14} color={colors.accent} />
-                  <Text className="ml-2 text-[15px] text-ink">{f}</Text>
+                <View key={f} className="mt-2.5 flex-row items-center">
+                  <Ionicons name="checkmark" size={16} color={colors.primary} />
+                  <Text className="ml-2.5 text-[14px] text-ink">{f}</Text>
                 </View>
               ))}
             </View>
           </View>
 
-          <Button title={t('pro.cta')} onPress={upgrade} loading={loading} className="mt-5" />
+          <Button title={t('pro.cta')} variant="brand" onPress={upgrade} loading={loading} className="mt-5" />
           <Button title={t('pro.notNow')} variant="ghost" onPress={onClose} className="mt-1" />
         </Animated.View>
       </Animated.View>

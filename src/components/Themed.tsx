@@ -5,9 +5,9 @@ import { fonts } from '@/constants/theme';
 
 /**
  * Text y TextInput con la tipografía de la marca (Plus Jakarta Sans) por defecto.
- * Si el className elige otra familia (font-semibold, font-serif…), se respeta.
+ * Si el className elige otro peso (font-medium, font-semibold…), se respeta.
  */
-const FONT_CLASS = /(^|\s)font-(sans|normal|medium|semibold|bold|extrabold|serif)(\s|$)/;
+const FONT_CLASS = /(^|\s)font-(sans|normal|medium|semibold|bold|extrabold)(\s|$)/;
 const needsDefault = (className?: string) => !className || !FONT_CLASS.test(className);
 
 export const Text = forwardRef<RNText, TextProps & { className?: string }>(function Text({ className, style, ...rest }, ref) {

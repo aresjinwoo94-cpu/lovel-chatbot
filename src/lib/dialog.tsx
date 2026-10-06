@@ -56,29 +56,23 @@ export function DialogHost() {
   const cancel = dialog?.buttons.find((b) => b.style === 'cancel');
   return (
     <Modal visible={!!dialog} transparent animationType="fade" onRequestClose={() => close(cancel)}>
-      <Pressable className="flex-1 items-center justify-center bg-black/40 px-6" onPress={() => cancel && close(cancel)}>
-        <Pressable className="w-full max-w-sm rounded-3xl bg-paper p-6" onPress={() => undefined}>
-          <Text className="text-lg font-semibold leading-6 text-ink">{dialog?.title}</Text>
-          {dialog?.message ? <Text className="mt-2 text-[15px] leading-[22px] text-muted">{dialog.message}</Text> : null}
-          <View className="mt-5">
+      <Pressable className="flex-1 items-center justify-center bg-black/30 px-5" onPress={() => cancel && close(cancel)}>
+        <Pressable className="w-full rounded-2xl border border-line bg-paper p-5" style={{ maxWidth: 380 }} onPress={() => undefined}>
+          <Text className="font-semibold text-[17px] leading-[23px] tracking-tight text-ink">{dialog?.title}</Text>
+          {dialog?.message ? <Text className="mt-1.5 text-[14px] leading-[20px] text-muted">{dialog.message}</Text> : null}
+          <View className="mt-4">
             {dialog?.buttons.map((b, i) => (
               <Pressable
                 key={`${b.text}-${i}`}
                 accessibilityRole="button"
                 onPress={() => close(b)}
-                className={`mt-2 h-12 items-center justify-center rounded-full ${
-                  b.style === 'cancel'
-                    ? 'bg-transparent'
-                    : b.style === 'destructive'
-                      ? 'border border-accent bg-accent-soft'
-                      : i === 0
-                        ? 'bg-primary'
-                        : 'border border-line bg-paper'
+                className={`mt-2 h-11 items-center justify-center rounded-full ${
+                  b.style === 'cancel' ? 'bg-transparent' : b.style === 'destructive' ? 'bg-[#B4233C]' : i === 0 ? 'bg-ink' : 'border border-line bg-paper'
                 } active:opacity-80`}
               >
                 <Text
-                  className={`text-base font-semibold ${
-                    b.style === 'cancel' ? 'text-muted' : b.style === 'destructive' ? 'text-ink' : i === 0 ? 'text-paper' : 'text-ink'
+                  className={`font-semibold text-[15px] ${
+                    b.style === 'cancel' ? 'text-muted' : b.style === 'destructive' || i === 0 ? 'text-paper' : 'text-ink'
                   }`}
                 >
                   {b.text}

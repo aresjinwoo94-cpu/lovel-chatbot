@@ -1,12 +1,13 @@
 # Lovel House
 
-Lovel House es una app de **roleplay con personajes**: eliges o creas un personaje anime 2D, defines su personalidad y la escena donde empieza vuestra historia… y **el personaje te escribe primero**. Después conversáis por texto o por notas de voz.
+Lovel House es una app de **roleplay con personajes**: eliges o creas un personaje **anime 3D (VRM, el formato de los VTubers)**, defines su personalidad y la escena donde empieza vuestra historia… y **el personaje te escribe primero**. Después conversáis por texto o por notas de voz.
 
 Prioridad del producto: **Personaje → Personalidad → Situación → Conversación.**
 
-![Personajes por defecto](docs/avatar-styles.png)
-![Flujo: explorar, personalizar, personalidad, escena](docs/screens-flow.png)
-![Login y chat](docs/screens-chat.png)
+![Explorar personajes](docs/avatar-styles.jpg)
+![Flujo: explorar y personalizar en 3D](docs/screens-flow.jpg)
+![Login, chat (escribiendo / hablando), nota de voz](docs/screens-chat.jpg)
+![Chat en escritorio](docs/screens-desktop.jpg)
 
 ---
 
@@ -15,12 +16,12 @@ Prioridad del producto: **Personaje → Personalidad → Situación → Conversa
 | Flujo | Dónde está |
 | --- | --- |
 | **Sin cuenta:** explorar personajes, personalizar, elegir personalidad y escena, vista previa. La cuenta solo se pide al empezar la historia (el borrador se guarda en el dispositivo y sobrevive al login con Google) | `src/app/explore.tsx`, `src/app/avatar/create.tsx`, `src/lib/draft.ts`, `src/app/start.tsx` |
-| Creador de personajes 2D por capas: 10 formas de cara, 12 estilos de ojos, 12 colores de ojos, 8 cejas, 10 expresiones, 10 rasgos distintivos, 8 tonos de piel, 16 peinados, 15 colores de pelo, 19 conjuntos de rol, 19 accesorios y 8 fondos | `src/lib/character/*`, `src/components/CharacterPortrait.tsx` |
-| 6 personajes listos (3 mujeres y 3 hombres) | `PRESETS` en `src/lib/character/options.ts` |
+| Creador 3D en vivo: 12 modelos VRM base (cara, cuerpo y ropa distintos), 10 peinados intercambiables, 12 colores de pelo, 10 de ojos, 6 tonos de piel, 10 colores de ropa, 4 expresiones, 5 accesorios y 8 fondos. También se puede **importar un .vrm de VRoid Studio** | `src/app/avatar/create.tsx`, `src/lib/character/*`, `src/components/VrmAvatar.tsx`, `avatar-stage/stage.html` |
+| 10 personajes listos | `PRESETS` en `src/lib/character/catalog.ts` |
 | Personalidad: 30 rasgos, de 1 a 5, con incompatibilidades (tímido ↔ extrovertido, dominante ↔ sumiso…) | `supabase/functions/_shared/roleplay.ts` |
 | 36 escenarios narrativos en 9 categorías (Romance, Drama, Amistad, Escuela, Trabajo, Fantasía, Misterio, Conflicto, Vida cotidiana) o una escena propia | `supabase/functions/_shared/roleplay.ts` |
 | El personaje envía el **primer mensaje**, coherente con su personalidad y la escena | `supabase/functions/start-chat`, `buildOpeningInstruction` en `systemPrompts.tsx` |
-| Chat: tus mensajes a la derecha; los del personaje a la izquierda con su foto y su nombre; parpadea y mueve los labios al hablar | `src/app/chat/[avatarId].tsx`, `src/components/ChatBubble.tsx` |
+| Chat con el personaje en 3D como protagonista (arriba en móvil, panel lateral en escritorio). Estados: **reposo, escribiendo, escuchando, hablando, sin conexión** — el 3D mueve los labios, la foto de perfil emite ondas y la etiqueta de estado cambia; con notas de voz, "hablando" dura exactamente lo que suena el audio. Tus mensajes a la derecha; los suyos a la izquierda con su foto y nombre | `src/app/chat/[avatarId].tsx`, `src/components/{ChatBubble,AnimatedAvatar,PresencePill,TypingIndicator}.tsx` |
 | Notas de voz con estados claros (preparando, grabando, vista previa, enviando) y mensajes de error de permisos/micrófono en web y móvil. Si la voz falla, el personaje responde por escrito | `src/components/VoiceRecorder.tsx`, `supabase/functions/voice-chat` |
 | Login con Google y con email (más recuperar contraseña) | `src/app/login.tsx`, `src/lib/auth.tsx`, `src/app/auth/callback.tsx` |
 | Plan Pro de $9.90/mes (Stripe) | `src/components/PaywallModal.tsx`, `src/app/pro.tsx`, `supabase/functions/create-checkout`, `stripe-webhook` |
@@ -39,8 +40,8 @@ Prioridad del producto: **Personaje → Personalidad → Situación → Conversa
 ┌──────────────────────────────┐        ┌───────────────────────────────────────────┐
 │  App (Expo / React Native)   │  JWT   │  Supabase                                  │
 │  Expo Router + NativeWind    │ ─────▶ │  Auth (Google + email)                     │
-│  Personajes SVG por capas    │        │  Postgres + RLS (profiles, avatars,        │
-│  Reanimated · Lottie · audio │        │    conversations, messages)                │
+│  Personajes VRM (three.js)   │        │  Postgres + RLS (profiles, avatars,        │
+│  Reanimated · expo-audio     │        │    conversations, messages)                │
 └──────────────────────────────┘        │  Storage (voice-messages)                  │
                                          │  Edge Functions (Deno) ─┬─▶ Gemini/Claude  │
                                          │                         ├─▶ ElevenLabs     │
@@ -57,8 +58,8 @@ Prioridad del producto: **Personaje → Personalidad → Situación → Conversa
 | --- | --- |
 | Frontend | Expo SDK 57 + React Native 0.86 + Expo Router (iOS, Android y web) |
 | Estilos | NativeWind 4 (Tailwind) + componentes propios (`src/components/ui.tsx`) |
-| Tipografía | Plus Jakarta Sans (interfaz) y DM Serif Display (nombres de personajes y momentos emocionales), con `@expo-google-fonts` |
-| Personajes | SVG por capas generado en el dispositivo (`react-native-svg`), sin servicios externos |
+| Tipografía | Solo Plus Jakarta Sans (400/500/600/700) con `@expo-google-fonts`. Sin serif ni cursiva en ningún sitio |
+| Personajes | Modelos VRM con licencia comercial (ver `avatar-stage/MODELS.md`) renderizados con three.js + `@pixiv/three-vrm` en un WebView (iframe en web). Archivos en Supabase Storage (`vrm-models`) |
 | Chat IA | Gemini 3.5 Flash-Lite por defecto o Claude (`AI_PROVIDER`) |
 | Voz | ElevenLabs `eleven_multilingual_v2` (TTS) + `scribe_v1` (STT) |
 | Pagos | Stripe Checkout + Customer Portal |
@@ -69,7 +70,7 @@ Prioridad del producto: **Personaje → Personalidad → Situación → Conversa
 | --- | --- | --- |
 | `cream` | `#F9F7F3` | Fondo |
 | `paper` | `#FFFFFF` | Tarjetas y superficies |
-| `primary` / `primary-soft` | `#6F5BD3` / `#E9E4FA` | Acciones, tus mensajes, selección |
+| `primary` / `primary-soft` | `#6F5BD3` / `#E9E4FA` | Interacción: selección, foco, enlaces, enviar, tus mensajes (no se usa como fondo grande) |
 | `accent` / `accent-soft` | `#E6A0B4` / `#F8E8ED` | Acentos emocionales, escena |
 | `ink` / `muted` | `#242229` / `#77737D` | Texto principal y secundario |
 | `line` | `#E8E4DE` | Bordes |
@@ -77,9 +78,13 @@ Prioridad del producto: **Personaje → Personalidad → Situación → Conversa
 
 Los tokens están en `tailwind.config.js` y `src/constants/theme.ts`. El plugin `fontWeight` de Tailwind está desactivado a propósito: `font-medium`, `font-semibold`, `font-bold`… eligen el archivo de fuente correcto (las fuentes propias no admiten peso sintético en Android). `Text` y `TextInput` se importan de `src/components/Themed.tsx` para usar la fuente de la marca por defecto.
 
+### Sistema de interfaz
+
+Prioridades: **claridad → jerarquía → función → personalidad.** Superficies blancas con borde de 1 px sobre fondo crema, sin sombras, degradados ni glassmorphism. Botón principal en tinta (`ink`), el violeta se reserva para la interacción. Una sola familia tipográfica con escala corta (28/20/16/15/13/12 px) y tracking negativo en titulares. Componentes en `src/components/ui.tsx`: `Button`, `IconButton`, `Tag`, `Segmented`, `Swatch`, `Card`, `ListRow`, `Field`, `ToggleRow`, `EmptyState`. Navegación: barra inferior en móvil y barra lateral en escritorio (≥ 900 px).
+
 ### Los personajes
 
-Estilo anime 2D inspirado en la referencia (nivel de detalle, ojos grandes con brillos, pelo con mechones y brillo), pero con los colores de la marca, no los de la imagen. Cada categoría cambia una pieza real del dibujo (forma de la cara, forma del ojo, silueta del peinado, ropa con cuellos, solapas, delantales, armaduras…), no solo un color. El mismo dibujo se usa en la lista, el creador y el chat, y está animado: parpadea, respira y mueve los labios cuando habla.
+Personajes 3D estilo anime (formato VRM, el de los VTubers), con proporciones, ojos detallados, pelo con física (spring bones) y ropa elaborada; luz de estudio propia (key, fill, rim) y fondos con los colores de la marca. Cada modelo base es un personaje distinto, no un recoloreado. El 3D en vivo aparece en el creador y en el chat (respira, parpadea, mueve los labios al hablar, ladea la cabeza al pensar o escuchar); en listas y burbujas se usa una foto capturada del propio 3D para no cargar WebGL de más. Ningún personaje, asset ni paleta procede de juegos comerciales.
 
 ---
 
@@ -88,8 +93,9 @@ Estilo anime 2D inspirado en la referencia (nivel de detalle, ojos grandes con b
 ```
 lovel-chatbot/
 ├── app.json · package.json · tailwind.config.js
-├── assets/            # Iconos (logo), Lottie (escribiendo…, ondas)
-├── scripts/           # render-brand.ts (iconos) · make-lottie.mjs
+├── assets/            # Iconos (logo), characters/ (retratos capturados del 3D), Lottie
+├── avatar-stage/      # stage.html (three.js + three-vrm) · MODELS.md (licencias)
+├── scripts/           # build-stage.mjs · render-characters.mjs · render-brand.ts
 ├── src/
 │   ├── app/
 │   │   ├── _layout.tsx           # Fuentes, diálogos y rutas públicas/protegidas
@@ -100,9 +106,10 @@ lovel-chatbot/
 │   │   ├── auth/callback.tsx     # Retorno de Google / enlaces de correo
 │   │   ├── chat/[avatarId].tsx   # Chat
 │   │   └── (tabs)/               # Historias · Perfil · Ajustes
-│   ├── components/    # CharacterPortrait, AnimatedAvatar, ChatBubble, VoiceRecorder, VoicePlayer, PaywallModal, Themed, ui…
+│   ├── components/    # VrmAvatar, AnimatedAvatar, PresencePill, ChatBubble, TypingIndicator, VoiceRecorder, VoicePlayer, PaywallModal, Themed, ui…
 │   └── lib/
-│       ├── character/            # Dibujo por capas: face, eyes, hair, outfits, extras, render, options (catálogo y presets)
+│       ├── character/            # catalog (modelos, peinados, colores, presets), media (retratos), types
+│       ├── avatarStageHtml.ts    # stage.html empaquetado (node scripts/build-stage.mjs)
 │       ├── roleplay.ts           # Rasgos y escenarios (misma fuente que el backend)
 │       ├── draft.ts · createCharacter.ts · dialog.tsx
 │       └── supabase, auth, i18n (es/en), data, billing, audio, exportConversation, types
@@ -208,7 +215,7 @@ El comportamiento del personaje está en `supabase/functions/_shared/systemPromp
 
 ## Notas
 
-- **Expo Go:** todas las librerías nativas usadas (SVG, Reanimated, Lottie, expo-audio, fuentes) vienen incluidas en Expo Go. Para publicar en las tiendas, usa `npx eas-cli build`.
+- **Expo Go:** todas las librerías nativas usadas (WebView, SVG, Reanimated, Lottie, expo-audio, fuentes) vienen incluidas en Expo Go. Para publicar en las tiendas, usa `npx eas-cli build`.
 - **App Store y pagos:** Apple puede exigir compras dentro de la app (StoreKit) para suscripciones digitales, según el país. Stripe Checkout funciona sin cambios en web y Android. Para iOS en algunos países puede hacer falta añadir IAP (por ejemplo con RevenueCat) usando el mismo campo `profiles.is_pro`.
 - **Privacidad:** los audios se guardan en un bucket privado y se sirven con URLs firmadas. Si el usuario desactiva "Guardar mis notas de voz", su audio solo se transcribe y no se guarda.
 - **Idioma:** la interfaz está en español e inglés (`src/lib/i18n.tsx`). El personaje responde en el idioma en que le escriben.

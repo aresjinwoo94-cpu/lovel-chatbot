@@ -1,7 +1,6 @@
 /**
  * Tailwind de Lovel House — identidad visual oficial (modo claro).
- * Tipografía: Plus Jakarta Sans para toda la interfaz y DM Serif Display
- * solo para nombres de personajes y momentos emocionales.
+ * Tipografía: Plus Jakarta Sans en toda la interfaz (sin serif ni cursivas).
  *
  * Nota: el plugin fontWeight está desactivado a propósito. Las clases
  * font-medium / font-semibold / font-bold eligen el archivo de fuente correcto
@@ -18,6 +17,7 @@ module.exports = {
     extend: {
       colors: {
         cream: '#F9F7F3',
+        subtle: '#F2EFEA',
         paper: '#FFFFFF',
         ink: '#242229',
         muted: '#77737D',
@@ -40,10 +40,14 @@ module.exports = {
         semibold: ['PlusJakartaSans_600SemiBold'],
         bold: ['PlusJakartaSans_700Bold'],
         extrabold: ['PlusJakartaSans_800ExtraBold'],
-        serif: ['DMSerifDisplay_400Regular'],
       },
       borderRadius: {
-        bubble: '20px',
+        bubble: '18px',
+      },
+      letterSpacing: {
+        tightest: '-0.03em',
+        tighter: '-0.02em',
+        tight: '-0.01em',
       },
     },
   },

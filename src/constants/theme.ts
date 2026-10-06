@@ -5,6 +5,8 @@
 export const colors = {
   /** Fondo general */
   cream: '#F9F7F3',
+  /** Relleno neutro (controles, selección secundaria) */
+  subtle: '#F2EFEA',
   /** Tarjetas y superficies */
   paper: '#FFFFFF',
   primary: '#6F5BD3',
@@ -27,12 +29,7 @@ export const fonts = {
   semibold: 'PlusJakartaSans_600SemiBold',
   bold: 'PlusJakartaSans_700Bold',
   extrabold: 'PlusJakartaSans_800ExtraBold',
-  /** Solo para nombres de personajes, frases destacadas y momentos emocionales. */
-  serif: 'DMSerifDisplay_400Regular',
 } as const;
-
-/** Compatibilidad: la serif de la marca. */
-export const serif = fonts.serif;
 
 /**
  * Lado de las burbujas: como en cualquier chat, lo que escribes va a la

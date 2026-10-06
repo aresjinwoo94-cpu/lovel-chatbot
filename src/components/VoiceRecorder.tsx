@@ -5,12 +5,12 @@ import {
   setAudioModeAsync,
   useAudioRecorder,
 } from 'expo-audio';
-import LottieView from 'lottie-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, View } from 'react-native';
-import Animated, { FadeIn, SlideInDown, SlideOutDown } from 'react-native-reanimated';
+import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
 
 import { AnimatedAvatar, type AvatarLike } from './AnimatedAvatar';
+import { Button, IconButton } from './ui';
 import { VoicePlayer } from './VoicePlayer';
 import { Text } from '@/components/Themed';
 import { colors } from '@/constants/theme';
@@ -166,111 +166,95 @@ export function VoiceRecorder({ avatar, onSend, onClose, onPreviewPlaying, voice
   const canRetry = error && !['voice.insecure', 'voice.unsupported', 'voice.noMic'].includes(error.key);
 
   return (
-    <Animated.View entering={SlideInDown.springify().damping(18)} exiting={SlideOutDown.duration(180)} className="border-t border-line bg-paper px-4 pb-4 pt-3">
-      {phase === 'preparing' ? (
-        <View className="h-36 items-center justify-center">
-          <ActivityIndicator color={colors.primary} />
-          <Text className="mt-3 text-sm text-muted">{t('voice.preparing')}</Text>
-        </View>
-      ) : null}
-
-      {phase === 'error' && error ? (
-        <View className="items-center py-2" accessibilityLiveRegion="polite">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-accent-soft">
-            <Ionicons name="mic-off-outline" size={24} color={colors.ink} />
+    <Animated.View entering={SlideInDown.duration(220)} exiting={SlideOutDown.duration(180)} className="border-t border-line bg-paper px-4 pb-4 pt-3">
+      <View className="w-full self-center" style={{ maxWidth: 760 }}>
+        {phase === 'preparing' ? (
+          <View className="h-28 items-center justify-center">
+            <ActivityIndicator color={colors.muted} />
+            <Text className="mt-3 text-[13px] text-muted">{t('voice.preparing')}</Text>
           </View>
-          <Text className="mt-3 text-center text-[15px] leading-[22px] text-ink">{t(error.key)}</Text>
-          {error.detail ? <Text className="mt-1 text-center text-xs text-muted">{error.detail}</Text> : null}
-          <View className="mt-4 w-full flex-row">
-            <Pressable onPress={discard} className="h-12 flex-1 items-center justify-center rounded-full border border-line bg-paper">
-              <Text className="font-semibold text-base text-ink">{t('common.cancel')}</Text>
-            </Pressable>
-            {canRetry ? (
-              <Pressable onPress={begin} className="ml-2 h-12 flex-1 flex-row items-center justify-center rounded-full bg-primary active:opacity-80">
-                <Ionicons name="refresh" size={16} color={colors.paper} />
-                <Text className="ml-2 font-semibold text-base text-paper">{t('common.retry')}</Text>
+        ) : null}
+
+        {phase === 'error' && error ? (
+          <View className="items-center py-2" accessibilityLiveRegion="polite">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-subtle">
+              <Ionicons name="mic-off-outline" size={20} color={colors.ink} />
+            </View>
+            <Text className="mt-3 text-center text-[14px] leading-[20px] text-ink">{t(error.key)}</Text>
+            {error.detail ? <Text className="mt-1 text-center text-[12px] text-muted">{error.detail}</Text> : null}
+            <View className="mt-4 w-full flex-row gap-2">
+              <Button title={t('common.cancel')} variant="secondary" onPress={discard} className="flex-1" />
+              {canRetry ? <Button title={t('common.retry')} icon="refresh" onPress={begin} className="flex-1" /> : null}
+            </View>
+          </View>
+        ) : null}
+
+        {phase === 'recording' || phase === 'stopping' ? (
+          <View>
+            <View className="flex-row items-center">
+              <AnimatedAvatar avatar={avatar} size={28} presence="listening" />
+              <Text className="ml-2 font-medium text-[13px] text-ink">{t('voice.recording')}</Text>
+              <Text className="ml-auto text-[13px] text-muted" style={{ fontVariant: ['tabular-nums'] }}>
+                {formatDuration(elapsed)} / {formatDuration(MAX_MS)}
+              </Text>
+            </View>
+            <View className="my-3 h-10 flex-row items-center">
+              {levels.map((l, i) => (
+                <View key={i} style={{ flex: 1, marginHorizontal: 1.5, height: `${Math.round(l * 100)}%`, borderRadius: 2, backgroundColor: colors.primary, opacity: 0.35 + l * 0.65 }} />
+              ))}
+            </View>
+            <View className="flex-row items-center justify-between">
+              <IconButton icon="trash-outline" variant="outline" size={44} label={t('voice.discard')} onPress={discard} />
+              <Pressable
+                onPress={() => stop()}
+                disabled={phase === 'stopping'}
+                accessibilityRole="button"
+                accessibilityLabel={t('voice.stop')}
+                className="h-14 w-14 items-center justify-center rounded-full bg-ink active:opacity-80"
+              >
+                {phase === 'stopping' ? <ActivityIndicator color={colors.paper} /> : <View className="h-4 w-4 rounded-[3px] bg-paper" />}
               </Pressable>
-            ) : null}
+              <View className="h-11 w-11" />
+            </View>
+            {voiceLeft != null ? <Text className="mt-2 text-center text-[11px] text-muted">{t('voice.left', { n: voiceLeft })}</Text> : null}
           </View>
-        </View>
-      ) : null}
+        ) : null}
 
-      {phase === 'recording' || phase === 'stopping' ? (
-        <View>
-          <View className="flex-row items-center">
-            <Animated.View entering={FadeIn} className="mr-2 h-2.5 w-2.5 rounded-full bg-accent" />
-            <Text className="font-semibold text-sm text-ink">{t('voice.recording')}</Text>
-            <Text className="ml-auto text-sm text-muted">
-              {formatDuration(elapsed)} / {formatDuration(MAX_MS)}
-            </Text>
-          </View>
-          <View className="my-4 h-12 flex-row items-center">
-            {levels.map((l, i) => (
-              <View key={i} style={{ flex: 1, marginHorizontal: 1.5, height: `${Math.round(l * 100)}%`, borderRadius: 3, backgroundColor: colors.primary }} />
-            ))}
-          </View>
-          <View className="flex-row items-center justify-between">
-            <Pressable onPress={discard} hitSlop={10} accessibilityLabel={t('voice.discard')} className="h-12 w-12 items-center justify-center rounded-full bg-cream">
-              <Ionicons name="trash-outline" size={22} color={colors.muted} />
-            </Pressable>
-            <Pressable
-              onPress={() => stop()}
-              disabled={phase === 'stopping'}
-              accessibilityLabel={t('voice.stop')}
-              className="h-16 w-16 items-center justify-center rounded-full bg-primary active:opacity-80"
-            >
-              {phase === 'stopping' ? <ActivityIndicator color={colors.paper} /> : <View className="h-5 w-5 rounded-sm bg-paper" />}
-            </Pressable>
-            <View className="h-12 w-12" />
-          </View>
-          {voiceLeft != null ? <Text className="mt-2 text-center text-[11px] text-muted">{t('voice.left', { n: voiceLeft })}</Text> : null}
-        </View>
-      ) : null}
-
-      {phase === 'preview' ? (
-        <View>
-          <Text className="mb-3 text-center text-sm text-muted">{note ?? t('voice.preview')}</Text>
-          <View className="flex-row items-center">
-            {/* Tu personaje "escucha" tu nota */}
-            <AnimatedAvatar avatar={avatar} size={60} mood={previewPlaying ? 'speaking' : 'idle'} />
-            <View className="ml-3 flex-1">
-              <VoicePlayer
-                localUri={uri}
-                durationMs={duration}
-                autoPlay
-                onPlayingChange={(p) => {
-                  setPreviewPlaying(p);
-                  onPreviewPlaying?.(p);
+        {phase === 'preview' ? (
+          <View>
+            <Text className="mb-3 text-[13px] text-muted">{note ?? t('voice.preview')}</Text>
+            <View className="flex-row items-center">
+              {/* Tu personaje "escucha" tu nota */}
+              <AnimatedAvatar avatar={avatar} size={40} presence={previewPlaying ? 'listening' : 'idle'} />
+              <View className="ml-3 flex-1 rounded-2xl border border-line px-3 py-2">
+                <VoicePlayer
+                  localUri={uri}
+                  durationMs={duration}
+                  autoPlay
+                  onPlayingChange={(p) => {
+                    setPreviewPlaying(p);
+                    onPreviewPlaying?.(p);
+                  }}
+                  tint={colors.primary}
+                />
+              </View>
+            </View>
+            <View className="mt-3 flex-row gap-2">
+              <Button title={t('voice.discard')} variant="secondary" icon="trash-outline" onPress={discard} className="flex-1" />
+              <Button
+                title={t('voice.send')}
+                variant="brand"
+                icon="arrow-up"
+                onPress={() => {
+                  onPreviewPlaying?.(false);
+                  if (uri) onSend(uri, duration);
                 }}
-                tint={colors.success}
+                className="flex-1"
               />
             </View>
           </View>
-          <View className="mt-1 h-10 items-center justify-center">
-            {previewPlaying ? (
-              <View style={{ width: 76, height: 40, overflow: 'hidden' }}>
-                <LottieView source={require('@/assets/lottie/soundwave.json')} autoPlay loop style={{ width: 76, height: 40 }} />
-              </View>
-            ) : null}
-          </View>
-          <View className="flex-row">
-            <Pressable onPress={discard} className="mr-2 h-12 flex-1 flex-row items-center justify-center rounded-full border border-line bg-paper">
-              <Ionicons name="trash-outline" size={18} color={colors.muted} />
-              <Text className="ml-2 text-base text-ink">{t('voice.discard')}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => {
-                onPreviewPlaying?.(false);
-                if (uri) onSend(uri, duration);
-              }}
-              className="h-12 flex-1 flex-row items-center justify-center rounded-full bg-primary active:opacity-80"
-            >
-              <Ionicons name="send" size={16} color={colors.paper} />
-              <Text className="ml-2 font-semibold text-base text-paper">{t('voice.send')}</Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
     </Animated.View>
   );
 }

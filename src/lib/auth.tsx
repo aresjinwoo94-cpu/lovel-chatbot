@@ -20,7 +20,7 @@ interface AuthValue {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
   sendPasswordReset: (email: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: (scope?: 'global' | 'local') => Promise<void>;
 }
 
 const AuthContext = createContext<AuthValue | null>(null);
@@ -157,8 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
   }, []);
 
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+  /** `local`: tras borrar la cuenta el servidor ya no reconoce la sesión; basta con olvidarla aquí. */
+  const signOut = useCallback(async (scope: 'global' | 'local' = 'global') => {
+    await supabase.auth.signOut({ scope });
   }, []);
 
   const value = useMemo(

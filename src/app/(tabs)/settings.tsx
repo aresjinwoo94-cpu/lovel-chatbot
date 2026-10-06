@@ -4,16 +4,14 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Card, Chip, Muted, SectionLabel, Title, ToggleRow } from '@/components/ui';
-import { colors } from '@/constants/theme';
+import { Button, Card, Field, ListRow, Muted, Segmented, SectionLabel, Title, ToggleRow } from '@/components/ui';
 import { callFunction } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { updateProfile } from '@/lib/data';
+import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import type { Language } from '@/lib/types';
-import { TextInput } from '@/components/Themed';
-import { showDialog } from '@/lib/dialog';
 
 /** Configuración simple: idioma, privacidad, contraseña y borrado de datos. */
 export default function SettingsScreen() {
@@ -73,43 +71,46 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top']}>
-      <ScrollView contentContainerClassName="w-full max-w-[640px] self-center px-5 pb-10">
-        <Title className="pb-3 pt-2 text-3xl">{t('settings.title')}</Title>
+      <ScrollView contentContainerClassName="w-full max-w-[640px] self-center px-4 pb-12">
+        <Title className="pb-1 pt-4 text-[24px] leading-[30px]">{t('settings.title')}</Title>
 
         <SectionLabel>{t('settings.language')}</SectionLabel>
-        <View className="flex-row">
-          <Chip label="Español" selected={language === 'es'} onPress={() => changeLanguage('es')} />
-          <Chip label="English" selected={language === 'en'} onPress={() => changeLanguage('en')} />
+        <View style={{ maxWidth: 280 }}>
+          <Segmented<Language>
+            value={language}
+            onChange={changeLanguage}
+            options={[
+              { id: 'es', label: 'Español' },
+              { id: 'en', label: 'English' },
+            ]}
+          />
         </View>
 
         <SectionLabel>{t('settings.privacy')}</SectionLabel>
         <Card>
           <ToggleRow label={t('settings.storeVoice')} hint={t('settings.storeVoiceHint')} value={storeVoice} onChange={toggleVoice} />
-          <Muted className="mt-2">{t('settings.privacyNote')}</Muted>
         </Card>
+        <Muted className="mt-2 px-1 text-[13px] leading-[18px]">{t('settings.privacyNote')}</Muted>
 
         <SectionLabel>{t('settings.password')}</SectionLabel>
         {showPassword ? (
-          <View className="flex-row items-center rounded-2xl border border-line bg-paper pl-4 pr-2">
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t('settings.newPassword')}
-              placeholderTextColor={colors.muted}
-              secureTextEntry
-              autoComplete="new-password"
-              className="h-12 flex-1 text-base text-ink"
-            />
-            <Button title={t('common.save')} variant="ghost" onPress={savePassword} disabled={password.length < 6} className="h-10 px-3" />
+          <View className="flex-row items-start">
+            <View className="flex-1">
+              <Field value={password} onChangeText={setPassword} placeholder={t('settings.newPassword')} secureTextEntry autoComplete="new-password" />
+            </View>
+            <Button title={t('common.save')} onPress={savePassword} disabled={password.length < 6} className="ml-2" />
           </View>
         ) : (
-          <Button title={t('settings.password')} variant="secondary" onPress={() => setShowPassword(true)} />
+          <Card>
+            <ListRow icon="key-outline" label={t('settings.password')} onPress={() => setShowPassword(true)} last />
+          </Card>
         )}
 
-        <View className="mt-10">
-          <Button
-            title={t('settings.deleteChats')}
-            variant="secondary"
+        <SectionLabel>{t('settings.data')}</SectionLabel>
+        <Card>
+          <ListRow
+            icon="trash-outline"
+            label={t('settings.deleteChats')}
             onPress={() =>
               confirm(t('settings.deleteChats'), t('settings.deleteChatsConfirm'), async () => {
                 await callFunction('delete-data', { scope: 'conversations' });
@@ -117,20 +118,21 @@ export default function SettingsScreen() {
               })
             }
           />
-          <Button
-            title={t('settings.deleteAccount')}
-            variant="danger"
-            className="mt-3"
+          <ListRow
+            icon="person-remove-outline"
+            label={t('settings.deleteAccount')}
+            danger
+            last
             onPress={() =>
               confirm(t('settings.deleteAccount'), t('settings.deleteAccountConfirm'), async () => {
                 await callFunction('delete-data', { scope: 'account' });
-                await signOut();
+                await signOut('local');
               })
             }
           />
-        </View>
+        </Card>
 
-        <Muted className="mt-8 text-center text-xs">
+        <Muted className="mt-8 text-center text-[12px]">
           {t('appName')} · {t('settings.version', { v: Constants.expoConfig?.version ?? '1.0.0' })}
         </Muted>
       </ScrollView>

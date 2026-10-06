@@ -3,14 +3,14 @@ import { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Button, Card, Muted, SectionLabel, Title } from '@/components/ui';
+import { Button, Card, Field, ListRow, Muted, SectionLabel, Title } from '@/components/ui';
 import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT, openBillingPortal } from '@/lib/billing';
 import { countUserMessages, updateProfile } from '@/lib/data';
 import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
-import { Text, TextInput } from '@/components/Themed';
+import { Text } from '@/components/Themed';
 import { showDialog } from '@/lib/dialog';
 
 /** Perfil del usuario: nombre, plan, estadísticas y cerrar sesión. */
@@ -56,71 +56,102 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['top']}>
-      <ScrollView contentContainerClassName="w-full max-w-[640px] self-center px-5 pb-10">
-        <Title className="pb-3 pt-2 text-3xl">{t('profile.title')}</Title>
+      <ScrollView contentContainerClassName="w-full max-w-[640px] self-center px-4 pb-12">
+        <Title className="pb-1 pt-4 text-[24px] leading-[30px]">{t('profile.title')}</Title>
 
-        <View className="items-center py-4">
-          <View className="h-24 w-24 items-center justify-center rounded-full bg-primary-soft">
-            <Text className="font-serif text-4xl text-primary">{initial}</Text>
+        <View className="mt-4 flex-row items-center">
+          <View className="h-14 w-14 items-center justify-center rounded-full bg-primary-soft">
+            <Text className="font-semibold text-[22px] text-primary-deep">{initial}</Text>
           </View>
-          <Text className="mt-3 font-serif text-2xl text-ink" numberOfLines={1}>
-            {name || email.split('@')[0]}
-          </Text>
-          <Muted>{email}</Muted>
-          <Muted className="mt-1">{t('profile.stats', stats)}</Muted>
-          {profile ? <Muted className="mt-1 text-xs">{t('profile.since', { date: new Date(profile.created_at).toLocaleDateString() })}</Muted> : null}
+          <View className="ml-3.5 flex-1">
+            <Text className="font-semibold text-[17px] tracking-tight text-ink" numberOfLines={1}>
+              {name || email.split('@')[0]}
+            </Text>
+            <Muted className="text-[13px]" numberOfLines={1}>
+              {email}
+            </Muted>
+          </View>
+        </View>
+        <View className="mt-4 flex-row gap-2">
+          <Stat label={t('profile.statCharacters')} value={stats.avatars} />
+          <Stat label={t('profile.statMessages')} value={stats.messages} />
+          {profile ? <Stat label={t('profile.statSince')} value={new Date(profile.created_at).toLocaleDateString([], { month: 'short', year: 'numeric' })} /> : null}
         </View>
 
         <SectionLabel>{t('profile.name')}</SectionLabel>
-        <View className="flex-row items-center rounded-2xl border border-line bg-paper pl-4 pr-2">
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder={t('profile.name')}
-            placeholderTextColor={colors.muted}
-            className="h-12 flex-1 text-base text-ink"
-            maxLength={40}
-          />
-          <Button title={saved ? t('common.saved') : t('common.save')} variant="ghost" onPress={save} className="h-10 px-3" />
+        <View className="flex-row items-start">
+          <View className="flex-1">
+            <Field value={name} onChangeText={setName} placeholder={t('profile.name')} maxLength={40} />
+          </View>
+          <Button title={saved ? t('common.saved') : t('common.save')} variant="secondary" onPress={save} disabled={name.trim() === (profile?.display_name ?? '')} className="ml-2" />
         </View>
 
         <SectionLabel>{t('profile.plan')}</SectionLabel>
-        <Card>
+        <Card className="p-4">
           <View className="flex-row items-center justify-between">
-            <Text className="font-bold text-lg text-ink">{profile?.is_pro ? t('profile.pro') : t('profile.free')}</Text>
+            <Text className="font-semibold text-[16px] tracking-tight text-ink">{profile?.is_pro ? t('profile.pro') : t('profile.free')}</Text>
             {profile?.is_pro ? (
-              <View className="rounded-full bg-accent-soft px-3 py-1">
-                <Text className="font-semibold text-xs text-primary-deep">{t('pro.active')}</Text>
+              <View className="rounded-full bg-primary-soft px-2.5 py-1">
+                <Text className="font-semibold text-[12px] text-primary-deep">{t('pro.active')}</Text>
               </View>
             ) : null}
           </View>
           {profile && !profile.is_pro ? (
-            <Muted className="mt-1">
-              {t('profile.usage', {
-                text: Math.min(profile.free_messages_used ?? 0, FREE_TEXT_LIMIT),
-                textMax: FREE_TEXT_LIMIT,
-                voice: Math.min(profile.free_voice_used ?? 0, FREE_VOICE_LIMIT),
-                voiceMax: FREE_VOICE_LIMIT,
-              })}
-            </Muted>
+            <View className="mt-3 gap-3">
+              <Usage label={t('profile.usageText')} used={profile.free_messages_used ?? 0} max={FREE_TEXT_LIMIT} />
+              <Usage label={t('profile.usageVoice')} used={profile.free_voice_used ?? 0} max={FREE_VOICE_LIMIT} />
+            </View>
           ) : null}
           {profile?.is_pro && profile.current_period_end ? (
-            <Muted className="mt-1">{t('profile.renews', { date: new Date(profile.current_period_end).toLocaleDateString() })}</Muted>
+            <Muted className="mt-1 text-[13px]">{t('profile.renews', { date: new Date(profile.current_period_end).toLocaleDateString() })}</Muted>
           ) : null}
           {profile?.is_pro ? (
             <Button
               title={t('pro.manage')}
               variant="secondary"
+              size="sm"
               onPress={() => openBillingPortal().then(refreshProfile).catch((e) => showDialog(t('common.error'), String(e)))}
-              className="mt-4"
+              className="mt-4 self-start"
             />
           ) : (
-            <Button title={t('profile.upgrade')} onPress={() => router.push('/pro')} className="mt-4" />
+            <Button title={t('profile.upgrade')} variant="brand" size="sm" onPress={() => router.push('/pro')} className="mt-4 self-start" />
           )}
         </Card>
 
-        <Button title={t('profile.signOut')} variant="danger" onPress={signOut} className="mt-8" />
+        <Card className="mt-6">
+          <ListRow icon="log-out-outline" label={t('profile.signOut')} onPress={() => signOut()} last />
+        </Card>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <View className="flex-1 rounded-xl border border-line bg-paper px-3 py-2.5">
+      <Text className="font-semibold text-[17px] tracking-tight text-ink" numberOfLines={1}>
+        {value}
+      </Text>
+      <Text className="mt-0.5 text-[12px] text-muted" numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function Usage({ label, used, max }: { label: string; used: number; max: number }) {
+  const n = Math.min(used, max);
+  return (
+    <View>
+      <View className="flex-row justify-between">
+        <Text className="text-[13px] text-ink">{label}</Text>
+        <Text className="text-[13px] text-muted" style={{ fontVariant: ['tabular-nums'] }}>
+          {n} / {max}
+        </Text>
+      </View>
+      <View className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-subtle">
+        <View className="h-full rounded-full" style={{ width: `${(n / max) * 100}%`, backgroundColor: n >= max ? colors.accent : colors.primary }} />
+      </View>
+    </View>
   );
 }

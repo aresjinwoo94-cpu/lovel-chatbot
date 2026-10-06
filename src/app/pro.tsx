@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Logo } from '@/components/Logo';
-import { Button, Muted } from '@/components/ui';
+import { Button, IconButton, Muted } from '@/components/ui';
 import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { openBillingPortal, startProCheckout, waitForPro } from '@/lib/billing';
@@ -55,40 +55,40 @@ export default function ProScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-cream">
-      <View className="flex-row justify-end px-4 pt-2">
-        <Pressable onPress={close} hitSlop={10} accessibilityLabel={t('pro.notNow')}>
-          <Ionicons name="close" size={26} color={colors.ink} />
-        </Pressable>
+      <View className="h-14 flex-row items-center justify-end px-2">
+        <IconButton icon="close" label={t('pro.notNow')} onPress={close} />
       </View>
-      <ScrollView contentContainerClassName="w-full max-w-[560px] self-center px-7 pb-10">
-        <View className="items-center">
-          <Logo size={88} />
-          <Text className="mt-5 text-center font-serif text-[30px] leading-9 text-ink">Lovel House Pro</Text>
-          <Text className="mt-2 font-semibold text-xl text-ink">{t('pro.price')}</Text>
-          <Muted className="mt-1 text-center">{t('pro.priceNote')}</Muted>
-        </View>
+      <ScrollView contentContainerClassName="w-full max-w-[440px] self-center px-5 pb-12">
+        <Logo size={36} />
+        <Text className="mt-5 font-semibold text-[26px] leading-[32px] tracking-tighter text-ink">Lovel House Pro</Text>
+        <Muted className="mt-2 text-[15px] leading-[22px]">{t('pro.priceNote')}</Muted>
 
-        <View className="mt-6 rounded-3xl border border-line bg-paper p-5">
-          {features.map((f) => (
-            <View key={f} className="my-1.5 flex-row items-center">
-              <Ionicons name="heart" size={15} color={colors.accent} />
-              <Text className="ml-3 text-base text-ink">{f}</Text>
-            </View>
-          ))}
-        </View>
+        <View className="mt-6 rounded-2xl border border-line bg-paper p-5">
+          <View className="flex-row items-baseline">
+            <Text className="font-semibold text-[30px] tracking-tighter text-ink">{t('pro.price')}</Text>
+          </View>
+          <View className="mt-4 border-t border-line pt-2">
+            {features.map((f) => (
+              <View key={f} className="mt-2.5 flex-row items-center">
+                <Ionicons name="checkmark" size={17} color={colors.primary} />
+                <Text className="ml-2.5 text-[15px] text-ink">{f}</Text>
+              </View>
+            ))}
+          </View>
 
-        {confirming ? (
-          <Muted className="mt-6 text-center">{t('pro.pending')}</Muted>
-        ) : profile?.is_pro ? (
-          <>
-            <View className="mt-6 items-center rounded-full bg-primary-soft py-3">
-              <Text className="font-semibold text-primary-deep">{t('pro.active')}</Text>
-            </View>
-            <Button title={t('pro.manage')} variant="secondary" onPress={() => openBillingPortal().then(refreshProfile)} className="mt-3" />
-          </>
-        ) : (
-          <Button title={t('pro.cta')} onPress={upgrade} loading={loading} className="mt-6" />
-        )}
+          {confirming ? (
+            <Muted className="mt-6 text-center">{t('pro.pending')}</Muted>
+          ) : profile?.is_pro ? (
+            <>
+              <View className="mt-6 h-11 items-center justify-center rounded-full bg-primary-soft">
+                <Text className="font-semibold text-[14px] text-primary-deep">{t('pro.active')}</Text>
+              </View>
+              <Button title={t('pro.manage')} variant="secondary" onPress={() => openBillingPortal().then(refreshProfile)} className="mt-2" />
+            </>
+          ) : (
+            <Button title={t('pro.cta')} variant="brand" onPress={upgrade} loading={loading} className="mt-6" />
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
