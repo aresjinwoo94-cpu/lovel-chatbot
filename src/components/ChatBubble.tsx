@@ -49,7 +49,7 @@ function ChatBubbleBase({ message, avatar, showName, showAvatar, speaking, local
   const isLeft = (isAvatar ? BUBBLE_SIDE.avatar : BUBBLE_SIDE.user) === 'left';
 
   const bubble = (
-    <View className={`max-w-[78%] rounded-bubble px-3.5 pb-1.5 pt-2 ${isAvatar ? 'border border-line bg-paper' : 'bg-primary-soft'} ${isLeft ? 'rounded-bl-[6px]' : 'rounded-br-[6px]'}`}>
+    <View className={`max-w-[78%] rounded-bubble px-3.5 pb-1.5 pt-2 ${isAvatar ? 'bg-subtle' : 'bg-primary-soft'} ${isLeft ? 'rounded-bl-[6px]' : 'rounded-br-[6px]'}`}>
       {message.kind === 'voice' ? (
         <View>
           <VoicePlayer

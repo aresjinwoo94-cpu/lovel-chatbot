@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 
 const require = createRequire(import.meta.url);
 require('sucrase/register');
-const { PRESETS, MODELS } = require('../src/lib/character/catalog.ts');
+const { PRESETS, MODELS, makeLook } = require('../src/lib/character/catalog.ts');
 const STAGE = process.env.STAGE_URL;
 const BASE = process.env.MODELS_URL;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -32,13 +32,14 @@ async function render(look, framing, w, h, file, square) {
   console.log('✓', file);
 }
 
-mkdirSync('assets/characters/presets', { recursive: true });
-for (const p of PRESETS) {
+for (const d of ['presets', 'faces', 'models']) mkdirSync(`assets/characters/${d}`, { recursive: true });
+const only = process.env.ONLY?.split(',');
+for (const p of PRESETS.filter((x) => !only || only.includes(x.id))) {
   await render(p.look, 'portrait', 300, 375, `assets/characters/presets/${p.id}.jpg`, false);
   await render(p.look, 'face', 128, 128, `assets/characters/faces/${p.id}.jpg`, true);
 }
-for (const m of MODELS) {
-  const look = { v: 3, model: m.id, hair: null, hairColor: null, eyeColor: null, skinTone: null, outfitColor: null, expression: 'neutral', accessories: [], background: 'cream' };
+for (const m of MODELS.filter((x) => !only || only.includes(x.id))) {
+  const look = makeLook({ model: m.id, background: 'cream' });
   await render(look, 'portrait', 200, 250, `assets/characters/models/${m.id}.jpg`, false);
 }
 await browser.close();

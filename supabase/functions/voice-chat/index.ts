@@ -5,7 +5,7 @@
  * Cuenta como nota de voz del plan gratuito (se devuelve si algo falla).
  */
 import { replyAsAvatar, saveExchange } from '../_shared/companion.ts';
-import { pickVoice, speechToText, textToSpeech } from '../_shared/elevenlabs.ts';
+import { pickVoice, speechToText, textToSpeech, voiceTuning } from '../_shared/elevenlabs.ts';
 import { base64ToBytes, bytesToBase64, HttpError, json, readJson, serve } from '../_shared/http.ts';
 import { refundFree, reserveFree } from '../_shared/quota.ts';
 import { admin, getConversationId, getOwnedAvatar, getProfile, requireUser } from '../_shared/supabase.ts';
@@ -48,7 +48,7 @@ serve(async (req) => {
     // 3) Texto → voz. Si ElevenLabs falla, el personaje responde por escrito (nunca en silencio).
     let replyAudio: Uint8Array<ArrayBuffer> | null = null;
     try {
-      replyAudio = await textToSpeech(reply, pickVoice(avatar.gender, avatar.age, avatar.voice_id));
+      replyAudio = await textToSpeech(reply, pickVoice(avatar.gender, avatar.age, avatar.voice_id), voiceTuning(avatar.appearance));
     } catch (e) {
       console.error('TTS', e);
     }

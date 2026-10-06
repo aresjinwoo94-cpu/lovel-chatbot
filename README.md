@@ -4,10 +4,11 @@ Lovel House es una app de **roleplay con personajes**: eliges o creas un persona
 
 Prioridad del producto: **Personaje → Personalidad → Situación → Conversación.**
 
-![Explorar personajes](docs/avatar-styles.jpg)
-![Flujo: explorar y personalizar en 3D](docs/screens-flow.jpg)
+![Biblioteca de personajes](docs/avatar-styles.jpg)
+![Creador en móvil: rostro, accesorios, voz, aleatorio](docs/screens-flow.jpg)
 ![Login, chat (escribiendo / hablando), nota de voz](docs/screens-chat.jpg)
-![Chat en escritorio](docs/screens-desktop.jpg)
+![Creador en escritorio](docs/screens-desktop.jpg)
+![Inicio con barra lateral](docs/screens-home.jpg)
 
 ---
 
@@ -16,8 +17,8 @@ Prioridad del producto: **Personaje → Personalidad → Situación → Conversa
 | Flujo | Dónde está |
 | --- | --- |
 | **Sin cuenta:** explorar personajes, personalizar, elegir personalidad y escena, vista previa. La cuenta solo se pide al empezar la historia (el borrador se guarda en el dispositivo y sobrevive al login con Google) | `src/app/explore.tsx`, `src/app/avatar/create.tsx`, `src/lib/draft.ts`, `src/app/start.tsx` |
-| Creador 3D en vivo: 12 modelos VRM base (cara, cuerpo y ropa distintos), 10 peinados intercambiables, 12 colores de pelo, 10 de ojos, 6 tonos de piel, 10 colores de ropa, 4 expresiones, 5 accesorios y 8 fondos. También se puede **importar un .vrm de VRoid Studio** | `src/app/avatar/create.tsx`, `src/lib/character/*`, `src/components/VrmAvatar.tsx`, `avatar-stage/stage.html` |
-| 10 personajes listos | `PRESETS` en `src/lib/character/catalog.ts` |
+| Creador 3D en vivo, con 9 secciones: **Personaje** (14 modelos VRM: cara, cuerpo y ropa distintos, o importar un .vrm de VRoid Studio) · **Peinado** (10 estilos, 18 colores, puntas en degradado) · **Rostro** (11 expresiones, 12 colores de ojos, ojos con o sin brillo, 8 tonos de piel, rubor, labios, sombra de ojos y 8 marcas: pecas, lunar, sonrojo anime, estrella, corazón, lágrima, cicatriz, bigotes) · **Ropa** (color por piezas: superior, inferior, calzado y detalles) · **Accesorios** (19, uno por zona: gafas, monóculo, parche, orejas de gato/zorro/conejo, cuernos, diadema, corona de flores, aureola, lazo, flor, horquilla, auriculares, alas de ángel/demonio/hada, con color propio) · **Pose** (6 poses e inclinación, giro y tamaño de la cabeza) · **Escena** (16 fondos, 7 luces, 6 efectos de ambiente, contorno y brillo) · **Voz** (15 voces de ElevenLabs con muestra, velocidad y expresividad) · **Identidad**. Con deshacer, restablecer, aleatorio y vista cara/busto/cuerpo | `src/app/avatar/create.tsx`, `src/lib/character/*`, `src/components/VrmAvatar.tsx`, `avatar-stage/stage.html` |
+| 12 personajes listos, cada uno con su voz | `PRESETS` en `src/lib/character/catalog.ts` |
 | Personalidad: 30 rasgos, de 1 a 5, con incompatibilidades (tímido ↔ extrovertido, dominante ↔ sumiso…) | `supabase/functions/_shared/roleplay.ts` |
 | 36 escenarios narrativos en 9 categorías (Romance, Drama, Amistad, Escuela, Trabajo, Fantasía, Misterio, Conflicto, Vida cotidiana) o una escena propia | `supabase/functions/_shared/roleplay.ts` |
 | El personaje envía el **primer mensaje**, coherente con su personalidad y la escena | `supabase/functions/start-chat`, `buildOpeningInstruction` en `systemPrompts.tsx` |
@@ -176,12 +177,25 @@ En el panel de Supabase:
 1. **Authentication → URL Configuration:** *Site URL* = tu dominio web; en *Redirect URLs* añade `lovelhouse://**`, `exp://**`, `http://localhost:8081/**` y `https://TU_DOMINIO/**`.
 2. **Authentication → Providers → Google:** sigue los pasos de la sección *Login con Google* de arriba.
 
-### 3. Stripe
+### 3. Stripe (activar los pagos del plan Pro)
 
-1. En **Developers → Webhooks**, crea un endpoint hacia `https://TU_PROJECT_REF.supabase.co/functions/v1/stripe-webhook` con los eventos `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated` y `customer.subscription.deleted`. Copia el *signing secret* en `STRIPE_WEBHOOK_SECRET`.
-2. Activa el **Customer Portal** (Settings → Billing → Customer portal).
-3. Para mostrar el precio en la moneda de cada país, activa **Adaptive Pricing** en Stripe.
-4. Opcional: crea un precio recurrente de $9.90/mes y pon su id en `STRIPE_PRICE_ID`. Si no lo pones, la función usa $9.90 USD/mes directamente.
+El código ya está desplegado; solo faltan las claves. Mientras no estén, el botón «Hazte Pro» muestra «Los pagos todavía no están activados» en vez de fallar.
+
+1. **Cuenta y modo prueba.** Entra en [dashboard.stripe.com](https://dashboard.stripe.com) y deja activado *Test mode* (arriba a la derecha) para probar sin cobrar.
+2. **Clave secreta.** *Developers → API keys* → copia la **Secret key** (`sk_test_…`).
+3. **Producto y precio (opcional).** *Product catalog → Add product* → «Lovel House Pro», precio **recurrente** de **9.90 USD / mes** → copia el **Price ID** (`price_…`). Si te lo saltas, la función crea el precio de 9.90 USD/mes al vuelo.
+4. **Webhook.** *Developers → Webhooks → Add endpoint*:
+   - URL: `https://snzcphkpzbjdzqjhzgzu.supabase.co/functions/v1/stripe-webhook`
+   - Eventos: `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
+   - Guarda y copia el **Signing secret** (`whsec_…`).
+5. **Portal de clientes.** *Settings → Billing → Customer portal* → **Activate** (permite cancelar la suscripción y cambiar de tarjeta).
+6. **Secretos en Supabase** (nunca en el código ni en el chat). [Dashboard de Supabase](https://supabase.com/dashboard/project/snzcphkpzbjdzqjhzgzu/settings/functions) → *Edge Functions → Secrets* → añade:
+   - `STRIPE_SECRET_KEY` = `sk_test_…`
+   - `STRIPE_WEBHOOK_SECRET` = `whsec_…`
+   - `STRIPE_PRICE_ID` = `price_…` (opcional)
+   Las funciones los leen al momento; no hay que volver a desplegar.
+7. **Prueba.** En la app: *Perfil → Hazte Pro* → paga con la tarjeta de prueba `4242 4242 4242 4242` (cualquier fecha futura y CVC). Al volver, el perfil pasa a **Pro** (lo activa el webhook en unos segundos). En Stripe → *Webhooks* verás los eventos con respuesta 200.
+8. **Pasar a real.** Repite los pasos 2–6 con *Test mode* desactivado (claves `sk_live_…` y un webhook nuevo en modo live) y sustituye los tres secretos. Para cobrar en la moneda de cada país, activa **Adaptive Pricing** (*Settings → Payments*).
 
 ### 4. La app
 

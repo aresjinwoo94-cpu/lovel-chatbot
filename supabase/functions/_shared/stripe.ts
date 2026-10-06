@@ -3,8 +3,18 @@ import Stripe from 'npm:stripe@22.6.2';
 import { HttpError, requireEnv } from './http.ts';
 import { admin, type ProfileRow } from './supabase.ts';
 
-/** Stripe (suscripción Pro $9.90/mes). Cliente fetch compatible con Deno. */
-export const stripe = new Stripe(requireEnv('STRIPE_SECRET_KEY'), { httpClient: Stripe.createFetchHttpClient() });
+/**
+ * Stripe (suscripción Pro $9.90/mes). Cliente fetch compatible con Deno.
+ * Se crea al primer uso: si aún no hay STRIPE_SECRET_KEY la función responde
+ * 503 BILLING_DISABLED (la app lo explica) en vez de fallar al arrancar.
+ */
+let client: Stripe | null = null;
+function getStripe(): Stripe {
+  const key = Deno.env.get('STRIPE_SECRET_KEY');
+  if (!key) throw new HttpError(503, 'Los pagos todavía no están activados (falta STRIPE_SECRET_KEY en Supabase).', 'BILLING_DISABLED');
+  return (client ??= new Stripe(key, { httpClient: Stripe.createFetchHttpClient() }));
+}
+export const stripe = new Proxy({} as Stripe, { get: (_t, prop) => Reflect.get(getStripe(), prop) });
 export const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 export const PRO_PRICE_CENTS = 990;

@@ -70,7 +70,7 @@ export default function SettingsScreen() {
     ]);
 
   return (
-    <SafeAreaView className="flex-1 bg-cream" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-paper" edges={['top']}>
       <ScrollView contentContainerClassName="w-full max-w-[640px] self-center px-4 pb-12">
         <Title className="pb-1 pt-4 text-[24px] leading-[30px]">{t('settings.title')}</Title>
 

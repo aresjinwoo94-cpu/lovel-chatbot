@@ -16,6 +16,7 @@ export async function createFromDraft(d: CharacterDraft) {
     situation_description: scenario ? fillName(scenario.setup.es, name) : d.customScene.trim(),
     traits: d.traits,
     scenario_id: scenario ? scenario.id : null,
+    voice_id: d.look.voice?.id ?? null,
   });
   // Foto de perfil capturada del 3D (si falla, se usa el retrato del modelo).
   if (d.snapshot) await saveAvatarThumbnail(avatar.id, d.snapshot).catch(() => undefined);

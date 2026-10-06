@@ -21,3 +21,7 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+# Muestras de voz del creador: se usa sin cuenta (solo voces del catálogo, con caché).
+[functions.voice-preview]
+verify_jwt = false

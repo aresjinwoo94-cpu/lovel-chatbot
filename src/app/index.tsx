@@ -35,7 +35,7 @@ export default function Index() {
 
   if (!target) {
     return (
-      <View className="flex-1 items-center justify-center bg-cream">
+      <View className="flex-1 items-center justify-center bg-paper">
         <ActivityIndicator color={colors.primary} />
       </View>
     );

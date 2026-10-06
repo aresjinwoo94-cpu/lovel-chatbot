@@ -6,6 +6,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedAvatar } from '@/components/AnimatedAvatar';
+import { AppSidebar } from '@/components/AppSidebar';
 import { ChatBubble } from '@/components/ChatBubble';
 import { PaywallModal } from '@/components/PaywallModal';
 import { PresencePill } from '@/components/PresencePill';
@@ -43,6 +44,7 @@ export default function ChatScreen() {
   const { profile, refreshProfile } = useAuth();
   const { width, height } = useWindowDimensions();
   const wide = width >= 900;
+  const withSidebar = width >= 1180;
 
   const [avatar, setAvatar] = useState<Avatar | null>(null);
   const [messages, setMessages] = useState<Message[]>([]); // del más nuevo al más viejo
@@ -309,7 +311,7 @@ export default function ChatScreen() {
 
   if (loading || !avatar || !look) {
     return (
-      <View className="flex-1 items-center justify-center bg-cream">
+      <View className="flex-1 items-center justify-center bg-paper">
         <ActivityIndicator color={colors.primary} />
       </View>
     );
@@ -425,7 +427,7 @@ export default function ChatScreen() {
       {recording ? (
         <VoiceRecorder avatar={avatar} voiceLeft={isPro ? null : voiceLeft} onSend={sendVoice} onClose={() => setRecording(false)} onPreviewPlaying={() => undefined} />
       ) : (
-        <SafeAreaView edges={['bottom']} className="bg-cream">
+        <SafeAreaView edges={['bottom']} className="bg-paper">
           <View className="w-full self-center px-3 pt-2" style={{ maxWidth: 760 }}>
             <View className="flex-row items-end rounded-[22px] border border-line bg-paper py-1.5 pl-4 pr-1.5">
               <TextInput
@@ -473,15 +475,28 @@ export default function ChatScreen() {
   // ------------------------------------------------ escritorio: personaje a la izquierda, chat a la derecha
   if (wide) {
     return (
-      <SafeAreaView className="flex-1 flex-row bg-cream" edges={['top']}>
-        <View className="border-r border-line" style={{ width: Math.min(520, width * 0.4) }}>
-          <View className="absolute left-3 top-3 z-10">
-            <IconButton icon="chevron-back" variant="outline" label={t('common.back')} onPress={goBack} />
-          </View>
+      <SafeAreaView className="flex-1 flex-row bg-paper" edges={['top']}>
+        {withSidebar ? <AppSidebar activeChat={avatar.id} /> : null}
+        <View className="border-r border-line" style={{ width: Math.min(480, (width - (withSidebar ? 248 : 0)) * 0.4) }}>
+          {!withSidebar ? (
+            <View className="absolute left-3 top-3 z-10">
+              <IconButton icon="chevron-back" variant="outline" label={t('common.back')} onPress={goBack} />
+            </View>
+          ) : null}
           {stage}
         </View>
         <View className="flex-1">
-          <View className="h-14 flex-row items-center justify-end border-b border-line px-3">
+          <View className="h-14 flex-row items-center border-b border-line px-4">
+            <View className="flex-1">
+              <Text className="font-semibold text-[15px] tracking-tight text-ink" numberOfLines={1}>
+                {avatar.name}
+              </Text>
+              {scenario ? (
+                <Text className="text-[12px] text-muted" numberOfLines={1}>
+                  {scenario.title[language]}
+                </Text>
+              ) : null}
+            </View>
             <IconButton icon="share-outline" label={t('chat.export')} onPress={onExport} />
           </View>
           {conversation}
@@ -493,7 +508,7 @@ export default function ChatScreen() {
 
   // ------------------------------------------------ móvil
   return (
-    <SafeAreaView className="flex-1 bg-cream" edges={['top']}>
+    <SafeAreaView className="flex-1 bg-paper" edges={['top']}>
       {collapsed ? (
         compactHeader
       ) : (

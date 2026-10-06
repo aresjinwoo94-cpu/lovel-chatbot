@@ -2,7 +2,7 @@ import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
-import { callFunction } from './api';
+import { ApiError, callFunction } from './api';
 import { supabase } from './supabase';
 
 /** Límites del plan gratuito (idénticos a supabase/functions/_shared/quota.ts). */
@@ -15,6 +15,8 @@ const returnUrl = () => (Platform.OS === 'web' ? `${window.location.origin}/pro`
  * Abre Stripe Checkout (suscripción Pro $9.90/mes) en un navegador seguro.
  * Devuelve true si al volver la cuenta ya es Pro (el webhook de Stripe la activa).
  */
+export const isBillingDisabled = (e: unknown) => e instanceof ApiError && (e.code === 'BILLING_DISABLED' || /STRIPE_SECRET_KEY/.test(e.message));
+
 export async function startProCheckout(): Promise<boolean> {
   const { url } = await callFunction<{ url: string }>('create-checkout', { returnUrl: returnUrl() });
   if (Platform.OS === 'web') {

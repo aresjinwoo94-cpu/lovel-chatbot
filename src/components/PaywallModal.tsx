@@ -7,7 +7,7 @@ import { AnimatedAvatar, type AvatarLike } from './AnimatedAvatar';
 import { Button, IconButton, Muted } from './ui';
 import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { startProCheckout } from '@/lib/billing';
+import { isBillingDisabled, startProCheckout } from '@/lib/billing';
 import { useI18n } from '@/lib/i18n';
 import { Text } from '@/components/Themed';
 import { showDialog } from '@/lib/dialog';
@@ -41,7 +41,8 @@ export function PaywallModal({ visible, avatar, onClose, onUpgraded, reason }: P
         onUpgraded();
       }
     } catch (e) {
-      showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
+      if (isBillingDisabled(e)) showDialog(t('pro.title'), t('billing.disabled'));
+      else showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }

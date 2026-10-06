@@ -45,7 +45,7 @@ export default function AuthCallback() {
   }, [params.code, params.next, t]);
 
   return (
-    <View className="flex-1 items-center justify-center bg-cream">
+    <View className="flex-1 items-center justify-center bg-paper">
       <ActivityIndicator color={colors.primary} />
     </View>
   );

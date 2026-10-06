@@ -17,5 +17,6 @@ for fn in chat start-chat voice-chat create-checkout billing-portal delete-data;
 done
 supabase functions deploy checkout-return --no-verify-jwt
 supabase functions deploy stripe-webhook --no-verify-jwt
+supabase functions deploy voice-preview --no-verify-jwt
 
 echo "✓ Listo. Webhook de Stripe: https://<tu-proyecto>.supabase.co/functions/v1/stripe-webhook"

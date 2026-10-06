@@ -7,6 +7,7 @@ import { Platform } from 'react-native';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/supabaseConfig';
 
 import { supabase } from './supabase';
+import { resetThreads } from './threads';
 import type { Profile } from './types';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -160,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** `local`: tras borrar la cuenta el servidor ya no reconoce la sesión; basta con olvidarla aquí. */
   const signOut = useCallback(async (scope: 'global' | 'local' = 'global') => {
     await supabase.auth.signOut({ scope });
+    resetThreads();
   }, []);
 
   const value = useMemo(

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState, type ComponentProps, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, Switch, View, type TextInputProps, type TextProps } from 'react-native';
+import { useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { ActivityIndicator, Modal, Pressable, Switch, useWindowDimensions, View, type GestureResponderEvent, type TextInputProps, type TextProps } from 'react-native';
 
 import { Text, TextInput } from '@/components/Themed';
 import { colors } from '@/constants/theme';
@@ -92,7 +92,7 @@ export function Button({
   icon?: ComponentProps<typeof Ionicons>['name'];
   className?: string;
 }) {
-  const h = { sm: 'h-9 px-4', md: 'h-11 px-5', lg: 'h-12 px-6' }[size];
+  const h = { sm: 'h-8 px-3.5', md: 'h-10 px-4', lg: 'h-11 px-5' }[size];
   const box: Record<ButtonVariant, string> = {
     primary: 'bg-ink',
     brand: 'bg-primary',
@@ -114,8 +114,8 @@ export function Button({
         <ActivityIndicator color={fg[variant]} size="small" />
       ) : (
         <>
-          {icon ? <Ionicons name={icon} size={size === 'sm' ? 16 : 18} color={fg[variant]} style={{ marginRight: 8 }} /> : null}
-          <Text className={`font-semibold ${size === 'sm' ? 'text-[13px]' : 'text-[15px]'}`} style={{ color: fg[variant] }}>
+          {icon ? <Ionicons name={icon} size={size === 'sm' ? 15 : 17} color={fg[variant]} style={{ marginRight: 6 }} /> : null}
+          <Text className={`font-semibold ${size === 'sm' ? 'text-[13px]' : 'text-[14px]'}`} style={{ color: fg[variant] }}>
             {title}
           </Text>
         </>
@@ -164,11 +164,11 @@ export function Tag({ label, selected, onPress, disabled = false }: { label: str
       disabled={disabled}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected, disabled }}
-      className={`mb-2 mr-2 h-9 justify-center rounded-full border px-3.5 ${selected ? 'border-primary bg-primary-soft' : 'border-line bg-paper'} ${
+      className={`mb-2 mr-2 h-8 justify-center rounded-full border px-3 ${selected ? 'border-ink bg-ink' : 'border-line bg-paper'} ${
         disabled ? 'opacity-35' : 'active:opacity-70'
       }`}
     >
-      <Text className={`text-[13px] ${selected ? 'font-semibold text-primary-deep' : 'font-medium text-ink'}`}>{label}</Text>
+      <Text className={`text-[13px] ${selected ? 'font-semibold text-paper' : 'font-medium text-ink'}`}>{label}</Text>
     </Pressable>
   );
 }
@@ -176,7 +176,7 @@ export function Tag({ label, selected, onPress, disabled = false }: { label: str
 /** Control segmentado (2–5 opciones). */
 export function Segmented<T extends string>({ options, value, onChange }: { options: { id: T; label: string }[]; value: T; onChange: (id: T) => void }) {
   return (
-    <View className="flex-row rounded-xl bg-subtle p-1">
+    <View className="flex-row rounded-[10px] bg-subtle p-0.5">
       {options.map((o) => {
         const on = o.id === value;
         return (
@@ -185,7 +185,7 @@ export function Segmented<T extends string>({ options, value, onChange }: { opti
             onPress={() => onChange(o.id)}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            className={`h-9 flex-1 items-center justify-center rounded-[9px] ${on ? 'border border-line bg-paper' : ''}`}
+            className={`h-8 flex-1 items-center justify-center rounded-lg ${on ? 'border border-line bg-paper' : ''}`}
           >
             <Text className={`text-[13px] ${on ? 'font-semibold text-ink' : 'font-medium text-muted'}`} numberOfLines={1}>
               {o.label}
@@ -204,9 +204,9 @@ export function Swatch({ color, selected, onPress, label }: { color: string; sel
       accessibilityRole="radio"
       accessibilityLabel={label}
       accessibilityState={{ selected }}
-      className={`mb-2.5 mr-2.5 h-10 w-10 items-center justify-center rounded-full border-2 ${selected ? 'border-primary' : 'border-transparent'}`}
+      className={`mb-2 mr-2 h-9 w-9 items-center justify-center rounded-full border-2 ${selected ? 'border-ink' : 'border-transparent'}`}
     >
-      <View className="h-8 w-8 rounded-full border border-black/10" style={{ backgroundColor: color }} />
+      <View className="h-7 w-7 rounded-full border border-black/10" style={{ backgroundColor: color }} />
     </Pressable>
   );
 }
@@ -296,6 +296,171 @@ export function EmptyState({ icon, title, text, action }: { icon: ComponentProps
       <Heading className="text-center">{title}</Heading>
       {text ? <Muted className="mt-1.5 text-center">{text}</Muted> : null}
       {action ? <View className="mt-5">{action}</View> : null}
+    </View>
+  );
+}
+
+// ------------------------------------------------------------------ etiquetas y búsqueda
+export function Badge({ label, tone = 'neutral' }: { label: string; tone?: 'neutral' | 'brand' | 'success' | 'accent' }) {
+  const box = { neutral: 'bg-subtle', brand: 'bg-primary-soft', success: 'bg-[#E3F2E9]', accent: 'bg-accent-soft' }[tone];
+  const fg = { neutral: 'text-muted', brand: 'text-primary-deep', success: 'text-[#2F7A4F]', accent: 'text-[#9C4A62]' }[tone];
+  return (
+    <View className={`h-5 justify-center self-start rounded-md px-1.5 ${box}`}>
+      <Text className={`font-semibold text-[11px] ${fg}`}>{label}</Text>
+    </View>
+  );
+}
+
+export function SearchField({ value, onChangeText, placeholder }: { value: string; onChangeText: (v: string) => void; placeholder: string }) {
+  return (
+    <View className="h-10 flex-row items-center rounded-xl border border-line bg-paper px-3">
+      <Ionicons name="search" size={16} color={colors.muted} />
+      <TextInput
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor={colors.muted}
+        className="ml-2 h-10 flex-1 text-[14px] text-ink"
+        style={{ outlineStyle: 'none' } as object}
+        autoCorrect={false}
+      />
+      {value ? <IconButton icon="close-circle" size={28} label="clear" onPress={() => onChangeText('')} /> : null}
+    </View>
+  );
+}
+
+// ------------------------------------------------------------------ deslizador
+/**
+ * Deslizador (como los de voz de ElevenLabs): etiqueta y valor arriba, pista fina,
+ * pulgar blanco con borde de tinta y extremos descritos con palabras.
+ */
+export function Slider({
+  label,
+  value,
+  min,
+  max,
+  step = 0.01,
+  onChange,
+  format,
+  left,
+  right,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  onChange: (v: number) => void;
+  format?: (v: number) => string;
+  left?: string;
+  right?: string;
+}) {
+  const [w, setW] = useState(0);
+  const ratio = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  const set = (e: GestureResponderEvent) => {
+    if (!w) return;
+    const r = Math.max(0, Math.min(1, e.nativeEvent.locationX / w));
+    const raw = min + r * (max - min);
+    const v = Math.round(raw / step) * step;
+    onChange(+Math.max(min, Math.min(max, v)).toFixed(3));
+  };
+  return (
+    <View className="mb-1">
+      <View className="mb-1 flex-row items-center justify-between">
+        <Text className="font-medium text-[13px] text-ink">{label}</Text>
+        <Text className="text-[12px] text-muted" style={{ fontVariant: ['tabular-nums'] }}>
+          {format ? format(value) : value.toFixed(2)}
+        </Text>
+      </View>
+      <View
+        accessibilityRole="adjustable"
+        accessibilityLabel={label}
+        accessibilityValue={{ min, max, now: value }}
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+        onAccessibilityAction={(e) => onChange(Math.max(min, Math.min(max, value + (e.nativeEvent.actionName === 'increment' ? 1 : -1) * (max - min) * 0.1)))}
+        onLayout={(e) => setW(e.nativeEvent.layout.width)}
+        onStartShouldSetResponder={() => true}
+        onMoveShouldSetResponder={() => true}
+        onResponderTerminationRequest={() => false}
+        onResponderGrant={set}
+        onResponderMove={set}
+        className="h-7 justify-center"
+        style={{ userSelect: 'none', cursor: 'pointer' } as object}
+      >
+        <View pointerEvents="none" className="h-1 overflow-hidden rounded-full bg-line">
+          <View className="h-full bg-ink" style={{ width: `${ratio * 100}%` }} />
+        </View>
+        <View
+          pointerEvents="none"
+          className="absolute h-4 w-4 rounded-full border-2 border-ink bg-paper"
+          style={{ left: Math.max(0, ratio * w - 8) }}
+        />
+      </View>
+      {left || right ? (
+        <View className="flex-row justify-between">
+          <Text className="text-[11px] text-muted">{left}</Text>
+          <Text className="text-[11px] text-muted">{right}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// ------------------------------------------------------------------ menú contextual
+export interface MenuItem {
+  label: string;
+  icon?: ComponentProps<typeof Ionicons>['name'];
+  danger?: boolean;
+  onPress: () => void;
+}
+
+/** Menú desplegable anclado a su botón (acciones de fila, menú de usuario). */
+export function Menu({ items, label, icon = 'ellipsis-horizontal', size = 32, align = 'right' }: { items: MenuItem[]; label: string; icon?: ComponentProps<typeof Ionicons>['name']; size?: number; align?: 'left' | 'right' }) {
+  const ref = useRef<View>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const { width, height } = useWindowDimensions();
+  const open = () => ref.current?.measureInWindow((x, y, w, h) => setAnchor({ x, y, w, h }));
+  const menuW = 200;
+  const left = anchor ? Math.max(8, Math.min(width - menuW - 8, align === 'right' ? anchor.x + anchor.w - menuW : anchor.x)) : 0;
+  const below = anchor ? anchor.y + anchor.h + 4 : 0;
+  const top = anchor && below + items.length * 40 + 12 > height ? Math.max(8, anchor.y - items.length * 40 - 16) : below;
+  return (
+    <>
+      <View ref={ref} collapsable={false}>
+        <IconButton icon={icon} size={size} label={label} onPress={open} />
+      </View>
+      <Modal visible={!!anchor} transparent animationType="fade" onRequestClose={() => setAnchor(null)}>
+        <Pressable className="flex-1" onPress={() => setAnchor(null)}>
+          <View className="absolute rounded-xl border border-line bg-paper py-1" style={{ left, top, width: menuW }}>
+            {items.map((it) => (
+              <Pressable
+                key={it.label}
+                accessibilityRole="menuitem"
+                onPress={() => {
+                  setAnchor(null);
+                  it.onPress();
+                }}
+                className="mx-1 h-9 flex-row items-center rounded-lg px-2.5 active:bg-subtle"
+                style={{ cursor: 'pointer' } as object}
+              >
+                {it.icon ? <Ionicons name={it.icon} size={16} color={it.danger ? '#B4233C' : colors.ink} style={{ marginRight: 10 }} /> : null}
+                <Text className={`text-[13px] ${it.danger ? 'text-[#B4233C]' : 'text-ink'}`}>{it.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
+/** Barra de progreso fina (uso del plan). */
+export function Meter({ value, max, tone = 'ink' }: { value: number; max: number; tone?: 'ink' | 'brand' | 'accent' }) {
+  const r = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
+  const bg = { ink: colors.ink, brand: colors.primary, accent: colors.accent }[tone];
+  return (
+    <View className="h-1 overflow-hidden rounded-full bg-line">
+      <View className="h-full rounded-full" style={{ width: `${r * 100}%`, backgroundColor: bg }} />
     </View>
   );
 }

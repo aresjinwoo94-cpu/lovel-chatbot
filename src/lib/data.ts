@@ -35,6 +35,8 @@ export interface NewAvatar {
   situation_description: string;
   traits: string[];
   scenario_id: string | null;
+  /** Voz de ElevenLabs elegida en el creador (null = automática). */
+  voice_id: string | null;
 }
 
 /** Crea el avatar. La conversación se crea sola con un trigger en la base de datos. */

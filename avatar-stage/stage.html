@@ -12,8 +12,12 @@
   Mensajes que acepta (postMessage con JSON):
     { type: 'look', look: {...}, modelBaseUrl, framing: 'bust'|'face'|'portrait', transparent?: bool }
     { type: 'state', mood: 'idle'|'thinking'|'listening'|'speaking'|'happy'|'offline' }
-    { type: 'snapshot', size? }  → responde { type: 'snapshot', dataUrl }
+    { type: 'snapshot', framing?, size? | width & height }  → responde { type: 'snapshot', dataUrl }
   Envía: { type: 'ready' } · { type: 'loaded' } · { type: 'error', message }
+
+  Aspecto (look): modelo, peinado, colores de pelo (+ puntas), ojos, piel, ropa
+  por piezas, maquillaje y marcas, expresión, pose, cabeza (inclinación, giro,
+  tamaño), accesorios por zonas, fondo, luz, efecto de ambiente, contorno y brillo.
 -->
 <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">
@@ -47,11 +51,25 @@ const send = (msg) => {
   if (window.__onStageMessage) window.__onStageMessage(msg); // pruebas automáticas
 };
 
-// Fondos de estudio (tonos de la marca, planos con una luz suave detrás).
+// Fondos de estudio: degradado suave (centro, borde).
 const BACKDROPS = {
   lilac: ['#EEEAF9', '#DDD6F2'], blush: ['#F7ECEF', '#ECD9E0'], cream: ['#F5F1EA', '#E6DED1'],
   peach: ['#F7EDE5', '#ECDACC'], sky: ['#ECF1F8', '#D8E2EF'], mint: ['#EAF3EE', '#D3E6DB'],
   twilight: ['#E2DBF4', '#C9BDEB'], night: ['#34303F', '#1F1C27'],
+  white: ['#FFFFFF', '#EEEDEB'], studio: ['#EDEDEF', '#D3D3D8'], sakura: ['#FBEFF4', '#F0CFDC'],
+  sunset: ['#FBE6D6', '#E7B4B9'], ocean: ['#E3F2F3', '#B7D9DE'], forest: ['#E4EDE3', '#B9CDB8'],
+  midnight: ['#2E3552', '#141A2D'], wine: ['#4A2433', '#24111A'],
+};
+
+// Iluminación: luz principal, relleno, contorno y ambiente.
+const LIGHTS = {
+  studio: { key: [0xfff6ee, 2.1], fill: [0xdcd6ff, 0.55], rim: [0xffffff, 1.2], amb: [0xffffff, 0.42] },
+  soft: { key: [0xffffff, 1.45], fill: [0xfff8f4, 0.85], rim: [0xffffff, 0.7], amb: [0xffffff, 0.72] },
+  warm: { key: [0xffd8ae, 2.0], fill: [0xffe8d8, 0.5], rim: [0xffc283, 1.5], amb: [0xfff0e2, 0.45] },
+  cool: { key: [0xe4eeff, 2.0], fill: [0xc6d6ff, 0.62], rim: [0xb5d2ff, 1.6], amb: [0xeef3ff, 0.45] },
+  sunset: { key: [0xffcaa8, 1.85], fill: [0xc4b0ff, 0.6], rim: [0xff9cc0, 1.6], amb: [0xffeae2, 0.42] },
+  night: { key: [0xa9b6ff, 1.25], fill: [0x6f5bd3, 0.65], rim: [0x9fd0ff, 2.1], amb: [0x8890c0, 0.38] },
+  dramatic: { key: [0xffffff, 2.7], fill: [0xffffff, 0.12], rim: [0xffffff, 2.3], amb: [0xffffff, 0.18] },
 };
 
 // ------------------------------------------------------------------ 3D
@@ -62,16 +80,23 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(20, 1, 0.1, 20);
 
-// Iluminación de estudio: luz principal cálida, relleno frío y luz de contorno.
 const key = new THREE.DirectionalLight(0xfff6ee, 2.1);
 key.position.set(-0.7, 1.5, 1.6);
 const fill = new THREE.DirectionalLight(0xdcd6ff, 0.55);
 fill.position.set(1.2, 0.4, 1.0);
 const rim = new THREE.DirectionalLight(0xffffff, 1.2);
 rim.position.set(0.4, 1.2, -1.6);
-scene.add(key, fill, rim, new THREE.AmbientLight(0xffffff, 0.42));
+const ambient = new THREE.AmbientLight(0xffffff, 0.42);
+scene.add(key, fill, rim, ambient);
 
-// Fondo: plano con degradado radial suave (no una escena pintada).
+function setLighting(id) {
+  const L = LIGHTS[id] || LIGHTS.studio;
+  key.color.setHex(L.key[0]); key.intensity = L.key[1];
+  fill.color.setHex(L.fill[0]); fill.intensity = L.fill[1];
+  rim.color.setHex(L.rim[0]); rim.intensity = L.rim[1];
+  ambient.color.setHex(L.amb[0]); ambient.intensity = L.amb[1];
+}
+
 let backdropTex = null;
 function setBackdrop(id, transparent) {
   if (transparent) { scene.background = null; return; }
@@ -97,55 +122,176 @@ function resize() {
 addEventListener('resize', resize);
 
 // ------------------------------------------------------------------ recoloreado (como en VRoid)
-const originalImages = new WeakMap();
-/** Cambia el color de una textura conservando sus luces y sombras. */
-function recolor(material, hex, strength = 1) {
+const originals = new WeakMap();
+/**
+ * Cambia el color de una textura conservando sus luces y sombras y, si se pide,
+ * pinta encima (maquillaje). `key` evita repetir el trabajo si nada cambió.
+ */
+function retexture(material, { hex = null, strength = 1, paint = null, key = '' } = {}) {
   const map = material.map;
-  if (!hex && !originalImages.has(material)) return; // nunca recoloreado: nada que restaurar
-  if (!originalImages.has(material)) originalImages.set(material, { image: map?.image, color: material.color?.clone(), shade: material.shadeColorFactor?.clone() });
-  const orig = originalImages.get(material);
-  if (!hex) {
-    // volver al color original del modelo
+  const want = hex || paint ? `${hex}|${strength}|${key}` : '';
+  if ((material.userData.lovelKey || '') === want) return;
+  if (!want && !originals.has(material)) return;
+  if (!originals.has(material)) originals.set(material, { image: map?.image, color: material.color?.clone(), shade: material.shadeColorFactor?.clone() });
+  material.userData.lovelKey = want;
+  const orig = originals.get(material);
+  if (!want) {
     if (orig.image && map) { const tex = new THREE.Texture(orig.image); copyTex(tex, map); material.map = tex; if (material.shadeMultiplyTexture) material.shadeMultiplyTexture = tex; }
     if (orig.color) material.color.copy(orig.color);
     if (orig.shade && material.shadeColorFactor) material.shadeColorFactor.copy(orig.shade);
     material.needsUpdate = true;
     return;
   }
-  if (!map || !orig.image) { material.color?.set(hex); return; }
+  if (!map || !orig.image) { if (hex) material.color?.set(hex); return; }
   const img = orig.image;
   const c = document.createElement('canvas');
   const W = (c.width = img.width), H = (c.height = img.height);
   const g = c.getContext('2d', { willReadFrequently: true });
   g.drawImage(img, 0, 0);
-  const d = g.getImageData(0, 0, W, H); const px = d.data;
-  const tr = parseInt(hex.slice(1, 3), 16), tg = parseInt(hex.slice(3, 5), 16), tb = parseInt(hex.slice(5, 7), 16);
-  let sum = 0, n = 0;
-  for (let i = 0; i < px.length; i += 16) { if (px[i + 3] > 10) { sum += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; n++; } }
-  const avg = Math.max(1, sum / Math.max(1, n));
-  for (let i = 0; i < px.length; i += 4) {
-    const l = Math.min(1.6, (0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]) / avg);
-    px[i] += (Math.min(255, tr * l) - px[i]) * strength;
-    px[i + 1] += (Math.min(255, tg * l) - px[i + 1]) * strength;
-    px[i + 2] += (Math.min(255, tb * l) - px[i + 2]) * strength;
+  if (hex) {
+    const d = g.getImageData(0, 0, W, H); const px = d.data;
+    const tr = parseInt(hex.slice(1, 3), 16), tg = parseInt(hex.slice(3, 5), 16), tb = parseInt(hex.slice(5, 7), 16);
+    let sum = 0, n = 0;
+    for (let i = 0; i < px.length; i += 16) { if (px[i + 3] > 10) { sum += 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]; n++; } }
+    const avg = Math.max(1, sum / Math.max(1, n));
+    for (let i = 0; i < px.length; i += 4) {
+      const l = Math.min(1.6, (0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2]) / avg);
+      px[i] += (Math.min(255, tr * l) - px[i]) * strength;
+      px[i + 1] += (Math.min(255, tg * l) - px[i + 1]) * strength;
+      px[i + 2] += (Math.min(255, tb * l) - px[i + 2]) * strength;
+    }
+    g.putImageData(d, 0, 0);
   }
-  g.putImageData(d, 0, 0);
+  if (paint) paint(g, W, H);
   const tex = new THREE.CanvasTexture(c);
   copyTex(tex, map);
   material.map = tex;
   if (material.shadeMultiplyTexture) material.shadeMultiplyTexture = tex;
-  if (material.color) material.color.set(0xffffff);
-  if (material.shadeColorFactor) material.shadeColorFactor.set(new THREE.Color(hex).multiplyScalar(0.72).lerp(new THREE.Color(0xffffff), 0.3));
+  if (hex) {
+    if (material.color) material.color.set(0xffffff);
+    if (material.shadeColorFactor) material.shadeColorFactor.set(new THREE.Color(hex).multiplyScalar(0.72).lerp(new THREE.Color(0xffffff), 0.3));
+  } else {
+    if (orig.color) material.color.copy(orig.color);
+    if (orig.shade && material.shadeColorFactor) material.shadeColorFactor.copy(orig.shade);
+  }
   material.needsUpdate = true;
 }
 function copyTex(tex, from) { tex.colorSpace = from.colorSpace; tex.flipY = from.flipY; tex.wrapS = from.wrapS; tex.wrapT = from.wrapT; tex.needsUpdate = true; }
+
+const rgb = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+const rgba = (hex, a) => { const [r, g, b] = rgb(hex); return `rgba(${r},${g},${b},${a})`; };
+
+/**
+ * Maquillaje y marcas sobre la textura de la cara. Todos los rostros de VRoid
+ * comparten el mismo mapa UV: ojos ≈ (0.35, 0.555) y (0.665, 0.555),
+ * mejillas ≈ (0.31, 0.66) y (0.69, 0.66), boca ≈ (0.5, 0.765).
+ */
+function paintFace(look) {
+  const blush = Math.max(0, Math.min(1, +look.blush || 0));
+  const marks = Array.isArray(look.marks) ? look.marks : [];
+  if (!blush && !look.lipColor && !look.eyeshadow && !marks.length) return null;
+  return (g, W, H) => {
+    const X = (x) => x * W, Y = (y) => y * H;
+    const soft = (cx, cy, rx, ry, color, alpha, op = 'source-over') => {
+      g.save(); g.globalCompositeOperation = op;
+      g.translate(X(cx), Y(cy)); g.scale(1, ry / rx);
+      const grd = g.createRadialGradient(0, 0, 0, 0, 0, X(rx));
+      grd.addColorStop(0, rgba(color, alpha)); grd.addColorStop(1, rgba(color, 0));
+      g.fillStyle = grd; g.beginPath(); g.arc(0, 0, X(rx), 0, Math.PI * 2); g.fill(); g.restore();
+    };
+    if (look.eyeshadow) for (const cx of [0.352, 0.662]) soft(cx, 0.527, 0.09, 0.045, look.eyeshadow, 0.85, 'multiply');
+    if (blush) for (const cx of [0.315, 0.688]) soft(cx, 0.655, 0.075, 0.045, '#F07C98', 0.5 * blush);
+    if (look.lipColor) {
+      // Solo los píxeles del labio (más oscuros que la piel de alrededor).
+      const x0 = Math.floor(X(0.43)), y0 = Math.floor(Y(0.742)), w = Math.ceil(X(0.14)), h = Math.ceil(Y(0.05));
+      const d = g.getImageData(x0, y0, w, h); const px = d.data;
+      const ref = g.getImageData(Math.floor(X(0.5)), Math.floor(Y(0.725)), 1, 1).data;
+      const refL = 0.299 * ref[0] + 0.587 * ref[1] + 0.114 * ref[2];
+      const [lr, lg, lb] = rgb(look.lipColor);
+      for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+        const nx = (i / w - 0.5) * 2, ny = (j / h - 0.5) * 2;
+        if (nx * nx + ny * ny > 1) continue;
+        const k = (j * w + i) * 4;
+        const l = 0.299 * px[k] + 0.587 * px[k + 1] + 0.114 * px[k + 2];
+        const amt = Math.max(0, Math.min(1, (refL - l) / 45)) * (1 - (nx * nx + ny * ny) * 0.6);
+        const f = l / 170;
+        px[k] += (Math.min(255, lr * f) - px[k]) * amt; px[k + 1] += (Math.min(255, lg * f) - px[k + 1]) * amt; px[k + 2] += (Math.min(255, lb * f) - px[k + 2]) * amt;
+      }
+      g.putImageData(d, x0, y0);
+    }
+    const dot = (x, y, r, color) => { g.fillStyle = color; g.beginPath(); g.arc(X(x), Y(y), X(r), 0, Math.PI * 2); g.fill(); };
+    const line = (pts, color, width) => { g.strokeStyle = color; g.lineWidth = X(width); g.lineCap = 'round'; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)))); g.stroke(); };
+    if (marks.includes('freckles')) {
+      const spots = [[0.395, 0.63], [0.41, 0.645], [0.38, 0.648], [0.425, 0.635], [0.4, 0.662], [0.37, 0.635], [0.415, 0.668], [0.435, 0.652]];
+      for (const [x, y] of spots) { dot(x, y, 0.0032, 'rgba(160,96,70,0.55)'); dot(1 - x, y + 0.002, 0.0032, 'rgba(160,96,70,0.55)'); }
+    }
+    if (marks.includes('mole')) dot(0.705, 0.632, 0.0058, 'rgba(70,40,36,0.85)');
+    if (marks.includes('blush_lines')) for (const cx of [0.315, 0.688]) for (let i = -1; i <= 1; i++) line([[cx + i * 0.018 - 0.006, 0.648], [cx + i * 0.018 + 0.006, 0.668]], 'rgba(224,110,140,0.75)', 0.0035);
+    if (marks.includes('star')) {
+      g.save(); g.translate(X(0.345), Y(0.628)); g.fillStyle = '#F2B84B'; g.beginPath();
+      for (let i = 0; i < 10; i++) { const r = X(i % 2 ? 0.011 : 0.026); const a = -Math.PI / 2 + (i * Math.PI) / 5; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+      g.closePath(); g.fill(); g.restore();
+    }
+    if (marks.includes('heart')) {
+      g.save(); g.translate(X(0.345), Y(0.628)); const s = X(0.017); g.fillStyle = '#E26D8F'; g.beginPath();
+      g.moveTo(0, s * 0.9); g.bezierCurveTo(-s * 1.6, -s * 0.2, -s * 0.7, -s * 1.3, 0, -s * 0.45); g.bezierCurveTo(s * 0.7, -s * 1.3, s * 1.6, -s * 0.2, 0, s * 0.9); g.fill(); g.restore();
+    }
+    if (marks.includes('tear')) {
+      g.save(); g.translate(X(0.655), Y(0.622)); const s = X(0.011); g.fillStyle = 'rgba(70,90,150,0.85)'; g.beginPath();
+      g.moveTo(0, -s * 1.6); g.quadraticCurveTo(s * 1.1, 0, 0, s); g.quadraticCurveTo(-s * 1.1, 0, 0, -s * 1.6); g.fill(); g.restore();
+    }
+    if (marks.includes('scar')) {
+      line([[0.6, 0.6], [0.73, 0.69]], 'rgba(170,80,80,0.75)', 0.006);
+      for (const t of [0.3, 0.5, 0.7]) { const x = 0.6 + 0.13 * t, y = 0.6 + 0.09 * t; line([[x - 0.008, y + 0.01], [x + 0.008, y - 0.01]], 'rgba(176,96,96,0.5)', 0.003); }
+    }
+    if (marks.includes('whiskers')) for (const side of [-1, 1]) for (const dy of [-0.014, 0, 0.014]) {
+      const x0 = side < 0 ? 0.27 : 0.73, x1 = side < 0 ? 0.37 : 0.63;
+      line([[x0, 0.672 + dy * 1.4], [x1, 0.668 + dy]], 'rgba(90,60,60,0.55)', 0.0028);
+    }
+  };
+}
+
+// Degradado en las puntas del pelo: se inyecta en el shader MToon (sin recompilar al cambiar de color).
+function prepareHairTip(m) {
+  if (m.userData.tip) return;
+  const u = { uTipColor: { value: new THREE.Color(1, 1, 1) }, uTipOn: { value: 0 }, uTipTop: { value: 1 }, uTipBottom: { value: 0 } };
+  m.userData.tip = u;
+  // MToon ya usa onBeforeCompile (define la versión de three): lo encadenamos.
+  const prev = m.onBeforeCompile;
+  const prevKey = m.customProgramCacheKey;
+  m.onBeforeCompile = (shader, r) => {
+    prev?.call(m, shader, r);
+    Object.assign(shader.uniforms, u);
+    if (!shader.vertexShader.includes('#include <skinning_vertex>') || !shader.fragmentShader.includes('#include <dithering_fragment>')) return;
+    shader.vertexShader = 'varying float vLovelY;\n' + shader.vertexShader.replace('#include <skinning_vertex>', '#include <skinning_vertex>\nvLovelY = (modelMatrix * vec4(transformed, 1.0)).y;');
+    shader.fragmentShader = 'varying float vLovelY;\nuniform vec3 uTipColor;\nuniform float uTipOn;\nuniform float uTipTop;\nuniform float uTipBottom;\n' +
+      shader.fragmentShader.replace('#include <dithering_fragment>', `
+        if (uTipOn > 0.5) {
+          float k = clamp((uTipTop - vLovelY) / max(uTipTop - uTipBottom, 0.001), 0.0, 1.0);
+          k = k * k * (3.0 - 2.0 * k);
+          vec3 W = vec3(0.299, 0.587, 0.114);
+          float l = dot(gl_FragColor.rgb, W);
+          vec3 tgt = clamp(uTipColor * (0.5 + 0.85 * l), 0.0, 1.0);
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, tgt, k * 0.92);
+        }
+        #include <dithering_fragment>`);
+  };
+  m.customProgramCacheKey = () => (prevKey ? prevKey.call(m) : '') + '|lovel-hairtip';
+  m.needsUpdate = true;
+}
 
 const category = (name) => {
   const n = (name || '').toUpperCase();
   if (n.includes('HAIR')) return 'hair';
   if (n.includes('EYEIRIS') || n.includes('IRIS')) return 'iris';
-  if (n.includes('_SKIN') || n === 'BODY' || n === 'FACE' || n.includes('BODY_00') || n.includes('FACE_00')) return 'skin';
+  if (n.includes('EYEHIGHLIGHT')) return 'highlight';
+  if (n.includes('FACEBROW')) return 'brow';
+  if (n.includes('FACE_00_SKIN') || n === 'FACE') return 'face';
+  if (n.includes('_SKIN') || n === 'BODY' || n.includes('BODY_00')) return 'skin';
   if (/TOPS|ONEPI|ONEPICE|OUTER|DRESS/.test(n)) return 'top';
+  if (n.includes('BOTTOMS')) return 'bottom';
+  if (n.includes('SHOES')) return 'shoes';
+  if (n.includes('ACCESSORY')) return 'accent';
   return 'other';
 };
 
@@ -156,35 +302,75 @@ function eachMaterial(root, fn) {
   });
 }
 
-/** Contorno sutil de luz (rim) en los materiales MToon: acabado "personaje de videojuego". */
-function premiumMaterials(root) {
-  eachMaterial(root, (m) => {
-    if (m.parametricRimColorFactor) {
-      m.parametricRimColorFactor.set(0xf1ecff);
-      m.parametricRimFresnelPowerFactor = 4.5;
-      m.parametricRimLiftFactor = 0.05;
-    }
-  });
+/** Contorno de luz (rim) y líneas de contorno según el gusto. */
+function applyFinish(look) {
+  const shine = look.shine == null ? 0.5 : Math.max(0, Math.min(1, +look.shine));
+  const outline = look.outline || 'normal';
+  for (const root of [current.vrm?.scene, current.hairVrm?.scene].filter(Boolean)) {
+    eachMaterial(root, (m) => {
+      if (m.parametricRimColorFactor) {
+        m.parametricRimColorFactor.setHex(0xf1ecff).multiplyScalar(shine * 2);
+        m.parametricRimFresnelPowerFactor = 5 - shine * 1.5;
+        m.parametricRimLiftFactor = 0.02 + shine * 0.06;
+      }
+      if (m.outlineWidthFactor != null) {
+        if (m.userData.outline0 == null) m.userData.outline0 = m.outlineWidthFactor;
+        const o = m.userData.outline0;
+        m.outlineWidthFactor = outline === 'none' ? 0 : outline === 'bold' ? Math.max(o * 3.5, 0.0025) : o;
+      }
+    });
+  }
 }
 
 function applyColors(look) {
   const targets = [current.vrm?.scene, current.hairVrm?.scene].filter(Boolean);
+  const facePaint = paintFace(look);
+  const faceKey = JSON.stringify([look.blush, look.lipColor, look.eyeshadow, look.marks]);
   for (const root of targets) {
+    const own = root === current.vrm.scene;
     eachMaterial(root, (m) => {
       const cat = category(m.name);
-      if (cat === 'hair') recolor(m, look.hairColor || null);
-      else if (cat === 'iris') recolor(m, look.eyeColor || null);
-      else if (cat === 'skin' && root === current.vrm.scene) recolor(m, look.skinTone || null, 0.5);
-      else if (cat === 'top' && root === current.vrm.scene) recolor(m, look.outfitColor || null, 0.9);
+      if (cat === 'hair') {
+        retexture(m, { hex: look.hairColor || null });
+        if (m.userData.tip) {
+          const on = !!look.hairTip;
+          m.userData.tip.uTipOn.value = on ? 1 : 0;
+          if (on) { const [r, g, b] = rgb(look.hairTip); m.userData.tip.uTipColor.value.setRGB(r / 255, g / 255, b / 255, THREE.LinearSRGBColorSpace); }
+        }
+      } else if (!own) return;
+      else if (cat === 'iris') retexture(m, { hex: look.eyeColor || null });
+      else if (cat === 'brow') retexture(m, { hex: look.hairColor ? shadeHex(look.hairColor, 0.62) : null, strength: 0.85 });
+      else if (cat === 'highlight') m.visible = look.eyeShine !== false;
+      else if (cat === 'face') retexture(m, { hex: look.skinTone || null, strength: 0.5, paint: facePaint, key: faceKey });
+      else if (cat === 'skin') retexture(m, { hex: look.skinTone || null, strength: 0.5 });
+      else if (cat === 'top') retexture(m, { hex: look.outfitColor || null, strength: 0.9 });
+      else if (cat === 'bottom') retexture(m, { hex: look.bottomColor || null, strength: 0.9 });
+      else if (cat === 'shoes') retexture(m, { hex: look.shoesColor || null, strength: 0.9 });
+      else if (cat === 'accent') retexture(m, { hex: look.accentColor || null, strength: 0.9 });
     });
+  }
+  updateHairTipRange();
+}
+const shadeHex = (hex, f) => '#' + rgb(hex).map((v) => Math.round(v * f).toString(16).padStart(2, '0')).join('');
+
+/** Altura del pelo (en el mundo) para el degradado de las puntas. */
+function updateHairTipRange() {
+  const box = new THREE.Box3();
+  for (const root of [current.vrm?.scene, current.hairVrm?.scene].filter(Boolean)) {
+    root.traverse((o) => { if (o.isMesh && o.visible && isHairMesh(o)) box.expandByObject(o); });
+  }
+  if (box.isEmpty()) return;
+  const top = box.max.y, bottom = box.min.y;
+  const start = bottom + (top - bottom) * 0.55;
+  for (const root of [current.vrm?.scene, current.hairVrm?.scene].filter(Boolean)) {
+    eachMaterial(root, (m) => { if (m.userData.tip) { m.userData.tip.uTipTop.value = start; m.userData.tip.uTipBottom.value = bottom; } });
   }
 }
 
 // ------------------------------------------------------------------ carga
 const loader = new GLTFLoader();
 loader.register((parser) => new VRMLoaderPlugin(parser));
-const cache = new Map();
-const current = { vrm: null, hairVrm: null, modelUrl: null, hairUrl: null, look: null, mood: 'idle', framing: 'bust', accessories: null, headScale: 1 };
+const current = { vrm: null, hairVrm: null, modelUrl: null, hairUrl: null, look: null, mood: 'idle', framing: 'bust', accessories: [], headScale: 1, pose: null };
 
 async function fetchVrm(url) {
   const gltf = await loader.loadAsync(url);
@@ -193,16 +379,43 @@ async function fetchVrm(url) {
   VRMUtils.combineSkeletons(gltf.scene);
   VRMUtils.rotateVRM0(vrm);
   vrm.scene.traverse((o) => { o.frustumCulled = false; });
-  premiumMaterials(vrm.scene);
+  eachMaterial(vrm.scene, (m) => { if (category(m.name) === 'hair') prepareHairTip(m); });
   return vrm;
 }
 
-function relaxPose(vrm) {
+// ------------------------------------------------------------------ poses
+// Valores para el brazo izquierdo de un VRM 0 (el derecho es su espejo).
+const POSES = {
+  relaxed: { u: [0.1, 0, 1.2], l: [0, 0, 0.14], h: [0, 0, 0] },
+  formal: { u: [0.02, 0, 1.36], l: [0, 0, 0.05], h: [0, 0, 0.1] },
+  confident: { u: [0.05, -0.35, 0.78], l: [0, -0.55, 1.55], h: [0, 0, -0.3] },
+  shy: { u: [0.15, -0.55, 1.22], l: [0, -1.15, 0.35], h: [0, -0.3, 0] },
+  hands_back: { u: [0.05, 0.7, 1.22], l: [0, 1.25, 0.2], h: [0, 0, 0] },
+  wave: { u: [0.1, 0, 1.2], l: [0, 0, 0.14], h: [0, 0, 0], right: { u: [0, -0.25, 0.45], l: [0, -0.1, -1.9], h: [0, 0, 0] } },
+};
+const FINGERS = ['Index', 'Middle', 'Ring', 'Little'];
+
+function applyPose(vrm, pose) {
+  if (!vrm) return;
   const b = (n) => vrm.humanoid.getNormalizedBoneNode(n);
-  const sgn = vrm.meta?.metaVersion === '0' ? 1 : -1;
-  b('leftUpperArm').rotation.z = 1.2 * sgn; b('rightUpperArm').rotation.z = -1.2 * sgn;
-  b('leftLowerArm').rotation.z = 0.14 * sgn; b('rightLowerArm').rotation.z = -0.14 * sgn;
-  b('leftUpperArm').rotation.x = 0.1; b('rightUpperArm').rotation.x = 0.1;
+  const v0 = vrm.meta?.metaVersion === '0';
+  const P = POSES[pose] || POSES.relaxed;
+  const set = (node, [x, y, z], mirror) => {
+    if (!node) return;
+    // espejo: el lado derecho invierte Y y Z; VRM 1 está girado 180° (invierte X y Z).
+    let rx = x, ry = mirror ? -y : y, rz = mirror ? -z : z;
+    if (!v0) { rx = -rx; rz = -rz; }
+    node.rotation.set(rx, ry, rz);
+  };
+  for (const [side, mirror] of [['left', false], ['right', true]]) {
+    const def = side === 'right' && P.right ? P.right : P;
+    set(b(`${side}UpperArm`), def.u, mirror);
+    set(b(`${side}LowerArm`), def.l, mirror);
+    set(b(`${side}Hand`), def.h, mirror);
+    // dedos ligeramente curvados (manos naturales, no planas)
+    for (const f of FINGERS) for (const seg of ['Proximal', 'Intermediate', 'Distal']) set(b(`${side}${f}${seg}`), [0, 0, 0.28], mirror);
+  }
+  current.pose = pose;
 }
 
 const isHairMesh = (o) => {
@@ -210,7 +423,6 @@ const isHairMesh = (o) => {
   return mats.some((m) => /HAIR/i.test(m.name || ''));
 };
 
-/** Ancho de la cara (para ajustar un peinado de otro modelo a esta cabeza). */
 function faceWidth(vrm) {
   const box = new THREE.Box3();
   let found = false;
@@ -239,7 +451,6 @@ function attachHair(target, donor) {
     if (t && d) { d.matrixWorldAutoUpdate = false; d.matrixAutoUpdate = false; pairs.push([name, t, d]); }
   }
   const tw = faceWidth(target), dw = faceWidth(donor);
-  // Las cabezas de VRoid son casi iguales; si la medida sale rara (orejas de elfo, etc.) no escalamos.
   const ratio = tw && dw ? tw / dw : 1;
   current.headScale = ratio > 0.86 && ratio < 1.16 ? ratio : 1;
   current.hairPairs = pairs;
@@ -253,8 +464,12 @@ function followSkeleton() {
     d.matrixWorld.copy(t.matrixWorld);
     if (name === 'head' && s !== 1) d.matrixWorld.multiply(tmp.makeScale(s, s, s));
   }
-  // Los huesos emparejados conservan la matriz copiada; el resto (huesos del pelo) se recalcula desde ellos.
   current.hairVrm.scene.updateMatrixWorld(true);
+}
+
+function settle() {
+  for (const v of [current.vrm, current.hairVrm]) { if (!v) continue; v.springBoneManager?.setInitState(); v.springBoneManager?.reset(); }
+  for (let i = 0; i < 120; i++) step(1 / 60, 0, true);
 }
 
 async function load(look, base) {
@@ -265,31 +480,33 @@ async function load(look, base) {
   const [vrm, hairVrm] = await Promise.all([fetchVrm(modelUrl), hairUrl ? fetchVrm(hairUrl) : null]);
   for (const v of [current.vrm, current.hairVrm]) if (v) { scene.remove(v.scene); VRMUtils.deepDispose(v.scene); }
   current.vrm = vrm; current.hairVrm = hairVrm; current.modelUrl = modelUrl; current.hairUrl = hairUrl; current.hairPairs = null; current.headScale = 1;
-  current.accessories = null;
+  current.accessories = [];
   scene.add(vrm.scene);
-  relaxPose(vrm);
-  if (hairVrm) { relaxPose(hairVrm); attachHair(vrm, hairVrm); }
+  applyPose(vrm, look.pose);
+  if (hairVrm) { applyPose(hairVrm, look.pose); attachHair(vrm, hairVrm); }
+  applyHeadSize(look);
   vrm.update(0);
   scene.updateMatrixWorld(true);
   followSkeleton();
-  for (const v of [vrm, hairVrm]) { if (!v) continue; v.springBoneManager?.setInitState(); v.springBoneManager?.reset(); }
-  // El pelo tiene física: lo dejamos asentarse antes de mostrarlo.
-  for (let i = 0; i < 120; i++) step(1 / 60, 0, true);
+  settle();
   frameCamera();
   return true;
 }
 
-// ------------------------------------------------------------------ accesorios 3D (sobre el hueso de la cabeza)
-function buildAccessories(ids) {
-  const vrm = current.vrm;
-  if (current.accessories) { current.accessories.parent?.remove(current.accessories); current.accessories = null; }
-  if (!vrm || !ids?.length) return;
-  // Huesos "raw" (los que se dibujan); los normalizados no forman parte de la escena visible.
+function applyHeadSize(look) {
+  const s = Math.max(0.88, Math.min(1.14, +look.headSize || 1));
+  const head = current.vrm?.humanoid.getRawBoneNode('head');
+  if (head) head.scale.setScalar(s);
+}
+
+// ------------------------------------------------------------------ accesorios 3D
+const mat = (c, metal = 0.3, rough = 0.38, extra = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: metal, ...extra });
+const ACC_DEFAULT = { bow: '#E6A0B4', flower: '#F4B6C8', star_clip: '#F2C14E', headphones: '#6F5BD3', choker: '#2B2733', tiara: '#C9B6F2', flower_crown: '#F4B6C8', horns: '#2E2738', angel_wings: '#FFFFFF', demon_wings: '#3B2448', fairy_wings: '#BFE6F2' };
+
+function headMetrics(vrm) {
   const head = vrm.humanoid.getRawBoneNode('head');
   const le = vrm.humanoid.getRawBoneNode('leftEye');
   const re = vrm.humanoid.getRawBoneNode('rightEye');
-  scene.updateMatrixWorld(true);
-  const group = new THREE.Group();
   const hp = new THREE.Vector3(); head.getWorldPosition(hp);
   const eyes = new THREE.Vector3();
   let eyeDist = 0.064;
@@ -298,8 +515,6 @@ function buildAccessories(ids) {
     le.getWorldPosition(a); re.getWorldPosition(b);
     eyes.copy(a).add(b).multiplyScalar(0.5); eyeDist = a.distanceTo(b);
   } else eyes.set(hp.x, hp.y + 0.06, hp.z + 0.08);
-  const local = (v) => head.worldToLocal(v.clone());
-  // Geometría real de la cabeza (caja de la malla de la cara): frente y coronilla.
   const faceBox = new THREE.Box3();
   vrm.scene.traverse((o) => {
     if (!o.isMesh) return;
@@ -308,68 +523,365 @@ function buildAccessories(ids) {
   });
   const front = Math.max(faceBox.isEmpty() ? 0 : faceBox.max.z, eyes.z + eyeDist * 1.15);
   const crown = faceBox.isEmpty() ? hp.y + eyeDist * 2.6 : Math.max(faceBox.max.y, eyes.y + eyeDist * 1.6);
-  const mat = (c, metal = 0.3) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.35, metalness: metal });
-  if (ids.includes('glasses_round') || ids.includes('glasses_square')) {
-    const g = new THREE.Group();
-    const r = eyeDist * 0.52;
-    const frame = mat(0x2b2733, 0.6);
-    const round = ids.includes('glasses_round');
-    for (const sx of [-1, 1]) {
-      const geo = round ? new THREE.TorusGeometry(r, r * 0.09, 10, 40) : new THREE.TorusGeometry(r, r * 0.1, 6, 4);
-      const ring = new THREE.Mesh(geo, frame);
-      if (!round) { ring.rotation.z = Math.PI / 4; ring.scale.set(1.15, 0.8, 1); }
-      ring.position.set(sx * eyeDist * 0.5, 0, 0);
-      g.add(ring);
-      const lens = new THREE.Mesh(new THREE.CircleGeometry(r * 0.96, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, roughness: 0.05 }));
-      lens.position.copy(ring.position);
-      g.add(lens);
-    }
-    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.06, r * 0.06, eyeDist * 0.2, 8), frame);
-    bridge.rotation.z = Math.PI / 2; g.add(bridge);
-    g.position.copy(local(new THREE.Vector3(eyes.x, eyes.y + 0.003, front + eyeDist * 0.3)));
-    group.add(g);
-  }
-  const top = local(new THREE.Vector3(eyes.x, crown, eyes.z - eyeDist * 0.4));
   const halfW = faceBox.isEmpty() ? eyeDist * 1.4 : (faceBox.max.x - faceBox.min.x) / 2;
-  const at = (x, y, z) => local(new THREE.Vector3(eyes.x + x, y, z));
-  if (ids.includes('cat_ears')) {
-    const color = current.look?.hairColor || '#3a3346';
+  // Volumen real del pelo por encima de los ojos (para que nada quede escondido dentro).
+  const hairBox = new THREE.Box3();
+  for (const root of [vrm.scene, current.hairVrm?.scene].filter(Boolean)) root.traverse((o) => {
+    if (!o.isMesh || !o.visible || !isHairMesh(o)) return;
+    const pos = o.geometry.attributes.position; if (!pos) return;
+    o.updateWorldMatrix(true, false);
+    const v = new THREE.Vector3();
+    const stepN = Math.max(1, Math.floor(pos.count / 1500));
+    for (let i = 0; i < pos.count; i += stepN) { v.fromBufferAttribute(pos, i); o.isSkinnedMesh ? o.applyBoneTransform(i, v) : null; v.applyMatrix4(o.matrixWorld); if (v.y > eyes.y) hairBox.expandByPoint(v); }
+  });
+  const hairTop = hairBox.isEmpty() ? crown + eyeDist * 0.3 : Math.max(crown, hairBox.max.y);
+  const hairHalfW = hairBox.isEmpty() ? halfW * 1.2 : Math.max(halfW, (hairBox.max.x - hairBox.min.x) / 2);
+  return { head, eyes, eyeDist, front, crown: hairTop - eyeDist * 0.25, halfW, hairTop, hairHalfW };
+}
+
+/** Las piezas se construyen en coordenadas del mundo mirando a +Z y luego se cuelgan del hueso. */
+function attachTo(bone, group) {
+  const q = new THREE.Quaternion(); bone.getWorldQuaternion(q);
+  const inv = q.clone().invert();
+  const s = new THREE.Vector3(); bone.getWorldScale(s);
+  for (const c of group.children) {
+    const wp = c.position.clone();
+    c.position.copy(bone.worldToLocal(wp));
+    c.quaternion.premultiply(inv);
+    c.scale.divide(s);
+  }
+  bone.add(group);
+  current.accessories.push(group);
+}
+
+function star(r, inner) {
+  const s = new THREE.Shape();
+  for (let i = 0; i < 10; i++) { const rr = i % 2 ? inner : r; const a = Math.PI / 2 + (i * Math.PI) / 5; i ? s.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : s.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+  return s;
+}
+function flowerMesh(size, color) {
+  const g = new THREE.Group();
+  const petal = mat(color, 0, 0.6);
+  for (let i = 0; i < 5; i++) {
+    const p = new THREE.Mesh(new THREE.SphereGeometry(size * 0.55, 12, 8), petal);
+    const a = (i / 5) * Math.PI * 2;
+    p.scale.set(1, 0.62, 0.35);
+    p.position.set(Math.cos(a) * size * 0.62, Math.sin(a) * size * 0.62, 0);
+    p.rotation.z = a;
+    g.add(p);
+  }
+  const c = new THREE.Mesh(new THREE.SphereGeometry(size * 0.36, 12, 8), mat('#F6D36B', 0, 0.5));
+  c.scale.z = 0.6; c.position.z = size * 0.12; g.add(c);
+  return g;
+}
+function hornGeometry(r, h, bend) {
+  const geo = new THREE.ConeGeometry(r, h, 18, 10);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const t = (pos.getY(i) + h / 2) / h;
+    pos.setZ(i, pos.getZ(i) - bend * t * t * h);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+function buildAccessories(look) {
+  for (const g of current.accessories) g.parent?.remove(g);
+  current.accessories = [];
+  current.wings = null;
+  current.extraTop = 0;
+  const vrm = current.vrm;
+  const ids = look.accessories || [];
+  if (!vrm || !ids.length) return;
+  scene.updateMatrixWorld(true);
+  const { head, eyes, eyeDist: e, front, crown, halfW, hairTop, hairHalfW } = headMetrics(vrm);
+  let extraTop = 0;
+  const top = (y) => { extraTop = Math.max(extraTop, y - hairTop); };
+  const has = (id) => ids.includes(id);
+  const col = (id) => look.accessoryColor || ACC_DEFAULT[id] || '#6F5BD3';
+  const W = (x, y, z) => new THREE.Vector3(eyes.x + x, y, z);
+  const g = new THREE.Group();
+  const put = (mesh, pos, rot) => { mesh.position.copy(pos); if (rot) mesh.rotation.set(rot[0], rot[1], rot[2]); g.add(mesh); return mesh; };
+
+  // --- ojos
+  if (has('glasses_round') || has('glasses_square') || has('sunglasses')) {
+    const gl = new THREE.Group();
+    const r = e * 0.52;
+    const round = has('glasses_round');
+    const sun = has('sunglasses');
+    const frame = mat(sun ? '#141218' : '#2b2733', 0.6, 0.3);
+    for (const sx of [-1, 1]) {
+      const geo = round ? new THREE.TorusGeometry(r, r * 0.09, 10, 40) : new THREE.TorusGeometry(r, r * (sun ? 0.13 : 0.1), 6, 4);
+      const ring = new THREE.Mesh(geo, frame);
+      if (!round) { ring.rotation.z = Math.PI / 4; ring.scale.set(sun ? 1.25 : 1.15, sun ? 0.86 : 0.8, 1); }
+      ring.position.set(sx * e * 0.5, 0, 0);
+      gl.add(ring);
+      const lens = new THREE.Mesh(new THREE.CircleGeometry(r * 0.96, 32), new THREE.MeshStandardMaterial({ color: sun ? 0x1a1820 : 0xffffff, transparent: true, opacity: sun ? 0.86 : 0.12, roughness: 0.05, metalness: sun ? 0.4 : 0 }));
+      if (!round) lens.scale.set(sun ? 1.2 : 1.1, sun ? 0.82 : 0.75, 1);
+      lens.position.copy(ring.position);
+      gl.add(lens);
+    }
+    const bridge = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.06, r * 0.06, e * 0.2, 8), frame);
+    bridge.rotation.z = Math.PI / 2; gl.add(bridge);
+    put(gl, W(0, eyes.y + 0.003, front + e * 0.3));
+  }
+  if (has('monocle')) {
+    const gold = mat('#D4AF37', 0.85, 0.25);
+    const r = e * 0.5;
+    const m1 = put(new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.08, 10, 40), gold), W(-e * 0.5, eyes.y, front + e * 0.3));
+    put(new THREE.Mesh(new THREE.CircleGeometry(r * 0.95, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 })), m1.position.clone());
+    const chain = new THREE.Mesh(new THREE.CylinderGeometry(e * 0.012, e * 0.012, e * 1.6, 6), gold);
+    put(chain, W(-e * 0.9, eyes.y - e * 0.95, front + e * 0.15), [0, 0, 0.35]);
+  }
+  if (has('eyepatch')) {
+    const dark = mat('#1d1a22', 0.1, 0.7);
+    const patch = new THREE.Mesh(new THREE.SphereGeometry(e * 0.5, 20, 12), dark);
+    patch.scale.set(1.05, 0.9, 0.28);
+    put(patch, W(e * 0.5, eyes.y, front + e * 0.18));
+    for (const [x0, y0] of [[e * 0.95, e * 0.35], [e * 0.95, -e * 0.2]]) {
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(halfW * 1.1, e * 0.05, e * 0.04), dark);
+      put(strap, W(x0 - halfW * 0.25, eyes.y + y0, front - e * 0.45), [0, -0.9, y0 > 0 ? 0.25 : -0.2]);
+    }
+  }
+  // --- cabeza (arriba)
+  if (has('cat_ears') || has('fox_ears')) {
+    const fox = has('fox_ears');
+    const color = look.accessoryColor || look.hairColor || (fox ? '#E08A4E' : '#3a3346');
     for (const sx of [-1, 1]) {
       const ear = new THREE.Group();
-      const outer = new THREE.Mesh(new THREE.ConeGeometry(eyeDist * 0.62, eyeDist * 1.25, 3), mat(color, 0));
-      const inner = new THREE.Mesh(new THREE.ConeGeometry(eyeDist * 0.36, eyeDist * 0.8, 3), mat(0xf2b5c5, 0));
-      inner.position.set(0, -eyeDist * 0.12, eyeDist * 0.16);
+      const outer = new THREE.Mesh(new THREE.ConeGeometry(e * (fox ? 0.55 : 0.62), e * (fox ? 1.65 : 1.25), fox ? 14 : 3), mat(color, 0, 0.7));
+      if (fox) outer.scale.z = 0.5;
+      const inner = new THREE.Mesh(new THREE.ConeGeometry(e * (fox ? 0.32 : 0.36), e * (fox ? 1.1 : 0.8), fox ? 12 : 3), mat(fox ? '#FFF4E6' : '#f2b5c5', 0, 0.8));
+      inner.position.set(0, -e * 0.15, e * (fox ? 0.12 : 0.16));
+      if (fox) inner.scale.z = 0.4;
       ear.add(outer, inner);
-      ear.position.copy(at(sx * halfW * 0.62, crown + eyeDist * 0.55, eyes.z - eyeDist * 0.3));
-      ear.rotation.z = -sx * 0.32;
-      group.add(ear);
+      if (fox) { const tip = new THREE.Mesh(new THREE.ConeGeometry(e * 0.2, e * 0.42, 12), mat('#2B2228', 0, 0.7)); tip.scale.z = 0.5; tip.position.y = e * 0.62; ear.add(tip); }
+      put(ear, W(sx * halfW * 0.62, crown + e * (fox ? 0.7 : 0.55), eyes.z - e * 0.3), [0, 0, -sx * 0.32]);
+      top(crown + e * (fox ? 1.55 : 1.2));
     }
   }
-  if (ids.includes('halo')) {
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(eyeDist * 1.35, eyeDist * 0.09, 12, 60), new THREE.MeshBasicMaterial({ color: 0xffe9a3 }));
-    halo.rotation.x = Math.PI / 2.3;
-    halo.position.copy(at(0, crown + eyeDist * 1.1, eyes.z - eyeDist * 0.4));
-    group.add(halo);
-  }
-  if (ids.includes('headphones')) {
-    const r = halfW * 1.18;
-    const band = new THREE.Mesh(new THREE.TorusGeometry(r, eyeDist * 0.13, 10, 48, Math.PI), mat(0x2f2b38, 0.4));
-    band.position.copy(at(0, eyes.y - eyeDist * 0.3, eyes.z - eyeDist * 0.5));
-    band.scale.set(1, (crown + eyeDist * 0.5 - (eyes.y - eyeDist * 0.3)) / r, 1);
-    group.add(band);
+  if (has('bunny_ears')) {
     for (const sx of [-1, 1]) {
-      const cup = new THREE.Mesh(new THREE.CylinderGeometry(eyeDist * 0.5, eyeDist * 0.5, eyeDist * 0.36, 24), mat(0x6f5bd3, 0.2));
-      cup.rotation.z = Math.PI / 2;
-      cup.position.copy(at(sx * (r + eyeDist * 0.05), eyes.y - eyeDist * 0.35, eyes.z - eyeDist * 0.5));
-      group.add(cup);
+      const ear = new THREE.Group();
+      const outer = new THREE.Mesh(new THREE.CapsuleGeometry(e * 0.26, e * 1.9, 8, 16), mat(look.accessoryColor || '#F7F4F1', 0, 0.75));
+      outer.scale.z = 0.45;
+      const inner = new THREE.Mesh(new THREE.CapsuleGeometry(e * 0.15, e * 1.5, 8, 16), mat('#F4B9C9', 0, 0.8));
+      inner.scale.z = 0.3; inner.position.z = e * 0.06;
+      ear.add(outer, inner);
+      put(ear, W(sx * halfW * 0.42, crown + e * 1.35, eyes.z - e * 0.35), [-0.12, 0, -sx * 0.22]);
+      top(crown + e * 2.6);
     }
   }
-  // Orientación: las piezas se construyen mirando a +Z del mundo (hacia la cámara).
-  const q = new THREE.Quaternion(); head.getWorldQuaternion(q);
-  group.quaternion.copy(q.invert());
-  group.children.forEach((c) => c.position.applyQuaternion(group.quaternion.clone().invert()));
-  head.add(group);
-  current.accessories = group;
+  if (has('horns')) {
+    for (const sx of [-1, 1]) {
+      const horn = new THREE.Mesh(hornGeometry(e * 0.2, e * 1.05, 0.55), mat(col('horns'), 0.2, 0.35));
+      put(horn, W(sx * halfW * 0.55, crown + e * 0.25, eyes.z - e * 0.15), [-0.25, 0, -sx * 0.38]);
+      top(crown + e * 0.9);
+    }
+  }
+  if (has('halo')) {
+    put(new THREE.Mesh(new THREE.TorusGeometry(e * 1.35, e * 0.09, 12, 60), new THREE.MeshBasicMaterial({ color: look.accessoryColor || 0xffe9a3 })), W(0, hairTop + e * 0.75, eyes.z - e * 0.4), [Math.PI / 2.3, 0, 0]);
+    top(hairTop + e * 1.1);
+  }
+  if (has('tiara')) {
+    // Diadema: arco por encima del pelo (visto de frente) con picos y gemas.
+    const silver = mat('#ECEAF3', 0.9, 0.18);
+    const t = new THREE.Group();
+    const cy = eyes.y + e * 0.4;
+    const R = (hairTop - cy) * 0.98;
+    const arc = Math.PI * 0.62;
+    const band = new THREE.Mesh(new THREE.TorusGeometry(R, e * 0.075, 10, 48, arc), silver);
+    band.rotation.z = (Math.PI - arc) / 2; t.add(band);
+    for (let i = -2; i <= 2; i++) {
+      const a = Math.PI / 2 + i * 0.22;
+      const len = e * (i === 0 ? 0.7 : Math.abs(i) === 1 ? 0.46 : 0.28);
+      const spike = new THREE.Mesh(new THREE.ConeGeometry(e * 0.1, len, 8), silver);
+      spike.position.set(Math.cos(a) * (R + len / 2), Math.sin(a) * (R + len / 2), 0);
+      spike.rotation.z = a - Math.PI / 2; t.add(spike);
+      const gem = new THREE.Mesh(new THREE.OctahedronGeometry(e * (i === 0 ? 0.13 : 0.08)), mat(col('tiara'), 0.3, 0.1, { emissive: new THREE.Color(col('tiara')).multiplyScalar(0.3) }));
+      gem.position.set(Math.cos(a) * R, Math.sin(a) * R, e * 0.05); t.add(gem);
+    }
+    t.scale.x = Math.min(1.25, (hairHalfW * 0.95) / Math.max(R * Math.sin(arc / 2), 0.001));
+    put(t, W(0, cy, eyes.z - e * 0.1), [-0.32, 0, 0]);
+    top(cy + R + e * 0.6);
+  }
+  if (has('flower_crown')) {
+    const fc = new THREE.Group();
+    const palette = look.accessoryColor ? [look.accessoryColor] : ['#F4B6C8', '#FFFFFF', '#C9B6F2', '#F6D36B'];
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2;
+      const f = flowerMesh(e * 0.3, palette[i % palette.length]);
+      f.position.set(Math.cos(a) * hairHalfW * 0.82, 0, Math.sin(a) * hairHalfW * 0.82);
+      f.lookAt(Math.cos(a) * hairHalfW * 3, e * 1.2, Math.sin(a) * hairHalfW * 3);
+      fc.add(f);
+    }
+    put(fc, W(0, hairTop - e * 0.85, eyes.z - e * 0.45), [0.3, 0, 0]);
+    top(hairTop + e * 0.1);
+  }
+  // --- lateral (horquillas)
+  const side = (x, y) => W(x * hairHalfW, hairTop - e * y, eyes.z - e * 0.25);
+  if (has('bow')) {
+    const bw = new THREE.Group();
+    const m = mat(col('bow'), 0, 0.55);
+    for (const sx of [-1, 1]) { const lobe = new THREE.Mesh(new THREE.SphereGeometry(e * 0.48, 16, 12), m); lobe.scale.set(1.2, 0.72, 0.42); lobe.position.x = sx * e * 0.5; lobe.rotation.z = sx * 0.25; bw.add(lobe); }
+    const knot = new THREE.Mesh(new THREE.SphereGeometry(e * 0.2, 12, 10), m); knot.scale.z = 0.7; bw.add(knot);
+    put(bw, side(0.62, 0.55), [0, 0.35, -0.45]);
+  }
+  if (has('flower')) put(flowerMesh(e * 0.42, col('flower')), side(0.64, 0.6), [0, 0.35, -0.3]);
+  if (has('star_clip')) {
+    const s = new THREE.Mesh(new THREE.ExtrudeGeometry(star(e * 0.38, e * 0.16), { depth: e * 0.06, bevelEnabled: true, bevelSize: e * 0.02, bevelThickness: e * 0.02, bevelSegments: 2 }), mat(col('star_clip'), 0.6, 0.25));
+    put(s, side(0.64, 0.6), [0, 0.35, -0.3]);
+  }
+  // --- orejas
+  if (has('headphones')) {
+    const r = Math.max(halfW * 1.18, hairHalfW * 0.98);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(r, e * 0.13, 10, 48, Math.PI), mat(0x2f2b38, 0.4));
+    band.scale.set(1, (hairTop + e * 0.12 - (eyes.y - e * 0.3)) / r, 1);
+    put(band, W(0, eyes.y - e * 0.3, eyes.z - e * 0.5));
+    for (const sx of [-1, 1]) put(new THREE.Mesh(new THREE.CylinderGeometry(e * 0.5, e * 0.5, e * 0.36, 24), mat(col('headphones'), 0.2)), W(sx * (r + e * 0.05), eyes.y - e * 0.35, eyes.z - e * 0.5), [0, 0, Math.PI / 2]);
+  }
+  current.extraTop = extraTop;
+  if (g.children.length) attachTo(head, g);
+
+  // --- espalda (alas)
+  const wingsId = ['angel_wings', 'demon_wings', 'fairy_wings'].find(has);
+  if (wingsId) {
+    const chest = vrm.humanoid.getRawBoneNode('upperChest') || vrm.humanoid.getRawBoneNode('chest') || vrm.humanoid.getRawBoneNode('spine');
+    const cp = new THREE.Vector3(); chest.getWorldPosition(cp);
+    const wg = new THREE.Group();
+    const color = col(wingsId);
+    const pivots = [];
+    for (const sx of [-1, 1]) {
+      const pivot = new THREE.Group();
+      pivot.position.set(cp.x + sx * e * 0.8, cp.y + e * 1.5, cp.z - e * 1.7);
+      pivot.scale.setScalar(1.55);
+      if (wingsId === 'angel_wings') {
+        // Silueta de ala con el borde inferior en ondas (plumas), en dos capas.
+        const wingShape = (k) => {
+          const sh = new THREE.Shape();
+          sh.moveTo(0, 0);
+          sh.bezierCurveTo(e * 0.8 * k, e * 1.6 * k, e * 2.4 * k, e * 2.9 * k, e * 3.9 * k, e * 2.7 * k);
+          sh.quadraticCurveTo(e * 4.1 * k, e * 1.2 * k, e * 3.6 * k, -e * 0.5 * k);
+          const lobes = 5;
+          for (let i = 0; i < lobes; i++) {
+            const x0 = e * k * (3.6 - (i * 3.6) / lobes), x1 = e * k * (3.6 - ((i + 1) * 3.6) / lobes);
+            const y0 = -e * k * (0.5 - i * 0.1), y1 = -e * k * (0.5 - (i + 1) * 0.1);
+            sh.quadraticCurveTo((x0 + x1) / 2, Math.min(y0, y1) - e * 0.55 * k, x1, y1);
+          }
+          return new THREE.ExtrudeGeometry(sh, { depth: e * 0.05, bevelEnabled: true, bevelSize: e * 0.03, bevelThickness: e * 0.03, bevelSegments: 2 });
+        };
+        const back = new THREE.Mesh(wingShape(1), mat(color, 0, 0.85, { emissive: new THREE.Color(color).multiplyScalar(0.38) }));
+        const front = new THREE.Mesh(wingShape(0.62), mat(shadeHex(color, 0.94), 0, 0.85, { emissive: new THREE.Color(color).multiplyScalar(0.3) }));
+        back.scale.x = sx; front.scale.x = sx;
+        front.position.set(sx * e * 0.15, e * 0.25, e * 0.1);
+        pivot.add(back, front);
+      } else if (wingsId === 'demon_wings') {
+        const s = new THREE.Shape();
+        s.moveTo(0, 0); s.lineTo(e * 3.6, e * 2.2); s.quadraticCurveTo(e * 3.4, e * 0.6, e * 3.8, -e * 0.6);
+        s.quadraticCurveTo(e * 2.9, -e * 0.2, e * 2.6, -e * 1.1); s.quadraticCurveTo(e * 1.9, -e * 0.4, e * 1.4, -e * 1.0); s.quadraticCurveTo(e * 1.0, -e * 0.2, 0, 0);
+        const m = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: e * 0.04, bevelEnabled: false }), mat(color, 0.1, 0.55, { side: THREE.DoubleSide }));
+        m.scale.x = sx; pivot.add(m);
+        const bone = new THREE.Mesh(new THREE.CylinderGeometry(e * 0.07, e * 0.05, e * 4.25, 8), mat(shadeHex(color, 0.6), 0.1, 0.5));
+        bone.position.set(sx * e * 1.8, e * 1.1, e * 0.03); bone.rotation.z = -sx * 1.02; pivot.add(bone);
+      } else {
+        const m = new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.72, roughness: 0.2, metalness: 0.3, emissive: new THREE.Color(color).multiplyScalar(0.35), side: THREE.DoubleSide, depthWrite: false });
+        for (const [w, h, x, y, rz] of [[1.5, 0.75, 1.4, 0.9, 0.55], [0.95, 0.5, 1.0, -0.5, -0.5]]) {
+          const wing = new THREE.Mesh(new THREE.CircleGeometry(e, 40), m);
+          wing.scale.set(e * 0 + w * 1.6, h * 1.6, 1);
+          wing.position.set(sx * x * e, y * e, 0); wing.rotation.z = sx * rz; pivot.add(wing);
+        }
+      }
+      pivot.rotation.y = sx * -0.35;
+      wg.add(pivot);
+      pivots.push([pivot, sx]);
+    }
+    attachTo(chest, wg);
+    current.wings = pivots;
+  }
+}
+
+// ------------------------------------------------------------------ efectos de ambiente (partículas)
+function spriteTexture(kind) {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.translate(32, 32);
+  if (kind === 'star') {
+    g.fillStyle = '#fff'; g.beginPath();
+    for (let i = 0; i < 8; i++) { const r = i % 2 ? 5 : 30; const a = (i * Math.PI) / 4; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+    g.closePath(); g.fill();
+    const grd = g.createRadialGradient(0, 0, 0, 0, 0, 14); grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = grd; g.fillRect(-32, -32, 64, 64);
+  } else if (kind === 'petal') {
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(0, -26); g.bezierCurveTo(22, -14, 18, 18, 0, 26); g.bezierCurveTo(-18, 18, -22, -14, 0, -26); g.fill();
+  } else if (kind === 'heart') {
+    g.fillStyle = '#fff'; g.beginPath(); g.moveTo(0, 22); g.bezierCurveTo(-34, -2, -16, -30, 0, -12); g.bezierCurveTo(16, -30, 34, -2, 0, 22); g.fill();
+  } else if (kind === 'ring') {
+    g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 24, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.18)'; g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.arc(-9, -9, 5, 0, Math.PI * 2); g.fill();
+  } else {
+    const grd = g.createRadialGradient(0, 0, 0, 0, 0, 30); grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.35, 'rgba(255,255,255,0.7)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grd; g.fillRect(-32, -32, 64, 64);
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const EFFECTS = {
+  sparkles: { sprite: 'star', color: '#FFF1BF', n: 60, size: 0.05, vy: 0.02, sway: 0.01, additive: true, twinkle: 3 },
+  petals: { sprite: 'petal', color: '#F2A7C0', n: 55, size: 0.05, vy: -0.13, sway: 0.08, spin: true },
+  snow: { sprite: 'dot', color: '#FFFFFF', n: 90, size: 0.035, vy: -0.08, sway: 0.04 },
+  fireflies: { sprite: 'dot', color: '#FFE38A', n: 40, size: 0.06, vy: 0.01, sway: 0.06, additive: true, twinkle: 1.5 },
+  bubbles: { sprite: 'ring', color: '#C9E4FF', n: 34, size: 0.07, vy: 0.08, sway: 0.03 },
+  hearts: { sprite: 'heart', color: '#EE8FAE', n: 32, size: 0.05, vy: 0.06, sway: 0.03, twinkle: 1.2 },
+};
+let fx = null;
+function setEffect(id) {
+  if (fx && fx.id === id) return;
+  if (fx) { scene.remove(fx.points); fx.points.geometry.dispose(); fx.points.material.dispose(); fx = null; }
+  const E = EFFECTS[id];
+  if (!E) return;
+  const pos = new Float32Array(E.n * 3), phase = new Float32Array(E.n);
+  for (let i = 0; i < E.n; i++) { phase[i] = Math.random() * Math.PI * 2; }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('phase', new THREE.BufferAttribute(phase, 1));
+  const material = new THREE.ShaderMaterial({
+    uniforms: { map: { value: spriteTexture(E.sprite) }, color: { value: new THREE.Color(E.color) }, uTime: { value: 0 }, uSize: { value: E.size }, uTw: { value: E.twinkle || 0 }, uSpin: { value: E.spin ? 1 : 0 }, uPx: { value: renderer.getPixelRatio() * innerHeight } },
+    vertexShader: `attribute float phase; uniform float uTime; uniform float uSize; uniform float uTw; uniform float uPx; varying float vA; varying float vRot;
+      void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv;
+        float tw = uTw > 0.0 ? 0.45 + 0.55 * sin(uTime * uTw + phase * 3.0) : 1.0; vA = clamp(tw, 0.0, 1.0); vRot = phase + uTime * 0.8;
+        gl_PointSize = uSize * uPx * 1.25 * (0.6 + 0.4 * tw) / -mv.z; }`,
+    fragmentShader: `uniform sampler2D map; uniform vec3 color; uniform float uSpin; varying float vA; varying float vRot;
+      void main(){ vec2 p = gl_PointCoord - 0.5; if (uSpin > 0.5) { float c = cos(vRot), s = sin(vRot); p = mat2(c, -s, s, c) * p; }
+        vec4 t = texture2D(map, p + 0.5); gl_FragColor = vec4(color, 1.0) * t; gl_FragColor.a *= vA; if (gl_FragColor.a < 0.01) discard; }`,
+    transparent: true, depthWrite: false, blending: E.additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+  });
+  const points = new THREE.Points(geo, material);
+  points.frustumCulled = false;
+  scene.add(points);
+  fx = { id, points, E, seeded: false };
+}
+function updateEffect(dt, t) {
+  if (!fx || !current.vrm) return;
+  const head = current.vrm.humanoid.getNormalizedBoneNode('head');
+  const hp = new THREE.Vector3(); head.getWorldPosition(hp);
+  const top = hp.y + 0.45, bottom = hp.y - 0.95;
+  const pos = fx.points.geometry.attributes.position;
+  const ph = fx.points.geometry.attributes.phase;
+  const E = fx.E;
+  const respawn = (i, anywhere) => {
+    const y = anywhere ? bottom + Math.random() * (top - bottom) : E.vy < 0 ? top : bottom;
+    pos.setXYZ(i, (Math.random() - 0.5) * 1.3, y, -0.45 + Math.random() * 0.95);
+  };
+  if (!fx.seeded) { for (let i = 0; i < E.n; i++) respawn(i, true); fx.seeded = true; }
+  for (let i = 0; i < E.n; i++) {
+    const p = ph.getX(i);
+    let x = pos.getX(i) + Math.sin(t * 0.9 + p) * E.sway * dt;
+    let y = pos.getY(i) + E.vy * dt * (0.7 + 0.6 * ((p * 7) % 1));
+    pos.setXYZ(i, x, y, pos.getZ(i));
+    if (y > top || y < bottom) respawn(i, false);
+  }
+  pos.needsUpdate = true;
+  fx.points.material.uniforms.uTime.value = t;
+  fx.points.material.uniforms.uPx.value = renderer.getPixelRatio() * innerHeight;
 }
 
 // ------------------------------------------------------------------ encuadre
@@ -379,41 +891,56 @@ function frameCamera() {
   const head = vrm.humanoid.getNormalizedBoneNode('head');
   const p = new THREE.Vector3(); head.getWorldPosition(p);
   const portrait = innerHeight > innerWidth * 1.15;
+  // Hueco extra arriba si hay orejas, cuernos, diadema…
+  const x = Math.min(0.2, current.extraTop || 0);
   if (current.framing === 'face') {
-    camera.position.set(0, p.y + 0.03, 1.35);
-    camera.lookAt(new THREE.Vector3(0, p.y + 0.02, 0));
+    camera.position.set(0, p.y + 0.03 + x * 0.9, 1.35 + x * 3.2);
+    camera.lookAt(new THREE.Vector3(0, p.y + 0.02 + x * 0.9, 0));
   } else if (current.framing === 'portrait' || portrait) {
-    // Medio cuerpo vertical (tarjetas, creador en móvil)
-    camera.position.set(0, p.y - 0.12, 2.6);
-    camera.lookAt(new THREE.Vector3(0, p.y - 0.2, 0));
+    camera.position.set(0, p.y - 0.16 + x * 0.6, 2.8 + x * 2);
+    camera.lookAt(new THREE.Vector3(0, p.y - 0.25 + x * 0.6, 0));
   } else {
-    // Busto con hombros
-    camera.position.set(0, p.y - 0.04, 1.75);
-    camera.lookAt(new THREE.Vector3(0, p.y - 0.09, 0));
+    camera.position.set(0, p.y - 0.04 + x * 0.9, 1.75 + x * 3.2);
+    camera.lookAt(new THREE.Vector3(0, p.y - 0.09 + x * 0.9, 0));
   }
 }
 
 // ------------------------------------------------------------------ animación y estados
 const clock = new THREE.Clock();
-let nextBlink = 1.5, blinkT = -1, talk = 0, talkTarget = 0, nextSyll = 0, nod = 0, smile = 0, think = 0, attend = 0, dim = 0;
-const baseExpr = () => current.look?.expression || 'neutral';
+let nextBlink = 1.5, blinkT = -1, talk = 0, talkTarget = 0, nextSyll = 0, nod = 0, dim = 0;
+const ex = { happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0, blink: 0 };
+
+/** Expresión base (valores de las expresiones estándar de VRM). */
+const EXPRESSIONS = {
+  neutral: {},
+  smile: { happy: 0.2 },
+  joy: { happy: 0.6 },
+  calm: { relaxed: 0.38 },
+  serious: { angry: 0.25 },
+  shy: { happy: 0.15, sad: 0.15 },
+  smug: { happy: 0.18, angry: 0.2 },
+  sad: { sad: 0.28 },
+  surprised: { surprised: 0.5 },
+  angry: { angry: 0.6 },
+  sleepy: { blink: 0.5, relaxed: 0.15 },
+};
 
 function step(dt, t, silent = false) {
   const vrm = current.vrm;
   if (!vrm) return;
   const em = vrm.expressionManager;
   const b = (n) => vrm.humanoid.getNormalizedBoneNode(n);
+  const look = current.look || {};
   const mood = silent ? 'idle' : current.mood;
-  // parpadeo natural
+  const base = EXPRESSIONS[look.expression] || {};
+  // parpadeo natural (basado en el reloj: si el render se pausa, los ojos no se quedan cerrados)
+  let blinkAnim = 0;
   if (!silent) {
-    // Basado en el reloj (no en dt acumulado): si el render va lento o se pausa,
-    // el parpadeo termina igual y los ojos nunca se quedan cerrados.
     if (t > nextBlink && blinkT < 0) blinkT = t;
     if (blinkT >= 0) {
       const k = t - blinkT;
-      const v = k < 0.07 ? k / 0.07 : k < 0.13 ? 1 : Math.max(0, 1 - (k - 0.13) / 0.08);
-      em?.setValue('blink', v);
-      if (k > 0.21) { blinkT = -1; nextBlink = t + 2.2 + Math.random() * 3.2; em?.setValue('blink', 0); }
+      blinkAnim = k < 0.07 ? k / 0.07 : k < 0.13 ? 1 : Math.max(0, 1 - (k - 0.13) / 0.08);
+      if (k > 0.21) { blinkT = -1; nextBlink = t + 2.2 + Math.random() * 3.2; blinkAnim = 0; }
     }
   }
   // labios al hablar
@@ -424,23 +951,39 @@ function step(dt, t, silent = false) {
   em?.setValue('aa', talk * 0.75);
   em?.setValue('oh', speaking ? talk * 0.22 * (Math.sin(t * 7) * 0.5 + 0.5) : 0);
   // expresión: base elegida + estado
-  const e = baseExpr();
-  // En VRoid "happy" entrecierra los ojos: lo usamos con mucha suavidad.
-  const wantSmile = mood === 'happy' ? 0.3 : e === 'smile' ? 0.16 : speaking ? 0.1 : 0;
-  smile += (wantSmile - smile) * Math.min(1, dt * 4);
-  em?.setValue('happy', smile);
-  think += ((mood === 'thinking' ? 1 : 0) - think) * Math.min(1, dt * 3);
-  attend += ((mood === 'listening' ? 1 : 0) - attend) * Math.min(1, dt * 3);
-  em?.setValue('relaxed', Math.max(think * 0.45, e === 'calm' ? 0.35 : 0));
-  em?.setValue('angry', e === 'serious' ? 0.18 : 0);
-  // cabeza y respiración
+  const want = { ...{ happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0, blink: 0 }, ...base };
+  if (mood === 'happy') want.happy = Math.max(want.happy, 0.3);
+  if (speaking) want.happy = Math.max(want.happy, 0.1);
+  if (mood === 'thinking') want.relaxed = Math.max(want.relaxed, 0.45);
+  const lerp = Math.min(1, dt * 4);
+  for (const k in ex) ex[k] += (want[k] - ex[k]) * lerp;
+  em?.setValue('happy', ex.happy);
+  em?.setValue('angry', ex.angry);
+  em?.setValue('sad', ex.sad);
+  em?.setValue('relaxed', ex.relaxed);
+  em?.setValue('surprised', ex.surprised);
+  em?.setValue('Surprised', ex.surprised);
+  em?.setValue('blink', Math.max(ex.blink, blinkAnim));
+  // cabeza, respiración y pose
+  const think = ex.relaxed > 0.3 && mood === 'thinking' ? 1 : 0;
+  current.think = (current.think || 0) + (think - (current.think || 0)) * Math.min(1, dt * 3);
+  current.attend = (current.attend || 0) + ((mood === 'listening' ? 1 : 0) - (current.attend || 0)) * Math.min(1, dt * 3);
   nod += ((speaking ? 1 : 0) - nod) * Math.min(1, dt * 3);
+  const th = current.think, at = current.attend;
+  const tilt = (+look.headTilt || 0) * 0.3, turn = (+look.headTurn || 0) * 0.42;
   b('spine').rotation.x = Math.sin(t * 1.5) * 0.012;
   if (b('chest')) b('chest').rotation.x = Math.sin(t * 1.5 + 0.5) * 0.01;
-  b('neck').rotation.y = Math.sin(t * 0.5) * 0.04;
-  b('head').rotation.z = think * 0.12 + attend * -0.06 + Math.sin(t * 0.7) * 0.025;
-  b('head').rotation.x = think * -0.07 + attend * (0.05 + Math.sin(t * 2.2) * 0.03) + nod * Math.sin(t * 6) * 0.05;
-  b('head').rotation.y = think * 0.12 + Math.sin(t * 0.37) * 0.035;
+  b('neck').rotation.y = Math.sin(t * 0.5) * 0.04 + turn * 0.45;
+  b('neck').rotation.z = tilt * 0.35;
+  b('head').rotation.z = tilt + th * 0.12 + at * -0.06 + Math.sin(t * 0.7) * 0.025;
+  b('head').rotation.x = th * -0.07 + at * (0.05 + Math.sin(t * 2.2) * 0.03) + nod * Math.sin(t * 6) * 0.05;
+  b('head').rotation.y = turn * 0.65 + th * 0.12 + Math.sin(t * 0.37) * 0.035;
+  if (current.pose === 'wave' && !silent) {
+    const v0 = vrm.meta?.metaVersion === '0';
+    const lower = b('rightLowerArm');
+    if (lower) lower.rotation.z = (v0 ? 1 : -1) * (1.9 + Math.sin(t * 5) * 0.22);
+  }
+  if (current.wings && !silent) for (const [pivot, sx] of current.wings) pivot.rotation.y = sx * (-0.35 + Math.sin(t * 1.6) * 0.08);
   em?.update();
   vrm.update(dt);
   if (current.hairVrm) {
@@ -454,7 +997,7 @@ function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
   step(dt, t);
-  // estado "no disponible": imagen atenuada
+  updateEffect(dt, t);
   dim += ((current.mood === 'offline' ? 1 : 0) - dim) * Math.min(1, dt * 3);
   canvas.style.filter = dim > 0.02 ? `grayscale(${dim}) opacity(${1 - dim * 0.35})` : '';
   renderer.render(scene, camera);
@@ -462,18 +1005,29 @@ function frame() {
 renderer.setAnimationLoop(frame);
 
 // ------------------------------------------------------------------ mensajes
+const pick = (l, keys) => JSON.stringify(keys.map((k) => l?.[k] ?? null));
+const COLOR_KEYS = ['hairColor', 'hairTip', 'eyeColor', 'skinTone', 'outfitColor', 'bottomColor', 'shoesColor', 'accentColor', 'blush', 'lipColor', 'eyeshadow', 'marks', 'eyeShine'];
+const ACC_KEYS = ['accessories', 'accessoryColor', 'hairColor', 'headSize'];
+
 async function handle(msg) {
   if (msg.type === 'look') {
     const look = msg.look || {};
     if (msg.framing) current.framing = msg.framing;
     setBackdrop(look.background, !!msg.transparent);
+    setLighting(look.lighting);
+    setEffect(look.effect);
     const prev = current.look;
     current.look = look;
     try {
       const reloaded = await load(look, msg.modelBaseUrl);
-      const colorsKey = (l) => JSON.stringify([l?.hairColor, l?.eyeColor, l?.skinTone, l?.outfitColor]);
-      if (reloaded || colorsKey(prev) !== colorsKey(look)) applyColors(look);
-      if (reloaded || JSON.stringify(prev?.accessories || []) !== JSON.stringify(look.accessories || []) || colorsKey(prev) !== colorsKey(look)) buildAccessories(look.accessories || []);
+      if (!reloaded && (prev?.pose || 'relaxed') !== (look.pose || 'relaxed')) {
+        applyPose(current.vrm, look.pose);
+        if (current.hairVrm) applyPose(current.hairVrm, look.pose);
+      }
+      if (!reloaded && (prev?.headSize || 1) !== (look.headSize || 1)) { applyHeadSize(look); scene.updateMatrixWorld(true); settle(); }
+      if (reloaded || pick(prev, COLOR_KEYS) !== pick(look, COLOR_KEYS)) applyColors(look);
+      applyFinish(look);
+      if (reloaded || pick(prev, ACC_KEYS) !== pick(look, ACC_KEYS)) buildAccessories(look);
       frameCamera();
       document.getElementById('loading').style.display = 'none';
       send({ type: 'loaded' });
@@ -485,13 +1039,11 @@ async function handle(msg) {
     current.mood = msg.mood || 'idle';
   } else if (msg.type === 'snapshot') {
     const em = current.vrm?.expressionManager;
-    if (em) { blinkT = -1; nextBlink = clock.elapsedTime + 2; em.setValue('blink', 0); em.update(); }
-    // Encuadre propio para la captura (p. ej. foto de perfil "face") sin cambiar el que se ve.
+    if (em) { blinkT = -1; nextBlink = clock.elapsedTime + 2; em.setValue('blink', ex.blink); em.update(); }
     const prevFraming = current.framing;
     const prevAspect = camera.aspect;
     if (msg.framing) { current.framing = msg.framing; if (!msg.width) { camera.aspect = 1; camera.updateProjectionMatrix(); } frameCamera(); }
     renderer.render(scene, camera);
-    // Cuadrada (foto de perfil) por defecto; con width/height, el lienzo completo.
     const out = document.createElement('canvas');
     if (msg.width && msg.height) {
       out.width = msg.width; out.height = msg.height;

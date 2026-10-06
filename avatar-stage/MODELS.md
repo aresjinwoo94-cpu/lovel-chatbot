@@ -17,6 +17,8 @@ redistribución**, sin obligación de crédito. Aun así los acreditamos aquí.
 | `vita` | ヴィータ (Vita) | VRoid Project | VRM 0 | VRoid Hub (mismas condiciones) |
 | `hair_f` | HairSample_Female | VRoid Project | VRM 0 | CC0 — OpenGameArt |
 | `hair_m` | HairSample_Male | VRoid Project | VRM 0 | CC0 — OpenGameArt |
+| `base_f` | Base_Female | VRoid Project | VRM 0 | CC0 — OpenGameArt |
+| `base_m` | Base_Male | VRoid Project | VRM 0 | CC0 — OpenGameArt |
 | `fumiriya` | 桜田 史利矢 (Sakurada Fumiriya) | VRoid Project | VRM 0 | VRoid Hub (mismas condiciones) — OpenGameArt |
 | `mei` | three-vrm-girl | pixiv Inc. | VRM 0 | VRoid Hub (mismas condiciones) — repo pixiv/three-vrm (MIT) |
 | `sample_b` | AvatarSample_B | VRoid Project / pixiv Inc. | VRM 1 | VRM Public License 1.0 (`commercialUsage: corporation`, `allowModificationRedistribution`) |
@@ -38,9 +40,12 @@ Condiciones VRoid Hub de los modelos marcados "mismas condiciones":
 ## Personalización
 
 El aspecto (`CharacterLook` v3) se aplica sobre el modelo en tiempo real:
-peinado (intercambio de pelo entre modelos VRM 0), color de pelo / ojos /
-piel / ropa (recoloreado por luminancia), expresión, accesorios (gafas,
-auriculares, orejas, halo) y fondo. Ningún personaje, asset ni paleta procede
+peinado (intercambio de pelo entre modelos VRM 0) con puntas en degradado
+(shader), colores de pelo / ojos / piel y de cada prenda (recoloreado por
+luminancia), maquillaje y marcas pintados sobre la textura de la cara (todos
+los rostros de VRoid comparten mapa UV), 11 expresiones, 6 poses, cabeza
+(inclinación, giro, tamaño), 19 accesorios 3D, 16 fondos, 7 luces y 6 efectos
+de partículas. Ningún personaje, asset ni paleta procede
 de juegos comerciales.
 
 ## Regenerar el escenario

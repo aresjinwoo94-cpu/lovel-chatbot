@@ -48,7 +48,7 @@ export default function StartScreen() {
   }, [t]);
 
   return (
-    <SafeAreaView className="flex-1 items-center justify-center bg-cream px-8">
+    <SafeAreaView className="flex-1 items-center justify-center bg-paper px-8">
       {draft ? <AnimatedAvatar avatar={{ appearance: draft.look, gender: draft.gender, avatar_image_url: draft.snapshot }} size={96} presence={limit ? 'idle' : 'thinking'} /> : null}
       {limit ? (
         <View className="mt-6 w-full max-w-sm items-center">

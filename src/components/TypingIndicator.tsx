@@ -11,7 +11,7 @@ export function TypingIndicator({ avatar, listening = false }: { avatar: AvatarL
       <View style={{ marginRight: 8 }}>
         <AnimatedAvatar avatar={avatar} size={28} presence={listening ? 'listening' : 'thinking'} />
       </View>
-      <View className="rounded-bubble rounded-bl-[6px] border border-line bg-paper px-3 py-2.5">
+      <View className="rounded-bubble rounded-bl-[6px] bg-subtle px-3 py-2.5">
         <View style={{ width: 40, height: 16, overflow: 'hidden' }}>
           <LottieView source={require('@/assets/lottie/typing.json')} autoPlay loop style={{ width: 40, height: 16 }} />
         </View>

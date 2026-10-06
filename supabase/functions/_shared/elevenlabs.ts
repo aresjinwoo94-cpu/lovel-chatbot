@@ -38,15 +38,29 @@ export function pickVoice(gender: 'female' | 'male' | 'other', age: number, cust
   return Deno.env.get('ELEVENLABS_VOICE_OTHER') ?? DEFAULT_VOICES.other;
 }
 
+/** Ajustes de voz elegidos en el creador (appearance.voice): velocidad 0.7–1.2, expresividad 0–1. */
+export interface VoiceTuning {
+  speed?: number;
+  style?: number;
+}
+
+export function voiceTuning(appearance: unknown): VoiceTuning {
+  const v = (appearance as { voice?: VoiceTuning } | null)?.voice;
+  const num = (x: unknown, min: number, max: number, def: number) => (typeof x === 'number' && Number.isFinite(x) ? Math.max(min, Math.min(max, x)) : def);
+  return { speed: num(v?.speed, 0.7, 1.2, 1), style: num(v?.style, 0, 1, 0.3) };
+}
+
 /** Texto → MP3 con la voz del avatar. */
-export async function textToSpeech(text: string, voiceId: string): Promise<Uint8Array<ArrayBuffer>> {
+export async function textToSpeech(text: string, voiceId: string, tuning: VoiceTuning = {}): Promise<Uint8Array<ArrayBuffer>> {
+  const style = tuning.style ?? 0.3;
   const res = await fetch(`${API}/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
     method: 'POST',
     headers: { 'xi-api-key': requireEnv('ELEVENLABS_API_KEY'), 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
     body: JSON.stringify({
       text,
       model_id: TTS_MODEL,
-      voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.3, use_speaker_boost: true },
+      // Más expresividad = menos estabilidad y más estilo.
+      voice_settings: { stability: Math.max(0.2, 0.7 - style * 0.5), similarity_boost: 0.8, style: style * 0.6, use_speaker_boost: true, speed: tuning.speed ?? 1 },
     }),
   });
   if (!res.ok) throw new HttpError(502, `ElevenLabs TTS: ${res.status} ${await res.text()}`);

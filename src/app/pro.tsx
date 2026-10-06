@@ -8,7 +8,7 @@ import { Logo } from '@/components/Logo';
 import { Button, IconButton, Muted } from '@/components/ui';
 import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { openBillingPortal, startProCheckout, waitForPro } from '@/lib/billing';
+import { isBillingDisabled, openBillingPortal, startProCheckout, waitForPro } from '@/lib/billing';
 import { useI18n } from '@/lib/i18n';
 import { Text } from '@/components/Themed';
 import { showDialog } from '@/lib/dialog';
@@ -45,7 +45,8 @@ export default function ProScreen() {
         router.back();
       }
     } catch (e) {
-      showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
+      if (isBillingDisabled(e)) showDialog(t('pro.title'), t('billing.disabled'));
+      else showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
@@ -54,7 +55,7 @@ export default function ProScreen() {
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   return (
-    <SafeAreaView className="flex-1 bg-cream">
+    <SafeAreaView className="flex-1 bg-paper">
       <View className="h-14 flex-row items-center justify-end px-2">
         <IconButton icon="close" label={t('pro.notNow')} onPress={close} />
       </View>
