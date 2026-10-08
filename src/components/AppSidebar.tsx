@@ -37,13 +37,13 @@ function NavItem({ icon, label, active, onPress }: { icon: IconName; label: stri
  */
 export function AppSidebar({ active, activeChat }: { active?: 'index' | 'profile' | 'settings'; activeChat?: string }) {
   const { t } = useI18n();
-  const { profile, session, signOut } = useAuth();
+  const { profile, session, signOut, isGuest } = useAuth();
   const { threads } = useThreads();
   const route = active;
   const go = (name: 'index' | 'profile' | 'settings') => router.navigate(name === 'index' ? '/(tabs)' : `/(tabs)/${name}`);
   const isPro = !!profile?.is_pro;
   const email = session?.user.email ?? '';
-  const display = profile?.display_name || email.split('@')[0];
+  const display = isGuest ? t('nav.guest') : profile?.display_name || email.split('@')[0];
 
   return (
     <SafeAreaView edges={['top', 'bottom', 'left']} className="border-r border-line bg-cream" style={{ width: 248 }}>
@@ -77,8 +77,15 @@ export function AppSidebar({ active, activeChat }: { active?: 'index' | 'profile
         ))}
       </ScrollView>
 
-      {/* Uso del plan (como los créditos de ElevenLabs) */}
-      <View className="mx-3 mb-2 rounded-xl border border-line bg-paper p-3">
+      {/* Invitado: guardar su historia. Con cuenta: uso del plan (como los créditos de ElevenLabs). */}
+      {isGuest ? (
+        <View className="mx-3 mb-2 rounded-xl border border-line bg-paper p-3">
+          <Text className="font-semibold text-[13px] text-ink">{t('login.guestTitle')}</Text>
+          <Text className="mt-1 text-[12px] leading-[17px] text-muted">{t('login.guestBody')}</Text>
+          <Button title={t('chat.guestCta')} size="sm" onPress={() => router.push('/login')} className="mt-2.5" />
+        </View>
+      ) : null}
+      <View className="mx-3 mb-2 rounded-xl border border-line bg-paper p-3" style={isGuest ? { display: 'none' } : undefined}>
         <View className="flex-row items-center justify-between">
           <Text className="font-semibold text-[13px] text-ink">{isPro ? t('nav.plan.pro') : t('nav.plan.free')}</Text>
           {isPro ? <Text className="text-[12px] text-muted">{t('nav.unlimited')}</Text> : null}

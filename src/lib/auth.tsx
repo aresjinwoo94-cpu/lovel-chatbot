@@ -17,6 +17,9 @@ interface AuthValue {
   profile: Profile | null;
   loading: boolean;
   refreshProfile: () => Promise<Profile | null>;
+  /** Sesión de invitado (sin cuenta) creada por el cuestionario de bienvenida. */
+  isGuest: boolean;
+  startGuest: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<{ needsConfirmation: boolean }>;
@@ -120,18 +123,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return loadProfile(session.user.id);
   }, [session, loadProfile]);
 
+  const isGuest = !!session?.user.is_anonymous;
+
+  const startGuest = useCallback(async () => {
+    const { error } = await supabase.auth.signInAnonymously();
+    if (error) throw error;
+  }, []);
+
   const signInWithGoogle = useCallback(async () => {
     if (!(await googleEnabled())) throw new AuthFlowError('GOOGLE_DISABLED');
     const redirectTo = authRedirectUrl();
+    // Invitado: vinculamos Google a su cuenta para conservar personaje e historia.
+    // Si esa cuenta de Google ya existe, se inicia sesión con ella.
+    const guest = !!(await supabase.auth.getSession()).data.session?.user.is_anonymous;
+    const start = async (skipBrowserRedirect: boolean) => {
+      if (guest) {
+        const linked = await supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo, skipBrowserRedirect } });
+        if (!linked.error) return linked;
+      }
+      return supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo, skipBrowserRedirect } });
+    };
     if (Platform.OS === 'web') {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+      const { error } = await start(false);
       if (error) throw error;
       return;
     }
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo, skipBrowserRedirect: true },
-    });
+    const { data, error } = await start(true);
     if (error) throw error;
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
     if (result.type !== 'success') throw new AuthFlowError('CANCELLED');
@@ -144,6 +161,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUpWithEmail = useCallback(async (email: string, password: string) => {
+    // Invitado: convertimos su sesión en una cuenta (mismo usuario, conserva todo).
+    if ((await supabase.auth.getSession()).data.session?.user.is_anonymous) {
+      const { data, error } = await supabase.auth.updateUser({ email: email.trim(), password }, { emailRedirectTo: authRedirectUrl() });
+      if (error) throw error;
+      return { needsConfirmation: !!data.user?.new_email && !data.user.email };
+    }
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
@@ -175,8 +198,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUpWithEmail,
       sendPasswordReset,
       signOut,
+      isGuest,
+      startGuest,
     }),
-    [session, profile, loading, refreshProfile, signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, signOut],
+    [session, profile, loading, isGuest, startGuest, refreshProfile, signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -7,31 +7,35 @@ import { useAuth } from '@/lib/auth';
 import { loadDraft } from '@/lib/draft';
 import { supabase } from '@/lib/supabase';
 
-type Target = '/explore' | '/start' | '/(tabs)';
+type Target = '/welcome' | '/start' | '/(tabs)' | { pathname: '/chat/[avatarId]'; params: { avatarId: string } };
 
 /**
  * Punto de entrada: decide a dónde va cada persona.
- *  - sin sesión → explorar personajes (sin pedir cuenta)
+ *  - sin sesión → bienvenida (cuestionario que lleva directo al chat, sin cuenta)
  *  - con sesión y un personaje creado antes de entrar → /start (se guarda y empieza la historia)
- *  - con historias → lista de historias · sin historias → explorar
+ *  - invitado con historia → su chat · con historias → inicio · sin historias → bienvenida
  */
 export default function Index() {
-  const { session } = useAuth();
+  const { session, isGuest } = useAuth();
   const [target, setTarget] = useState<Target | null>(null);
 
   useEffect(() => {
     let alive = true;
     (async () => {
-      if (!session) return setTarget('/explore');
+      if (!session) return setTarget('/welcome');
       const draft = await loadDraft();
       if (draft?.ready) return alive && setTarget('/start');
-      const { count } = await supabase.from('avatars').select('id', { count: 'exact', head: true });
-      if (alive) setTarget((count ?? 0) > 0 ? '/(tabs)' : '/explore');
+      const { data } = await supabase.from('avatars').select('id').order('last_message_at', { ascending: false, nullsFirst: false }).limit(1);
+      const first = data?.[0]?.id as string | undefined;
+      if (!alive) return;
+      if (!first) setTarget('/welcome');
+      else if (isGuest) setTarget({ pathname: '/chat/[avatarId]', params: { avatarId: first } });
+      else setTarget('/(tabs)');
     })();
     return () => {
       alive = false;
     };
-  }, [session]);
+  }, [session, isGuest]);
 
   if (!target) {
     return (

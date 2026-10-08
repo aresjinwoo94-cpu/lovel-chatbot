@@ -8,6 +8,9 @@ import { supabase } from './supabase';
 /** Límites del plan gratuito (idénticos a supabase/functions/_shared/quota.ts). */
 export const FREE_TEXT_LIMIT = 25;
 export const FREE_VOICE_LIMIT = 3;
+/** Invitados sin cuenta (idéntico a supabase/functions/_shared/quota.ts). */
+export const GUEST_TEXT_LIMIT = 10;
+export const GUEST_VOICE_LIMIT = 0;
 
 const returnUrl = () => (Platform.OS === 'web' ? `${window.location.origin}/pro` : Linking.createURL('pro'));
 

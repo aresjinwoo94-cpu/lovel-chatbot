@@ -16,7 +16,7 @@ Prioridad del producto: **Personaje → Personalidad → Situación → Conversa
 
 | Flujo | Dónde está |
 | --- | --- |
-| **Sin cuenta:** explorar personajes, personalizar, elegir personalidad y escena, vista previa. La cuenta solo se pide al empezar la historia (el borrador se guarda en el dispositivo y sobrevive al login con Google) | `src/app/explore.tsx`, `src/app/avatar/create.tsx`, `src/lib/draft.ts`, `src/app/start.tsx` |
+| **Entrada sin cuenta:** una frase sobre Lovel House y tres preguntas (con quién, qué edad, qué situación). Lovel House elige al personaje, abre una sesión de **invitado** (anónima de Supabase) y te lleva **directo al chat**, donde el personaje escribe primero. Desde el chat, **Personalizar** abre el editor completo. El invitado tiene 10 mensajes y sin notas de voz; al crear su cuenta (correo o Google) conserva personaje y conversación y pasa al plan gratuito | `src/app/welcome.tsx`, `src/app/index.tsx`, `src/lib/auth.tsx`, `supabase/functions/_shared/quota.ts` |
 | Creador 3D en vivo, con 9 secciones: **Personaje** (14 modelos VRM: cara, cuerpo y ropa distintos, o importar un .vrm de VRoid Studio) · **Peinado** (10 estilos, 18 colores, puntas en degradado) · **Rostro** (11 expresiones, 12 colores de ojos, ojos con o sin brillo, 8 tonos de piel, rubor, labios, sombra de ojos y 8 marcas: pecas, lunar, sonrojo anime, estrella, corazón, lágrima, cicatriz, bigotes) · **Ropa** (color por piezas: superior, inferior, calzado y detalles) · **Accesorios** (19, uno por zona: gafas, monóculo, parche, orejas de gato/zorro/conejo, cuernos, diadema, corona de flores, aureola, lazo, flor, horquilla, auriculares, alas de ángel/demonio/hada, con color propio) · **Pose** (6 poses e inclinación, giro y tamaño de la cabeza) · **Escena** (16 fondos, 7 luces, 6 efectos de ambiente, contorno y brillo) · **Voz** (15 voces de ElevenLabs con muestra, velocidad y expresividad) · **Identidad**. Con deshacer, restablecer, aleatorio y vista cara/busto/cuerpo | `src/app/avatar/create.tsx`, `src/lib/character/*`, `src/components/VrmAvatar.tsx`, `avatar-stage/stage.html` |
 | 12 personajes listos, cada uno con su voz | `PRESETS` en `src/lib/character/catalog.ts` |
 | Personalidad: 30 rasgos, de 1 a 5, con incompatibilidades (tímido ↔ extrovertido, dominante ↔ sumiso…) | `supabase/functions/_shared/roleplay.ts` |
@@ -85,6 +85,8 @@ Prioridades: **claridad → jerarquía → función → personalidad.** Superfic
 
 ### Los personajes
 
+Estética **VTuber adulta** por defecto: sombreado anime plano (sombra de corte limpio, casi sin contorno de luz), luz frontal de stream, proporciones adultas (cabeza algo más pequeña), ropa lisa sin estampados y fondos ilustrados (atardecer, ciudad de noche, cielo estrellado, aurora, amanecer, habitación). Todo se puede cambiar en el editor.
+
 Personajes 3D estilo anime (formato VRM, el de los VTubers), con proporciones, ojos detallados, pelo con física (spring bones) y ropa elaborada; luz de estudio propia (key, fill, rim) y fondos con los colores de la marca. Cada modelo base es un personaje distinto, no un recoloreado. El 3D en vivo aparece en el creador y en el chat (respira, parpadea, mueve los labios al hablar, ladea la cabeza al pensar o escuchar); en listas y burbujas se usa una foto capturada del propio 3D para no cargar WebGL de más. Ningún personaje, asset ni paleta procede de juegos comerciales.
 
 ---
@@ -124,6 +126,10 @@ lovel-chatbot/
 ```
 
 ---
+
+## Invitados (Supabase)
+
+En *Authentication* están activados **Anonymous sign-ins** (para entrar sin cuenta) y **Manual linking** (para vincular Google a la cuenta del invitado). Al crear la cuenta con correo, la sesión del invitado se convierte en una cuenta normal (mismo usuario).
 
 ## Login con Google: qué faltaba y cómo activarlo
 

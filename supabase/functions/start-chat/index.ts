@@ -18,5 +18,5 @@ serve(async (req) => {
   const avatar = await getOwnedAvatar(user.id, avatarId);
   const conversationId = await getConversationId(avatarId);
   const message = await openScene({ avatar, profile, conversationId });
-  return json({ message, quota: quotaState(profile) });
+  return json({ message, quota: quotaState(profile, !!user.is_anonymous) });
 });

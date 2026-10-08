@@ -21,6 +21,7 @@ import {
   type ColorChoice,
   DEFAULT_FEMALE,
   DEFAULT_MALE,
+  describeLook,
   EFFECTS,
   EXPRESSIONS,
   EYE_COLORS,
@@ -47,7 +48,7 @@ import {
 import { modelPortrait } from '@/lib/character/media';
 import type { CharacterLook, Outline } from '@/lib/character/types';
 import { createFromDraft, isAvatarLimit } from '@/lib/createCharacter';
-import { uploadCustomVrm } from '@/lib/data';
+import { fetchAvatar, saveAvatarThumbnail, updateAvatar, uploadCustomVrm } from '@/lib/data';
 import { showDialog } from '@/lib/dialog';
 import { type CharacterDraft, clearDraft, loadDraft, saveDraft } from '@/lib/draft';
 import { useI18n } from '@/lib/i18n';
@@ -149,7 +150,9 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
 export default function CreateCharacter() {
   const { t, language } = useI18n();
   const { session } = useAuth();
-  const { preset: presetId } = useLocalSearchParams<{ preset?: string }>();
+  const { preset: presetId, edit: editId } = useLocalSearchParams<{ preset?: string; edit?: string }>();
+  /** Editando un personaje que ya existe (desde «Personalizar» en el chat). */
+  const editing = !!editId;
   const { width, height } = useWindowDimensions();
   const wide = width >= 900;
   const panelW = wide ? Math.min(600, Math.max(480, width * 0.42)) : Math.min(width, 640);
@@ -174,6 +177,7 @@ export default function CreateCharacter() {
   const [selectedVoice, setPlaying] = useState<string | null>(null);
   const [loadingVoice, setLoadingVoice] = useState<string | null>(null);
   const history = useRef<CharacterLook[]>([]);
+  const original = useRef<CharacterLook | null>(null);
   const stage = useRef<VrmAvatarHandle>(null);
   const scroll = useRef<ScrollView>(null);
   const player = useAudioPlayer(null);
@@ -183,6 +187,22 @@ export default function CreateCharacter() {
   // ---------------------------------------------------------- estado inicial
   useEffect(() => {
     (async () => {
+      if (editId) {
+        try {
+          const a = await fetchAvatar(editId);
+          setName(a.name);
+          setGender(a.gender);
+          setAge(a.age);
+          const l = normalizeLook(a.appearance, a.gender);
+          original.current = l;
+          setLook(l);
+          setTraits(a.traits ?? []);
+        } catch (e) {
+          showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
+        }
+        setLoaded(true);
+        return;
+      }
       const preset = presetById(presetId);
       if (preset) {
         setName(preset.name);
@@ -205,7 +225,7 @@ export default function CreateCharacter() {
       }
       setLoaded(true);
     })();
-  }, [presetId]);
+  }, [presetId, editId, t]);
 
   const draft = useMemo<Omit<CharacterDraft, 'savedAt'>>(
     () => ({ name, gender, age, look, traits, scenarioId, customScene, step, ready: false }),
@@ -213,10 +233,10 @@ export default function CreateCharacter() {
   );
 
   useEffect(() => {
-    if (!loaded) return;
+    if (!loaded || editing) return;
     const id = setTimeout(() => saveDraft(draft), 400);
     return () => clearTimeout(id);
-  }, [draft, loaded]);
+  }, [draft, loaded, editing]);
 
 
   const commit = useCallback((next: CharacterLook | ((l: CharacterLook) => CharacterLook)) => {
@@ -231,7 +251,7 @@ export default function CreateCharacter() {
     if (prev) setLook(prev);
   };
   const randomize = () => commit((l) => randomLook(gender, l.voice));
-  const reset = () => commit(presetById(presetId)?.look ?? (gender === 'male' ? DEFAULT_MALE : DEFAULT_FEMALE).look);
+  const reset = () => commit(original.current ?? presetById(presetId)?.look ?? (gender === 'male' ? DEFAULT_MALE : DEFAULT_FEMALE).look);
 
   const displayName = name.trim() || '…';
   const scenario = scenarioById(scenarioId);
@@ -291,6 +311,35 @@ export default function CreateCharacter() {
     stopPreview();
     if (router.canGoBack()) router.back();
     else router.replace('/explore');
+  };
+
+  /** Guarda los cambios del personaje existente y vuelve al chat. */
+  const saveEdit = async () => {
+    if (!editId) return;
+    if (!name.trim()) {
+      setTab('identity');
+      return showDialog(t('create.needName'));
+    }
+    setSaving(true);
+    stopPreview();
+    try {
+      const snapshot = await stage.current?.snapshot({ framing: 'face', size: 384 }).catch(() => null);
+      await updateAvatar(editId, {
+        name: name.trim(),
+        gender,
+        age,
+        appearance: look,
+        appearance_description: describeLook(look, 'es'),
+        voice_id: look.voice.id,
+      });
+      if (snapshot) await saveAvatarThumbnail(editId, snapshot).catch(() => undefined);
+      if (router.canGoBack()) router.back();
+      else router.replace({ pathname: '/chat/[avatarId]', params: { avatarId: editId } });
+    } catch (e) {
+      showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const start = async () => {
@@ -450,7 +499,14 @@ export default function CreateCharacter() {
     ),
     outfit: () => (
       <>
-        <Group first title={t('create.sec.top')} hint={t('create.sec.outfitHint')}>
+        <View className="mt-4 flex-row items-center justify-between rounded-xl border border-line px-3 py-2.5">
+          <View className="mr-3 flex-1">
+            <Text className="font-medium text-[13px] text-ink">{t('create.sec.plain')}</Text>
+            <Text className="mt-0.5 text-[12px] text-muted">{t('create.sec.plainHint')}</Text>
+          </View>
+          <Switch value={look.plainOutfit} onValueChange={(v) => patch({ plainOutfit: v })} trackColor={{ true: colors.ink, false: colors.line }} thumbColor={colors.paper} />
+        </View>
+        <Group title={t('create.sec.top')} hint={t('create.sec.outfitHint')}>
           <ColorRow items={OUTFIT_COLORS} value={look.outfitColor} onPick={(hex) => patch({ outfitColor: hex })} language={language} originalLabel={t('create.sec.original')} />
         </Group>
         <Group title={t('create.sec.bottom')}>
@@ -773,8 +829,9 @@ export default function CreateCharacter() {
   const stageH = wide ? undefined : step === 3 ? Math.min(height * 0.48, 440) : Math.min(height * 0.36, 320);
   const framing: View3D = step === 3 && !wide ? 'portrait' : view;
 
-  const primary =
-    step < 3 ? (
+  const primary = editing ? (
+    <Button title={t('create.save')} onPress={saveEdit} loading={saving} size={wide ? 'md' : 'lg'} variant="brand" />
+  ) : step < 3 ? (
       <Button title={t('common.continue')} onPress={next} size={wide ? 'md' : 'lg'} />
     ) : (
       <Button title={session ? t('create.preview.cta') : t('create.preview.ctaLogin')} onPress={start} loading={saving} size={wide ? 'md' : 'lg'} variant="brand" />
@@ -817,8 +874,10 @@ export default function CreateCharacter() {
       <View className="border-b border-line bg-paper">
         <View className="h-14 flex-row items-center px-2">
           <IconButton icon={step === 0 ? 'close' : 'chevron-back'} label={t('common.back')} onPress={back} />
-          <Text className="ml-1 font-semibold text-[15px] tracking-tight text-ink">{t('create.title')}</Text>
-          {wide ? (
+          <Text className="ml-1 font-semibold text-[15px] tracking-tight text-ink">{editing ? t('create.editTitle') : t('create.title')}</Text>
+          {editing ? (
+            <View className="flex-1" />
+          ) : wide ? (
             <View className="ml-6 flex-1 flex-row items-center">
               {stepLabels.map((label, i) => (
                 <View key={label} className="flex-row items-center">
@@ -839,7 +898,7 @@ export default function CreateCharacter() {
           )}
           {wide ? <View className="mr-2">{primary}</View> : null}
         </View>
-        {!wide ? (
+        {!wide && !editing ? (
           <View className="flex-row px-4 pb-2.5" style={{ gap: 4 }}>
             {stepLabels.map((label, i) => (
               <Pressable key={label} onPress={() => (i < step ? goTo(i) : undefined)} className="flex-1" accessibilityLabel={label}>

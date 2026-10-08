@@ -4,12 +4,13 @@
  * Solo suscripción (nada de pagos únicos). Si activas "Adaptive Pricing" en
  * Stripe, cada persona ve el equivalente en su moneda local.
  */
-import { json, readJson, serve } from '../_shared/http.ts';
+import { HttpError, json, readJson, serve } from '../_shared/http.ts';
 import { assertAllowedReturnUrl, ensureCustomer, PRO_PRICE_CENTS, returnViaFunction, stripe } from '../_shared/stripe.ts';
 import { getProfile, requireUser } from '../_shared/supabase.ts';
 
 serve(async (req) => {
   const user = await requireUser(req);
+  if (user.is_anonymous) throw new HttpError(403, 'Crea tu cuenta antes de hacerte Pro.', 'NEEDS_ACCOUNT');
   const { returnUrl } = await readJson<{ returnUrl?: string }>(req);
   const to = assertAllowedReturnUrl(returnUrl);
   const profile = await getProfile(user.id);

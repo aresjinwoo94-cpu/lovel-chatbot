@@ -25,12 +25,12 @@ SplashScreen.preventAutoHideAsync();
 
 /**
  * Navegación raíz.
- *  - Públicas: explorar personajes y crear/personalizar uno (no hace falta cuenta).
- *  - Solo sin sesión: login.
+ *  - Públicas: bienvenida (cuestionario), explorar y crear/personalizar (no hace falta cuenta).
+ *  - Sin sesión o como invitado: login (crear cuenta conserva lo del invitado).
  *  - Con sesión: historias, chat, Pro y "start" (guarda el personaje creado antes del login).
  */
 function RootNavigator() {
-  const { session, loading } = useAuth();
+  const { session, loading, isGuest } = useAuth();
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
@@ -50,10 +50,12 @@ function RootNavigator() {
     <>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.cream } }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
         <Stack.Screen name="explore" options={{ animation: 'fade' }} />
         <Stack.Screen name="avatar/create" options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="auth/callback" />
-        <Stack.Protected guard={!session}>
+        {/* Invitados (sesión anónima) también pueden abrir el login para crear su cuenta. */}
+        <Stack.Protected guard={!session || isGuest}>
           <Stack.Screen name="login" options={{ animation: 'fade' }} />
         </Stack.Protected>
         <Stack.Protected guard={!!session}>

@@ -4,7 +4,7 @@
  */
 export type Expression = 'neutral' | 'smile' | 'joy' | 'calm' | 'serious' | 'shy' | 'smug' | 'sad' | 'surprised' | 'angry' | 'sleepy';
 export type Pose = 'relaxed' | 'formal' | 'confident' | 'shy' | 'hands_back' | 'wave';
-export type Lighting = 'studio' | 'soft' | 'warm' | 'cool' | 'sunset' | 'night' | 'dramatic';
+export type Lighting = 'vtuber' | 'studio' | 'soft' | 'warm' | 'cool' | 'sunset' | 'night' | 'dramatic';
 export type Effect = 'none' | 'sparkles' | 'petals' | 'snow' | 'fireflies' | 'bubbles' | 'hearts';
 export type Outline = 'none' | 'normal' | 'bold';
 
@@ -38,6 +38,8 @@ export interface CharacterLook {
   bottomColor: string | null;
   shoesColor: string | null;
   accentColor: string | null;
+  /** Ropa lisa: sin estampados ni lazos/corbatas (look adulto y sencillo). */
+  plainOutfit: boolean;
   // Rostro
   expression: Expression;
   /** Rubor 0 – 1 */

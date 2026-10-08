@@ -184,6 +184,7 @@ export const POSES: Choice<Pose>[] = [
 ];
 
 export const LIGHTINGS: Choice<Lighting>[] = [
+  { id: 'vtuber', label: { es: 'Anime (VTuber)', en: 'Anime (VTuber)' } },
   { id: 'studio', label: { es: 'Estudio', en: 'Studio' } },
   { id: 'soft', label: { es: 'Suave', en: 'Soft' } },
   { id: 'warm', label: { es: 'Cálida', en: 'Warm' } },
@@ -243,6 +244,13 @@ export const ACCESSORY_GROUPS: { slot: AccessorySlot; label: L }[] = [
 ];
 
 export const BACKGROUNDS: (Choice & { hex: string })[] = [
+  // Fondos ilustrados de stream
+  { id: 'dusk', hex: '#B2557F', label: { es: 'Atardecer pintado', en: 'Painted dusk' } },
+  { id: 'city', hex: '#3E2D5E', label: { es: 'Ciudad de noche', en: 'City at night' } },
+  { id: 'starry', hex: '#25275A', label: { es: 'Cielo estrellado', en: 'Starry sky' } },
+  { id: 'aurora', hex: '#2E5B78', label: { es: 'Aurora', en: 'Aurora' } },
+  { id: 'dawn', hex: '#EBC9D6', label: { es: 'Amanecer', en: 'Dawn' } },
+  { id: 'room', hex: '#3B2E45', label: { es: 'Habitación', en: 'Cozy room' } },
   { id: 'lilac', hex: '#E7E1F6', label: { es: 'Lila', en: 'Lilac' } },
   { id: 'blush', hex: '#F2E2E8', label: { es: 'Rubor', en: 'Blush' } },
   { id: 'sakura', hex: '#F6DFE8', label: { es: 'Sakura', en: 'Sakura' } },
@@ -260,7 +268,9 @@ export const BACKGROUNDS: (Choice & { hex: string })[] = [
   { id: 'midnight', hex: '#222842', label: { es: 'Medianoche', en: 'Midnight' } },
   { id: 'wine', hex: '#3A1C28', label: { es: 'Burdeos', en: 'Burgundy' } },
 ];
-export const DARK_BACKGROUNDS = ['night', 'midnight', 'wine'];
+export const DARK_BACKGROUNDS = ['night', 'midnight', 'wine', 'dusk', 'city', 'starry', 'aurora', 'room'];
+/** Fondos ilustrados: el texto encima va en claro. */
+export const PAINTED_BACKGROUNDS = ['dusk', 'city', 'starry', 'aurora', 'dawn', 'room'];
 
 // ------------------------------------------------------------------ voces (ElevenLabs, voces prediseñadas)
 export interface VoiceChoice {
@@ -314,6 +324,7 @@ export const LOOK_DEFAULTS: Omit<CharacterLook, 'model'> = {
   bottomColor: null,
   shoesColor: null,
   accentColor: null,
+  plainOutfit: false,
   expression: 'neutral',
   blush: 0,
   lipColor: null,
@@ -322,14 +333,14 @@ export const LOOK_DEFAULTS: Omit<CharacterLook, 'model'> = {
   pose: 'relaxed',
   headTilt: 0,
   headTurn: 0,
-  headSize: 1,
+  headSize: 0.93,
   accessories: [],
   accessoryColor: null,
-  background: 'lilac',
-  lighting: 'studio',
+  background: 'dusk',
+  lighting: 'vtuber',
   effect: 'none',
   outline: 'normal',
-  shine: 0.5,
+  shine: 0.2,
   voice: DEFAULT_VOICE,
 };
 
@@ -349,78 +360,80 @@ export interface CharacterPreset {
   look: CharacterLook;
 }
 
+// Personajes adultos con estética VTuber: ropa sencilla, sombreado anime plano y fondos ilustrados.
+const v = (id: string, speed = 1, style = 0.35) => ({ id, speed, style });
 export const PRESETS: CharacterPreset[] = [
   {
-    id: 'aiko', name: 'Aiko', gender: 'female', age: 23,
+    id: 'aiko', name: 'Aiko', gender: 'female', age: 24,
     tagline: { es: 'Dulce, romántica y un poco tímida', en: 'Sweet, romantic and a little shy' },
     traits: ['kind', 'romantic', 'shy'],
-    look: makeLook({ model: 'bibi', expression: 'smile', background: 'blush', blush: 0.5, pose: 'shy', voice: { id: 'EXAVITQu4vr4xnSDxMaL', speed: 1, style: 0.35 } }),
+    look: makeLook({ model: 'mei', plainOutfit: true, expression: 'smile', blush: 0.35, background: 'dusk', voice: v('EXAVITQu4vr4xnSDxMaL') }),
   },
   {
-    id: 'kai', name: 'Kai', gender: 'male', age: 26,
+    id: 'kai', name: 'Kai', gender: 'male', age: 27,
     tagline: { es: 'Protector, sarcástico y leal', en: 'Protective, sarcastic and loyal' },
     traits: ['protective', 'sarcastic', 'loyal'],
-    look: makeLook({ model: 'hair_m', background: 'sky', expression: 'smug', voice: { id: 'TX3LPaxmHKxFdv7VOQHJ', speed: 1, style: 0.3 } }),
+    look: makeLook({ model: 'hair_m', plainOutfit: true, expression: 'smug', background: 'aurora', voice: v('TX3LPaxmHKxFdv7VOQHJ', 1, 0.3) }),
   },
   {
-    id: 'mei', name: 'Mei', gender: 'female', age: 27,
-    tagline: { es: 'Fría por fuera, cariñosa por dentro', en: 'Cold outside, caring inside' },
-    traits: ['cold', 'confident', 'protective'],
-    look: makeLook({ model: 'shino', expression: 'serious', eyeColor: '#C8283F', background: 'cream', pose: 'formal', voice: { id: 'Xb7hH8MSUJpSbSDYk0k2', speed: 0.97, style: 0.2 } }),
-  },
-  {
-    id: 'ren', name: 'Ren', gender: 'male', age: 28,
-    tagline: { es: 'Reservado, intelectual y misterioso', en: 'Reserved, intellectual and mysterious' },
-    traits: ['reserved', 'intellectual', 'mysterious'],
-    look: makeLook({ model: 'fumiriya', hairColor: '#4A3026', accessories: ['glasses_square'], expression: 'calm', background: 'mint', pose: 'hands_back', voice: { id: 'cjVigY5qzO86Huf0OWal', speed: 0.95, style: 0.2 } }),
-  },
-  {
-    id: 'nyx', name: 'Nyx', gender: 'female', age: 25,
+    id: 'nyx', name: 'Nyx', gender: 'female', age: 26,
     tagline: { es: 'Misteriosa, orgullosa y magnética', en: 'Mysterious, proud and magnetic' },
     traits: ['mysterious', 'proud', 'flirty'],
-    look: makeLook({ model: 'noir', background: 'twilight', expression: 'smug', accessories: ['demon_wings'], lighting: 'night', voice: { id: 'pFZP5JQG7iQjIQuC4Bku', speed: 0.95, style: 0.45 } }),
+    look: makeLook({ model: 'base_f', hair: 'noir', hairColor: '#7A2338', eyeColor: '#C8283F', plainOutfit: true, expression: 'smug', background: 'dusk', voice: v('pFZP5JQG7iQjIQuC4Bku', 0.95, 0.45) }),
   },
   {
-    id: 'luna', name: 'Luna', gender: 'female', age: 21,
+    id: 'mei', name: 'Mei', gender: 'female', age: 28,
+    tagline: { es: 'Fría por fuera, cariñosa por dentro', en: 'Cold outside, caring inside' },
+    traits: ['cold', 'confident', 'protective'],
+    look: makeLook({ model: 'shino', plainOutfit: true, expression: 'serious', eyeColor: '#C8283F', background: 'starry', voice: v('Xb7hH8MSUJpSbSDYk0k2', 0.97, 0.2) }),
+  },
+  {
+    id: 'ren', name: 'Ren', gender: 'male', age: 29,
+    tagline: { es: 'Reservado, intelectual y misterioso', en: 'Reserved, intellectual and mysterious' },
+    traits: ['reserved', 'intellectual', 'mysterious'],
+    look: makeLook({ model: 'base_m', hair: 'fumiriya', hairColor: '#4A3026', plainOutfit: true, accessories: ['glasses_square'], expression: 'calm', background: 'room', voice: v('cjVigY5qzO86Huf0OWal', 0.95, 0.2) }),
+  },
+  {
+    id: 'luna', name: 'Luna', gender: 'female', age: 23,
     tagline: { es: 'Extrovertida, juguetona y brillante', en: 'Outgoing, playful and bright' },
     traits: ['extrovert', 'playful', 'optimistic'],
-    look: makeLook({ model: 'hair_f', expression: 'joy', background: 'lilac', pose: 'wave', effect: 'sparkles', marks: ['blush_lines'], voice: { id: 'FGY2WhTYpPnrIDTdsKH5', speed: 1.05, style: 0.55 } }),
+    look: makeLook({ model: 'base_f', hair: 'victoria', hairColor: '#D9AE6A', eyeColor: '#3D7BD9', plainOutfit: true, outfitColor: '#F4F1EC', expression: 'joy', background: 'dawn', voice: v('FGY2WhTYpPnrIDTdsKH5', 1.05, 0.55) }),
   },
   {
-    id: 'dante', name: 'Dante', gender: 'male', age: 25,
+    id: 'dante', name: 'Dante', gender: 'male', age: 27,
     tagline: { es: 'Rebelde, intenso y con buen corazón', en: 'Rebellious, intense, good-hearted' },
     traits: ['rebellious', 'dominant', 'protective'],
-    look: makeLook({ model: 'fumiriya', hair: 'hair_m', hairColor: '#C9CBD6', eyeColor: '#E8C04A', outfitColor: '#1E1A24', expression: 'serious', background: 'night', lighting: 'dramatic', marks: ['scar'], pose: 'confident', voice: { id: 'N2lVS1w4EtoT3dr4eOWO', speed: 0.98, style: 0.4 } }),
+    look: makeLook({ model: 'fumiriya', hair: 'hair_m', hairColor: '#C9CBD6', eyeColor: '#E8C04A', plainOutfit: true, expression: 'serious', marks: ['scar'], background: 'city', voice: v('N2lVS1w4EtoT3dr4eOWO', 0.98, 0.4) }),
   },
   {
-    id: 'victoria', name: 'Victoria', gender: 'female', age: 24,
+    id: 'victoria', name: 'Victoria', gender: 'female', age: 26,
     tagline: { es: 'Dramática, orgullosa y encantadora', en: 'Dramatic, proud and charming' },
     traits: ['dramatic', 'proud', 'romantic'],
-    look: makeLook({ model: 'victoria', expression: 'smile', background: 'peach', accessories: ['tiara'], pose: 'confident', lighting: 'warm', voice: { id: 'Xb7hH8MSUJpSbSDYk0k2', speed: 1, style: 0.5 } }),
+    look: makeLook({ model: 'base_f', hair: 'mei', hairColor: '#EEE4CF', eyeColor: '#8B5BD6', plainOutfit: true, outfitColor: '#5B3F8C', expression: 'smile', lipColor: '#D9708A', background: 'aurora', voice: v('Xb7hH8MSUJpSbSDYk0k2', 1, 0.5) }),
   },
   {
-    id: 'zoe', name: 'Zoe', gender: 'female', age: 22,
+    id: 'zoe', name: 'Zoe', gender: 'female', age: 24,
     tagline: { es: 'Rebelde, divertida y sin filtro', en: 'Rebellious, funny and unfiltered' },
     traits: ['rebellious', 'funny', 'confident'],
-    look: makeLook({ model: 'sample_b', background: 'lilac', expression: 'smug', pose: 'confident', voice: { id: 'cgSgspJ2msm6clMCkdW9', speed: 1.05, style: 0.6 } }),
+    look: makeLook({ model: 'sample_b', expression: 'smug', background: 'city', voice: v('cgSgspJ2msm6clMCkdW9', 1.05, 0.6) }),
   },
   {
-    id: 'vita', name: 'Vita', gender: 'female', age: 24,
+    id: 'vita', name: 'Vita', gender: 'female', age: 27,
     tagline: { es: 'Intelectual, seria y leal', en: 'Intellectual, serious and loyal' },
     traits: ['intellectual', 'serious', 'loyal'],
-    look: makeLook({ model: 'vita', background: 'sky', lighting: 'cool', voice: { id: 'XrExE9yKIg1WjnnlVkGX', speed: 0.98, style: 0.25 } }),
+    look: makeLook({ model: 'aria', accessories: ['glasses_round'], expression: 'calm', background: 'dawn', voice: v('XrExE9yKIg1WjnnlVkGX', 0.98, 0.25) }),
   },
   {
-    id: 'hana', name: 'Hana', gender: 'female', age: 20,
+    id: 'hana', name: 'Hana', gender: 'female', age: 22,
     tagline: { es: 'Soñadora, tierna y curiosa', en: 'Dreamy, tender and curious' },
     traits: ['kind', 'optimistic', 'shy'],
-    look: makeLook({ model: 'base_f', hair: 'hair_f', hairColor: '#F0A8C0', hairTip: '#B7A2E8', eyeColor: '#B79BEA', outfitColor: '#B8A6EA', accentColor: '#E6A0B4', expression: 'smile', accessories: ['bow'], marks: ['freckles'], blush: 0.6, background: 'sakura', effect: 'petals', voice: { id: 'EXAVITQu4vr4xnSDxMaL', speed: 1.03, style: 0.45 } }),
+    look: makeLook({ model: 'base_f', hair: 'shibu', hairColor: '#B7A2E8', eyeColor: '#B79BEA', plainOutfit: true, outfitColor: '#F4F1EC', expression: 'shy', blush: 0.45, background: 'room', voice: v('EXAVITQu4vr4xnSDxMaL', 1.03, 0.45) }),
   },
   {
-    id: 'sora', name: 'Sora', gender: 'male', age: 23,
+    id: 'sora', name: 'Sora', gender: 'male', age: 25,
     tagline: { es: 'Tranquilo, atento y leal', en: 'Calm, attentive and loyal' },
     traits: ['loyal', 'kind', 'reserved'],
-    look: makeLook({ model: 'base_m', hair: 'fumiriya', hairColor: '#2B2A3A', hairTip: '#5C7FD6', eyeColor: '#3D7BD9', outfitColor: '#27365E', expression: 'calm', accessories: ['headphones'], background: 'ocean', voice: { id: 'bIHbv24MWmeRgasZH58o', speed: 1, style: 0.25 } }),
+    look: makeLook({ model: 'base_m', hair: 'fumiriya', hairColor: '#2B2A3A', hairTip: '#5C7FD6', eyeColor: '#3D7BD9', plainOutfit: true, expression: 'calm', accessories: ['headphones'], background: 'dusk', voice: v('bIHbv24MWmeRgasZH58o', 1, 0.25) }),
   },
 ];
 
@@ -461,6 +474,7 @@ export function normalizeLook(raw: unknown, gender: string = 'female'): Characte
     bottomColor: color(r.bottomColor),
     shoesColor: color(r.shoesColor),
     accentColor: color(r.accentColor),
+    plainOutfit: r.plainOutfit === true,
     expression: oneOf(EXPRESSIONS, r.expression, 'neutral'),
     blush: clamp(r.blush, 0, 1, 0),
     lipColor: color(r.lipColor),
@@ -469,14 +483,14 @@ export function normalizeLook(raw: unknown, gender: string = 'female'): Characte
     pose: oneOf(POSES, r.pose, 'relaxed'),
     headTilt: clamp(r.headTilt, -1, 1, 0),
     headTurn: clamp(r.headTurn, -1, 1, 0),
-    headSize: clamp(r.headSize, 0.9, 1.12, 1),
+    headSize: clamp(r.headSize, 0.9, 1.12, 0.93),
     accessories: Array.isArray(r.accessories) ? r.accessories.filter((a) => ACCESSORIES.some((x) => x.id === a)).reduce<string[]>(toggleAccessory, []) : [],
     accessoryColor: color(r.accessoryColor),
     background: BACKGROUNDS.some((b) => b.id === r.background) ? (r.background as string) : base.background,
-    lighting: oneOf(LIGHTINGS, r.lighting, 'studio'),
+    lighting: oneOf(LIGHTINGS, r.lighting, 'vtuber'),
     effect: oneOf(EFFECTS, r.effect, 'none'),
     outline: oneOf(OUTLINES, r.outline, 'normal'),
-    shine: clamp(r.shine, 0, 1, 0.5),
+    shine: clamp(r.shine, 0, 1, 0.2),
     voice: {
       id: typeof v.id === 'string' && voiceById(v.id) ? v.id : null,
       speed: clamp(v.speed, 0.7, 1.2, 1),
@@ -512,8 +526,9 @@ export function randomLook(gender: 'female' | 'male' | 'other', voice?: VoiceSet
     marks: chance(0.25) ? [rnd(MARKS).id] : [],
     pose: rnd(POSES).id,
     accessories: accessories.reduce<string[]>(toggleAccessory, []),
-    background: dark ? rnd(DARK_BACKGROUNDS) : rnd(BACKGROUNDS.filter((b) => !DARK_BACKGROUNDS.includes(b.id))).id,
-    lighting: dark ? rnd(['night', 'dramatic'] as Lighting[]) : rnd(['studio', 'soft', 'warm', 'cool', 'sunset'] as Lighting[]),
+    background: chance(0.7) ? rnd(PAINTED_BACKGROUNDS) : dark ? rnd(DARK_BACKGROUNDS) : rnd(BACKGROUNDS.filter((b) => !DARK_BACKGROUNDS.includes(b.id))).id,
+    lighting: chance(0.75) ? 'vtuber' : dark ? rnd(['night', 'dramatic'] as Lighting[]) : rnd(['studio', 'soft', 'warm', 'cool', 'sunset'] as Lighting[]),
+    plainOutfit: chance(0.6),
     effect: chance(0.25) ? rnd(EFFECTS.slice(1)).id : 'none',
     voice: voice ?? DEFAULT_VOICE,
   });

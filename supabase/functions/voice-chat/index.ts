@@ -34,7 +34,7 @@ serve(async (req) => {
   const profile = await getProfile(user.id);
   const avatar = await getOwnedAvatar(user.id, avatarId);
   const conversationId = await getConversationId(avatarId);
-  const quota = await reserveFree(profile, 'voice');
+  const quota = await reserveFree(profile, 'voice', !!user.is_anonymous);
 
   try {
     // 1) Voz de la persona → texto

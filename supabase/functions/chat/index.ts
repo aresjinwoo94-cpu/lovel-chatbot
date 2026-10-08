@@ -18,7 +18,7 @@ serve(async (req) => {
   const profile = await getProfile(user.id);
   const avatar = await getOwnedAvatar(user.id, avatarId);
   const conversationId = await getConversationId(avatarId);
-  const quota = await reserveFree(profile, 'text');
+  const quota = await reserveFree(profile, 'text', !!user.is_anonymous);
 
   try {
     const reply = await replyAsAvatar({ avatar, profile, userText: body });

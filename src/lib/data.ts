@@ -53,6 +53,12 @@ export async function createAvatar(input: NewAvatar): Promise<Avatar> {
   return data as Avatar;
 }
 
+/** Cambios desde «Personalizar» (aspecto, voz, nombre, género, edad). */
+export async function updateAvatar(id: string, patch: Partial<Pick<Avatar, 'name' | 'gender' | 'age' | 'appearance' | 'appearance_description' | 'voice_id'>>) {
+  const { error } = await supabase.from('avatars').update(patch).eq('id', id);
+  if (error) throw error;
+}
+
 export async function deleteAvatar(id: string) {
   const { error } = await supabase.from('avatars').delete().eq('id', id);
   if (error) throw error;

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,9 +21,11 @@ import { useI18n } from '@/lib/i18n';
  */
 export default function LoginScreen() {
   const { t } = useI18n();
-  const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset } = useAuth();
+  const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, isGuest } = useAuth();
+  const { next } = useLocalSearchParams<{ next?: string }>();
   const [draft, setDraft] = useState<CharacterDraft | null>(null);
-  const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+  // Invitado: lo normal es crear su cuenta (conserva personaje e historia).
+  const [mode, setMode] = useState<'signIn' | 'signUp'>(isGuest ? 'signUp' : 'signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState<'google' | 'email' | null>(null);
@@ -68,7 +70,7 @@ export default function LoginScreen() {
         if (needsConfirmation) return showDialog(t('login.checkEmail'));
       }
       // Con sesión: el inicio decide (personaje pendiente → /start, historias → lista).
-      router.replace('/');
+      router.replace((isGuest && mode === 'signUp' && next ? next : '/') as never);
     } catch (e) {
       fail(e);
     } finally {
@@ -91,7 +93,15 @@ export default function LoginScreen() {
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerClassName="flex-grow justify-center px-5 py-10" keyboardShouldPersistTaps="handled">
           <View className="w-full self-center" style={{ maxWidth: 380 }}>
-            {draft ? (
+            {isGuest ? (
+              <View className="items-center">
+                <View className="h-12 w-12 items-center justify-center rounded-full bg-primary-soft">
+                  <Ionicons name="bookmark" size={20} color={colors.primaryDeep} />
+                </View>
+                <Text className="mt-5 text-center font-semibold text-[24px] leading-[30px] tracking-tighter text-ink">{t('login.guestTitle')}</Text>
+                <Muted className="mt-2 text-center text-[15px] leading-[22px]">{t('login.guestBody')}</Muted>
+              </View>
+            ) : draft ? (
               <View className="items-center">
                 <AnimatedAvatar avatar={{ appearance: draft.look, gender: draft.gender, avatar_image_url: draft.snapshot }} size={96} presence="happy" />
                 <Text className="mt-5 text-center font-semibold text-[24px] leading-[30px] tracking-tighter text-ink">{t('login.draftTitle', { name: draft.name })}</Text>
@@ -144,13 +154,17 @@ export default function LoginScreen() {
             <Pressable onPress={() => setMode(mode === 'signIn' ? 'signUp' : 'signIn')} className="mt-5 items-center py-1">
               <Text className="font-semibold text-[14px] text-primary">{mode === 'signIn' ? t('login.toSignUp') : t('login.toSignIn')}</Text>
             </Pressable>
+            {isGuest && mode === 'signIn' ? <Muted className="mt-1 text-center text-[12px]">{t('login.guestSignIn')}</Muted> : null}
             {mode === 'signIn' ? (
               <Pressable onPress={forgot} className="mt-2 items-center py-1">
                 <Muted>{t('login.forgot')}</Muted>
               </Pressable>
             ) : null}
-            <Pressable onPress={() => router.replace(draft ? '/avatar/create' : '/explore')} className="mt-2 items-center py-1">
-              <Muted>{draft ? t('login.keepEditing', { name: draft.name }) : t('login.explore')}</Muted>
+            <Pressable
+              onPress={() => (isGuest ? (router.canGoBack() ? router.back() : router.replace('/')) : router.replace(draft ? '/avatar/create' : '/welcome'))}
+              className="mt-2 items-center py-1"
+            >
+              <Muted>{isGuest ? t('pro.notNow') : draft ? t('login.keepEditing', { name: draft.name }) : t('login.explore')}</Muted>
             </Pressable>
 
             <View className="mt-8 flex-row items-center justify-center">

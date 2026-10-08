@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, KeyboardAvoidingView, Platform, Pressable, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -12,15 +12,15 @@ import { PaywallModal } from '@/components/PaywallModal';
 import { PresencePill } from '@/components/PresencePill';
 import { Text, TextInput } from '@/components/Themed';
 import { TypingIndicator } from '@/components/TypingIndicator';
-import { IconButton } from '@/components/ui';
+import { Button, IconButton } from '@/components/ui';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { VrmAvatar } from '@/components/VrmAvatar';
 import { colors } from '@/constants/theme';
 import { ApiError, callFunction, isPaywall } from '@/lib/api';
 import { base64ToPlayableUri, readRecording } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
-import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT } from '@/lib/billing';
-import { normalizeLook } from '@/lib/character/catalog';
+import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT, GUEST_TEXT_LIMIT, GUEST_VOICE_LIMIT } from '@/lib/billing';
+import { DARK_BACKGROUNDS, normalizeLook } from '@/lib/character/catalog';
 import type { Presence } from '@/lib/character/types';
 import { fetchAvatar, fetchMessages, PAGE_SIZE, startChat } from '@/lib/data';
 import { showDialog } from '@/lib/dialog';
@@ -39,9 +39,9 @@ const speakMs = (text: string) => Math.max(1400, Math.min(6000, 900 + text.lengt
  * Tus mensajes a la derecha; los suyos a la izquierda, con su foto y su nombre.
  */
 export default function ChatScreen() {
-  const { avatarId } = useLocalSearchParams<{ avatarId: string }>();
+  const { avatarId, intro } = useLocalSearchParams<{ avatarId: string; intro?: string }>();
   const { t, language } = useI18n();
-  const { profile, refreshProfile } = useAuth();
+  const { profile, refreshProfile, isGuest } = useAuth();
   const { width, height } = useWindowDimensions();
   const wide = width >= 900;
   const withSidebar = width >= 1180;
@@ -81,7 +81,7 @@ export default function ChatScreen() {
   // Cupo gratuito: el perfil (servidor, en vivo) + lo último que devolvió una respuesta.
   const quota = useMemo<QuotaState | null>(() => {
     const fromProfile: QuotaState | null = profile
-      ? { isPro: profile.is_pro, textUsed: profile.free_messages_used ?? 0, textLimit: FREE_TEXT_LIMIT, voiceUsed: profile.free_voice_used ?? 0, voiceLimit: FREE_VOICE_LIMIT }
+      ? { isPro: profile.is_pro, textUsed: profile.free_messages_used ?? 0, textLimit: isGuest ? GUEST_TEXT_LIMIT : FREE_TEXT_LIMIT, voiceUsed: profile.free_voice_used ?? 0, voiceLimit: isGuest ? GUEST_VOICE_LIMIT : FREE_VOICE_LIMIT }
       : null;
     if (!override || !fromProfile) return override ?? fromProfile;
     return {
@@ -90,7 +90,7 @@ export default function ChatScreen() {
       textUsed: Math.max(override.textUsed, fromProfile.textUsed),
       voiceUsed: Math.max(override.voiceUsed, fromProfile.voiceUsed),
     };
-  }, [profile, override]);
+  }, [profile, override, isGuest]);
   const isPro = quota?.isPro ?? false;
   const textLeft = quota ? Math.max(0, quota.textLimit - quota.textUsed) : FREE_TEXT_LIMIT;
   const voiceLeft = quota ? Math.max(0, quota.voiceLimit - quota.voiceUsed) : FREE_VOICE_LIMIT;
@@ -184,6 +184,17 @@ export default function ChatScreen() {
     setInputFocused(false);
   };
 
+  // Al volver de «Personalizar», recargamos su aspecto.
+  useFocusEffect(
+    useCallback(() => {
+      if (!avatarId || loading) return;
+      fetchAvatar(avatarId).then(setAvatar).catch(() => undefined);
+    }, [avatarId, loading]),
+  );
+
+  // Primera vez (desde la bienvenida): cómo personalizarlo.
+  const [showTip, setShowTip] = useState(intro === '1');
+
   const loadOlder = useCallback(async () => {
     if (!avatarId || loadingOlder || !hasMore || messages.length === 0) return;
     setLoadingOlder(true);
@@ -227,7 +238,15 @@ export default function ChatScreen() {
     later(() => setNotice(null), 4500);
   };
 
+  /** Invitado sin cupo: crear cuenta (conserva personaje y conversación). */
+  const askAccount = () =>
+    showDialog(t('chat.needsAccount'), t('chat.needsAccountBody'), [
+      { text: t('chat.guestCta'), onPress: () => router.push({ pathname: '/login', params: { next: `/chat/${avatarId}` } }) },
+      { text: t('pro.notNow'), style: 'cancel' },
+    ]);
+
   const failed = (e: unknown, kind: 'text' | 'voice') => {
+    if (e instanceof ApiError && e.code === 'NEEDS_ACCOUNT') return askAccount();
     if (isPaywall(e)) {
       if (quota) setQuota(kind === 'text' ? { ...quota, textUsed: quota.textLimit } : { ...quota, voiceUsed: quota.voiceLimit });
       setPaywall(kind);
@@ -241,7 +260,7 @@ export default function ChatScreen() {
   const sendText = async () => {
     const body = text.trim();
     if (!body || !avatarId || typing || opening) return;
-    if (!isPro && textLeft <= 0) return setPaywall('text');
+    if (!isPro && textLeft <= 0) return isGuest ? askAccount() : setPaywall('text');
     const temp = tempMessage('text', body);
     setMessages((prev) => [temp, ...prev]);
     setText('');
@@ -263,7 +282,7 @@ export default function ChatScreen() {
 
   // ---------------------------------------------------------------- enviar voz
   const openRecorder = () => {
-    if (!isPro && voiceLeft <= 0) return setPaywall('voice');
+    if (!isPro && voiceLeft <= 0) return isGuest ? askAccount() : setPaywall('voice');
     setRecording(true);
   };
 
@@ -320,8 +339,12 @@ export default function ChatScreen() {
   const busy = typing || opening;
   const scenario = scenarioById(avatar.scenario_id);
   const sceneText = scenario ? fillName(scenario.setup[language], avatar.name) : avatar.situation_description;
-  const darkStage = look.background === 'night';
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const darkStage = DARK_BACKGROUNDS.includes(look.background);
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)'));
+  const customize = () => {
+    setShowTip(false);
+    router.push({ pathname: '/avatar/create', params: { edit: avatar.id } });
+  };
 
   // ------------------------------------------------ escenario del personaje
   const stageH = Math.round(Math.min(height * 0.36, 300));
@@ -336,8 +359,36 @@ export default function ChatScreen() {
         </View>
         {!wide ? <IconButton icon="chevron-up" variant="outline" size={34} label={t('chat.collapse')} onPress={() => setManualCollapsed(true)} /> : null}
       </View>
+      {/* Personalizar: aspecto, voz e identidad */}
+      <View pointerEvents="box-none" className={`absolute ${wide ? 'right-3 top-3' : 'right-14 top-2'}`}>
+        <Pressable
+          onPress={customize}
+          accessibilityRole="button"
+          accessibilityLabel={t('chat.customize')}
+          className="h-9 flex-row items-center rounded-full border border-line bg-paper px-3.5 active:bg-subtle"
+          style={{ cursor: 'pointer' } as object}
+        >
+          <Ionicons name="color-palette-outline" size={16} color={colors.ink} />
+          <Text className="ml-1.5 font-semibold text-[13px] text-ink">{t('chat.customize')}</Text>
+        </Pressable>
+      </View>
     </View>
   );
+
+  const guestBar =
+    isGuest || showTip ? (
+      <View className="border-b border-line bg-subtle px-4 py-2">
+        <View className="w-full flex-row items-center self-center" style={{ maxWidth: 760, gap: 10 }}>
+          <Ionicons name={isGuest ? 'bookmark-outline' : 'color-palette-outline'} size={15} color={colors.ink} />
+          <Text className="flex-1 text-[12px] leading-[17px] text-ink">{isGuest ? t('chat.guest') : t('chat.customizeTip')}</Text>
+          {isGuest ? (
+            <Button size="sm" title={t('chat.guestCta')} onPress={() => router.push({ pathname: '/login', params: { next: `/chat/${avatar.id}` } })} />
+          ) : (
+            <IconButton icon="close" size={28} label={t('pro.notNow')} onPress={() => setShowTip(false)} />
+          )}
+        </View>
+      </View>
+    ) : null;
 
   // ------------------------------------------------ cabecera compacta (móvil replegado)
   const compactHeader = (
@@ -366,6 +417,7 @@ export default function ChatScreen() {
   // ------------------------------------------------ conversación
   const conversation = (
     <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {guestBar}
       <FlatList
         className="flex-1"
         data={messages}
@@ -514,7 +566,7 @@ export default function ChatScreen() {
       ) : (
         <Animated.View layout={LinearTransition.duration(220)} className="border-b border-line">
           {stage}
-          <View className="absolute left-2 right-2 top-2 flex-row justify-between">
+          <View pointerEvents="box-none" className="absolute left-2 right-2 top-2 flex-row justify-between">
             <IconButton icon="chevron-back" variant="outline" size={36} label={t('common.back')} onPress={goBack} />
             <IconButton icon="share-outline" variant="outline" size={36} label={t('chat.export')} onPress={onExport} />
           </View>
