@@ -26,22 +26,22 @@
       "checkedAt": "2026-10-17"
     },
     "luna": {
-      "look": "d40aea3d09e1",
+      "look": "76a78080af8b",
       "status": "pending",
       "checkedAt": "2026-10-17"
     },
     "dante": {
-      "look": "fefe7c697d4f",
+      "look": "14f344112663",
       "status": "pending",
       "checkedAt": "2026-10-17"
     },
     "victoria": {
-      "look": "4cbc7cafd64a",
+      "look": "49e8f3cf6bed",
       "status": "pending",
       "checkedAt": "2026-10-17"
     },
     "zoe": {
-      "look": "8bc12bf06386",
+      "look": "c4fdb436db71",
       "status": "pending",
       "checkedAt": "2026-10-17"
     },
@@ -56,10 +56,10 @@
       "checkedAt": "2026-10-17"
     },
     "sora": {
-      "look": "99a779d82f20",
+      "look": "01bde071b1c6",
       "status": "pending",
       "checkedAt": "2026-10-17"
     }
   },
-  "engine": "7511a576dab8"
+  "engine": "343ab0322988"
 }

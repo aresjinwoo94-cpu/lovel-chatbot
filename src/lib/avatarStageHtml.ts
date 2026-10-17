@@ -1426,8 +1426,9 @@ async function handle(msg) {
     if (current.qa) {
       gazeYaw = gazePitch = 0; glanceEnd = 0; nextGlance = Infinity;
       // el pelo se coloca en la postura nueva antes de la foto (si no, un mechón puede salir volando)
-      for (let i = 0; i < 3; i++) step(1 / 60, clock.elapsedTime);
-      for (const v of [current.vrm, current.hairVrm]) { v?.springBoneManager?.setInitState(); v?.springBoneManager?.reset(); }
+      // vuelve al reposo capturado al cargar (nunca se guarda la postura actual como reposo:
+      // eso acumulaba la deformación del flequillo en cada cambio)
+      for (const v of [current.vrm, current.hairVrm]) v?.springBoneManager?.reset();
       for (let i = 0; i < 90; i++) step(1 / 60, clock.elapsedTime);
     }
     else nextGlance = clock.elapsedTime + 3;

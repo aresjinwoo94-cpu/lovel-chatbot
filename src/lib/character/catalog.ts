@@ -348,11 +348,22 @@ export function hairCompatible(model: string): boolean {
  * por el flequillo, huecos en el cuero cabelludo o marcas de la cara por encima del pelo.
  * Se rellena con la revisión de la matriz cuerpo × peinado (scripts/qa-characters.mjs).
  */
-export const BODY_HAIR_CONFLICTS: Record<string, string[]> = {};
+export const BODY_HAIR_CONFLICTS: Record<string, string[]> = {
+  mei: ['victoria', 'noir'],
+  shibu: ['victoria', 'noir', 'hair_f'],
+  victoria: ['hair_f', 'mei'],
+  noir: ['hair_f'],
+  hair_m: ['hair_f'],
+  // sus marcas de la cara se dibujan por encima de los mechones laterales de otros peinados
+  vita: ['hair_f', 'mei', 'noir', 'shino'],
+};
+/** Peinados que solo encajan en su propio cuerpo (las cejas asoman en casi todos los demás). */
+const OWN_BODY_ONLY_HAIR = ['vita', 'fumiriya', 'hair_m'];
 
 /** ¿Se puede usar el peinado `hair` en el cuerpo `model`? */
 export function hairAllowed(model: string, hair: string): boolean {
   if (hair === model) return true;
+  if (OWN_BODY_ONLY_HAIR.includes(hair)) return false;
   return hairCompatible(model) && !(BODY_HAIR_CONFLICTS[model] ?? []).includes(hair);
 }
 
@@ -443,25 +454,25 @@ export const PRESETS: CharacterPreset[] = [
     id: 'luna', name: 'Luna', gender: 'female', age: 23,
     tagline: { es: 'Extrovertida, juguetona y brillante', en: 'Outgoing, playful and bright' },
     traits: ['extrovert', 'playful', 'optimistic'],
-    look: makeLook({ model: 'mei', hair: 'victoria', hairColor: '#D9AE6A', eyeColor: '#3D7BD9', outfitColor: '#F2C9B8', expression: 'joy', background: 'dawn', voice: v('FGY2WhTYpPnrIDTdsKH5', 1.05, 0.55) }),
+    look: makeLook({ model: 'victoria', hairColor: '#D9AE6A', eyeColor: '#3D7BD9', outfitColor: '#F2C9B8', expression: 'joy', background: 'dawn', voice: v('FGY2WhTYpPnrIDTdsKH5', 1.05, 0.55) }),
   },
   {
     id: 'dante', name: 'Dante', gender: 'male', age: 27,
     tagline: { es: 'Rebelde, intenso y con buen corazón', en: 'Rebellious, intense, good-hearted' },
     traits: ['rebellious', 'dominant', 'protective'],
-    look: makeLook({ model: 'fumiriya', hair: 'hair_m', hairColor: '#C9CBD6', eyeColor: '#E8C04A', plainOutfit: true, expression: 'serious', marks: ['scar'], background: 'city', voice: v('N2lVS1w4EtoT3dr4eOWO', 0.98, 0.4) }),
+    look: makeLook({ model: 'fumiriya', hairColor: '#C9CBD6', eyeColor: '#E8C04A', plainOutfit: true, expression: 'serious', marks: ['scar'], background: 'city', voice: v('N2lVS1w4EtoT3dr4eOWO', 0.98, 0.4) }),
   },
   {
     id: 'victoria', name: 'Victoria', gender: 'female', age: 26,
     tagline: { es: 'Dramática, orgullosa y encantadora', en: 'Dramatic, proud and charming' },
     traits: ['dramatic', 'proud', 'romantic'],
-    look: makeLook({ model: 'victoria', hair: 'mei', hairColor: '#EEE4CF', eyeColor: '#8B5BD6', outfitColor: '#5B3F8C', expression: 'smile', lipColor: '#D9708A', background: 'aurora', voice: v('Xb7hH8MSUJpSbSDYk0k2', 1, 0.5) }),
+    look: makeLook({ model: 'victoria', hair: 'shino', hairColor: '#EEE4CF', eyeColor: '#8B5BD6', outfitColor: '#5B3F8C', expression: 'smile', lipColor: '#D9708A', background: 'aurora', voice: v('Xb7hH8MSUJpSbSDYk0k2', 1, 0.5) }),
   },
   {
     id: 'zoe', name: 'Zoe', gender: 'female', age: 24,
     tagline: { es: 'Rebelde, divertida y sin filtro', en: 'Rebellious, funny and unfiltered' },
     traits: ['rebellious', 'funny', 'confident'],
-    look: makeLook({ model: 'mei', hair: 'noir', hairColor: '#5B3F8C', hairTip: '#5C7FD6', skinTone: '#9A6446', plainOutfit: true, outfitColor: '#8C2F46', expression: 'smug', background: 'city', voice: v('cgSgspJ2msm6clMCkdW9', 1.05, 0.6) }),
+    look: makeLook({ model: 'mei', hair: 'shibu', hairColor: '#5B3F8C', hairTip: '#5C7FD6', skinTone: '#9A6446', plainOutfit: true, outfitColor: '#8C2F46', expression: 'smug', background: 'city', voice: v('cgSgspJ2msm6clMCkdW9', 1.05, 0.6) }),
   },
   {
     id: 'vita', name: 'Vita', gender: 'female', age: 27,
@@ -479,7 +490,7 @@ export const PRESETS: CharacterPreset[] = [
     id: 'sora', name: 'Sora', gender: 'male', age: 25,
     tagline: { es: 'Tranquilo, atento y leal', en: 'Calm, attentive and loyal' },
     traits: ['loyal', 'kind', 'reserved'],
-    look: makeLook({ model: 'hair_m', hair: 'fumiriya', hairColor: '#2B2A3A', hairTip: '#5C7FD6', eyeColor: '#3D7BD9', plainOutfit: true, outfitColor: '#56708F', expression: 'calm', accessories: ['headphones'], background: 'dusk', voice: v('bIHbv24MWmeRgasZH58o', 1, 0.25) }),
+    look: makeLook({ model: 'hair_m', hairColor: '#2B2A3A', hairTip: '#5C7FD6', eyeColor: '#3D7BD9', plainOutfit: true, outfitColor: '#56708F', expression: 'calm', accessories: ['headphones'], background: 'dusk', voice: v('bIHbv24MWmeRgasZH58o', 1, 0.25) }),
   },
 ];
 
