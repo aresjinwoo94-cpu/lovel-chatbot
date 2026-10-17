@@ -606,6 +606,7 @@ function faceWidth(vrm) {
  * donante sigue a los huesos de este personaje (copiamos la pose cada fotograma)
  * y conserva su propia física.
  */
+const HAIR_FIT = 1.04;
 function attachHair(target, donor) {
   donor.scene.traverse((o) => { if (o.isMesh) o.visible = isHairMesh(o); });
   target.scene.traverse((o) => { if (o.isMesh && isHairMesh(o)) o.visible = false; });
@@ -618,7 +619,9 @@ function attachHair(target, donor) {
   }
   const tw = faceWidth(target), dw = faceWidth(donor);
   const ratio = tw && dw ? tw / dw : 1;
-  current.headScale = ratio > 0.86 && ratio < 1.16 ? ratio : 1;
+  // un pelo prestado queda unos milímetros más atrás que el propio: un 4 % más grande cubre la
+  // frente (sin cejas por delante del flequillo) y no deja huecos en la coronilla (QA, WP-5)
+  current.headScale = (ratio > 0.86 && ratio < 1.16 ? ratio : 1) * HAIR_FIT;
   current.hairPairs = pairs;
 }
 
@@ -684,6 +687,26 @@ function headMetrics(vrm) {
     le.getWorldPosition(a); re.getWorldPosition(b);
     eyes.copy(a).add(b).multiplyScalar(0.5); eyeDist = a.distanceTo(b);
   } else eyes.set(hp.x, hp.y + 0.06, hp.z + 0.08);
+  // Los huesos de los ojos no siempre están donde se ven los ojos (p. ej. en algunos VRM 1):
+  // el centro y la separación reales salen de la geometría de los iris.
+  const irisBox = new THREE.Box3();
+  vrm.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    if (!mats.some((m) => category(m.name) === 'iris')) return;
+    const pos = o.geometry.attributes.position; if (!pos) return;
+    o.updateWorldMatrix(true, false);
+    const v = new THREE.Vector3();
+    const stepN = Math.max(1, Math.floor(pos.count / 800));
+    for (let i = 0; i < pos.count; i += stepN) { v.fromBufferAttribute(pos, i); if (o.isSkinnedMesh) o.applyBoneTransform(i, v); v.applyMatrix4(o.matrixWorld); irisBox.expandByPoint(v); }
+  });
+  if (!irisBox.isEmpty()) {
+    const w = irisBox.max.x - irisBox.min.x;
+    if (w > 0.03 && w < 0.2) {
+      eyes.set((irisBox.min.x + irisBox.max.x) / 2, (irisBox.min.y + irisBox.max.y) / 2, Math.max(eyes.z, irisBox.max.z));
+      eyeDist = w * 0.68;
+    }
+  }
   const faceBox = new THREE.Box3();
   vrm.scene.traverse((o) => {
     if (!o.isMesh) return;
@@ -762,8 +785,10 @@ function hornGeometry(r, h, bend) {
 function overHair(obj) {
   obj.traverse((o) => {
     if (!o.isMesh) return;
-    o.renderOrder = 20;
+    // pase transparente y al final: el pelo semitransparente se dibuja antes y no tapa la montura
+    o.renderOrder = 1000;
     o.material = o.material.clone();
+    o.material.transparent = true;
     o.material.depthTest = false;
     o.material.depthWrite = false;
   });
@@ -790,7 +815,7 @@ function buildAccessories(look) {
   // --- ojos
   if (has('glasses_round') || has('glasses_square') || has('sunglasses')) {
     const gl = new THREE.Group();
-    const r = e * 0.52;
+    const r = e * 0.46;
     const round = has('glasses_round');
     const sun = has('sunglasses');
     const frame = mat(sun ? '#141218' : '#2b2733', 0.6, 0.3);
@@ -920,7 +945,8 @@ function buildAccessories(look) {
   }
   // --- orejas
   if (has('headphones')) {
-    const r = Math.max(halfW * 1.18, hairHalfW * 0.98);
+    // las copas van sobre las orejas (ancho de la cara), no al ancho del pelo: si no, flotan
+    const r = halfW * 1.12;
     const band = new THREE.Mesh(new THREE.TorusGeometry(r, e * 0.13, 10, 48, Math.PI), mat(0x2f2b38, 0.4));
     band.scale.set(1, (hairTop + e * 0.12 - (eyes.y - e * 0.3)) / r, 1);
     put(band, W(0, eyes.y - e * 0.3, eyes.z - e * 0.5));
@@ -1102,12 +1128,12 @@ const ex = { happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0, blink: 0 };
 /** Expresión base (valores de las expresiones estándar de VRM). */
 const EXPRESSIONS = {
   neutral: {},
-  smile: { happy: 0.28 },
+  smile: { relaxed: 0.35, happy: 0.08 }, // boca cerrada: el happy de VRoid separa los labios
   joy: { relaxed: 0.55, happy: 0.3 },
   calm: { relaxed: 0.45 },
   serious: { angry: 0.3 },
-  shy: { happy: 0.2, sad: 0.2 },
-  smug: { happy: 0.24, angry: 0.24 },
+  shy: { relaxed: 0.25, sad: 0.18 },
+  smug: { relaxed: 0.22, angry: 0.1 },
   sad: { sad: 0.4 },
   surprised: { surprised: 0.38 },
   angry: { angry: 0.5 },
@@ -1416,6 +1442,8 @@ document.addEventListener('message', onMessage);
 window.__lovel = {
   handle,
   perf: () => ({ ...perf, mobile: MOBILE }),
+  // diagnóstico (QA): orden de dibujo de cada malla visible
+  orders: () => { const out = []; for (const r of [current.vrm?.scene, current.hairVrm?.scene].filter(Boolean)) r.traverse((o) => { if (o.isMesh && o.visible) for (const m of [].concat(o.material)) out.push([r === current.vrm.scene ? 'body' : 'hair', m.name, o.renderOrder, m.transparent, m.depthWrite, m.depthTest]); }); return out; },
   morphs: () => { const out = {}; current.vrm?.scene.traverse((o) => { if (o.morphTargetInfluences && o.morphTargetDictionary) { const d = o.morphTargetDictionary; for (const k in d) { const v = o.morphTargetInfluences[d[k]]; if (v > 0.01) out[o.name + ':' + k] = +v.toFixed(2); } } }); return out; },
   debug: () => { const em = current.vrm?.expressionManager; return em ? Object.fromEntries(em.expressions.map((x) => [x.expressionName, +em.getValue(x.expressionName)?.toFixed?.(2)])) : null; },
 };
