@@ -1,5 +1,7 @@
+const v = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 /**
- * Tailwind de Lovel House — identidad visual oficial (modo claro).
+ * Tailwind de Lovel House — identidad visual oficial (claro y oscuro).
  * Tipografía: Plus Jakarta Sans en toda la interfaz (sin serif ni cursivas).
  *
  * Nota: el plugin fontWeight está desactivado a propósito. Las clases
@@ -15,23 +17,35 @@ module.exports = {
   },
   theme: {
     extend: {
+      // Colores como variables CSS (--c-*): cambian solos entre claro y oscuro.
+      // Valores en src/constants/theme.ts; los aplica src/lib/theme.tsx.
       colors: {
-        cream: '#F9F7F3',
-        subtle: '#F2EFEA',
-        paper: '#FFFFFF',
-        ink: '#242229',
-        muted: '#77737D',
-        line: '#E8E4DE',
+        cream: v('cream'),
+        subtle: v('subtle'),
+        paper: v('paper'),
+        ink: v('ink'),
+        muted: v('muted'),
+        line: v('line'),
         primary: {
-          DEFAULT: '#6F5BD3',
-          soft: '#E9E4FA',
-          deep: '#5A47B8',
+          DEFAULT: v('primary'),
+          soft: v('primary-soft'),
+          deep: v('primary-deep'),
         },
         accent: {
-          DEFAULT: '#E6A0B4',
-          soft: '#F8E8ED',
+          DEFAULT: v('accent'),
+          soft: v('accent-soft'),
+          ink: v('accent-ink'),
         },
-        success: '#69B58A',
+        success: {
+          DEFAULT: v('success'),
+          soft: v('success-soft'),
+          ink: v('success-ink'),
+        },
+        gold: {
+          soft: v('gold-soft'),
+          ink: v('gold-ink'),
+        },
+        danger: v('danger'),
       },
       fontFamily: {
         sans: ['PlusJakartaSans_400Regular'],
@@ -51,5 +65,11 @@ module.exports = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // Valores iniciales en web (antes de que cargue la app) según prefers-color-scheme.
+    ({ addBase }) => {
+      const { cssVarsLight, cssVarsDark } = require('./src/constants/palettes.js');
+      addBase({ ':root': cssVarsLight, '@media (prefers-color-scheme: dark)': { ':root': cssVarsDark } });
+    },
+  ],
 };

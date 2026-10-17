@@ -16,11 +16,11 @@ import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { colors } from '@/constants/theme';
 import { AgeGateProvider, useAgeGate } from '@/lib/ageGate';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { DialogHost } from '@/lib/dialog';
 import { I18nProvider } from '@/lib/i18n';
+import { ThemeProvider, useTheme } from '@/lib/theme';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -35,6 +35,7 @@ SplashScreen.preventAutoHideAsync();
 function RootNavigator() {
   const { session, loading, isGuest } = useAuth();
   const { status: age, takeResume } = useAgeGate();
+  const { colors, scheme } = useTheme();
   const adult = age === 'adult';
 
   // Quien llegó por un enlace (p. ej. restablecer contraseña o un chat) sigue ahí tras la puerta.
@@ -85,6 +86,7 @@ function RootNavigator() {
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
       </Stack>
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <DialogHost />
     </>
   );
@@ -94,14 +96,15 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <ThemeProvider>
         <I18nProvider>
           <AuthProvider>
             <AgeGateProvider>
-              <StatusBar style="dark" />
               <RootNavigator />
             </AgeGateProvider>
           </AuthProvider>
         </I18nProvider>
+        </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

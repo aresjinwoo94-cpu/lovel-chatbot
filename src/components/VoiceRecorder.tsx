@@ -13,9 +13,9 @@ import { AnimatedAvatar, type AvatarLike } from './AnimatedAvatar';
 import { Button, IconButton } from './ui';
 import { VoicePlayer } from './VoicePlayer';
 import { Text } from '@/components/Themed';
-import { colors } from '@/constants/theme';
 import { formatDuration } from '@/lib/audio';
 import { useI18n } from '@/lib/i18n';
+import { useColors } from '@/lib/theme';
 
 interface Props {
   avatar: AvatarLike;
@@ -59,6 +59,7 @@ function webSupport(): ErrorKey | null {
  *  4. Enviar o descartar.
  */
 export function VoiceRecorder({ avatar, onSend, onClose, onPreviewPlaying, voiceLeft = null }: Props) {
+  const colors = useColors();
   const { t } = useI18n();
   const recorder = useAudioRecorder({ ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true });
   const [phase, setPhaseState] = useState<Phase>('preparing');

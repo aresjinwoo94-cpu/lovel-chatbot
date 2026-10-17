@@ -8,15 +8,16 @@ import { AnimatedAvatar } from './AnimatedAvatar';
 import { Logo } from './Logo';
 import { Text } from './Themed';
 import { Button, Menu, Meter } from './ui';
-import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT } from '@/lib/billing';
 import { useI18n } from '@/lib/i18n';
 import { useThreads } from '@/lib/threads';
+import { useColors } from '@/lib/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 function NavItem({ icon, label, active, onPress }: { icon: IconName; label: string; active?: boolean; onPress: () => void }) {
+  const colors = useColors();
   return (
     <Pressable
       onPress={onPress}

@@ -3,9 +3,9 @@ import { View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 import { Text } from '@/components/Themed';
-import { colors } from '@/constants/theme';
 import type { Presence } from '@/lib/character/types';
 import { useI18n } from '@/lib/i18n';
+import { useColors } from '@/lib/theme';
 
 function Bar({ delay, color }: { delay: number; color: string }) {
   const v = useSharedValue(0.3);
@@ -29,6 +29,7 @@ function Dot({ delay, color }: { delay: number; color: string }) {
 
 /** Estado del personaje en palabras: en línea · escribiendo · escuchando · hablando · no disponible. */
 export function PresencePill({ presence, onDark = false }: { presence: Presence; onDark?: boolean }) {
+  const colors = useColors();
   const { t } = useI18n();
   const fg = onDark ? '#FFFFFF' : colors.ink;
   const label =

@@ -4,7 +4,6 @@ import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Field, ListRow, Muted, SectionLabel, Title } from '@/components/ui';
-import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT, openBillingPortal } from '@/lib/billing';
 import { countUserMessages, updateProfile } from '@/lib/data';
@@ -12,6 +11,7 @@ import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { Text } from '@/components/Themed';
 import { showDialog } from '@/lib/dialog';
+import { useColors } from '@/lib/theme';
 
 /** Perfil del usuario: nombre, plan, estadísticas y cerrar sesión. */
 export default function ProfileScreen() {
@@ -140,6 +140,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 function Usage({ label, used, max }: { label: string; used: number; max: number }) {
+  const colors = useColors();
   const n = Math.min(used, max);
   return (
     <View>

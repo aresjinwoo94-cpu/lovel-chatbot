@@ -8,11 +8,11 @@ import { AnimatedAvatar } from '@/components/AnimatedAvatar';
 import { Logo } from '@/components/Logo';
 import { Text } from '@/components/Themed';
 import { Button, Field, Muted } from '@/components/ui';
-import { colors } from '@/constants/theme';
 import { AuthFlowError, useAuth } from '@/lib/auth';
 import { showDialog } from '@/lib/dialog';
 import { type CharacterDraft, loadDraft } from '@/lib/draft';
 import { useI18n } from '@/lib/i18n';
+import { useColors } from '@/lib/theme';
 
 /**
  * Registro / Login: Google o correo + contraseña.
@@ -20,6 +20,7 @@ import { useI18n } from '@/lib/i18n';
  * personaje esperándote y, al entrar, la historia empieza sola.
  */
 export default function LoginScreen() {
+  const colors = useColors();
   const { t } = useI18n();
   const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, isGuest } = useAuth();
   const { next } = useLocalSearchParams<{ next?: string }>();

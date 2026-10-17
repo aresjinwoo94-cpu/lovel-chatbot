@@ -14,10 +14,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 
-import { colors } from '@/constants/theme';
 import { normalizeLook } from '@/lib/character/catalog';
 import { faceImage } from '@/lib/character/media';
 import type { Presence } from '@/lib/character/types';
+import { useColors } from '@/lib/theme';
 
 export type { Presence };
 /** Compatibilidad con el nombre anterior. */
@@ -50,6 +50,7 @@ interface Props {
  * Animaciones discretas en el hilo de UI (Reanimated), sin coste de render.
  */
 export function AnimatedAvatar({ avatar, source, presence = 'idle', size = 40, status = false }: Props) {
+  const colors = useColors();
   const img =
     source ??
     (avatar ? faceImage({ imageUrl: avatar.avatar_image_url, look: normalizeLook(avatar.appearance, avatar.gender) }) : undefined);

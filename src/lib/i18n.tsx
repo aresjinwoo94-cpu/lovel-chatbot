@@ -340,6 +340,10 @@ const es = {
 
   'settings.title': 'Ajustes',
   'settings.language': 'Idioma',
+  'settings.theme': 'Tema',
+  'settings.theme.system': 'Sistema',
+  'settings.theme.light': 'Claro',
+  'settings.theme.dark': 'Oscuro',
   'settings.privacy': 'Privacidad',
   'settings.data': 'Tus datos',
   'settings.storeVoice': 'Guardar mis notas de voz',
@@ -707,6 +711,10 @@ const en: Record<Key, string> = {
 
   'settings.title': 'Settings',
   'settings.language': 'Language',
+  'settings.theme': 'Theme',
+  'settings.theme.system': 'System',
+  'settings.theme.light': 'Light',
+  'settings.theme.dark': 'Dark',
   'settings.privacy': 'Privacy',
   'settings.data': 'Your data',
   'settings.storeVoice': 'Save my voice notes',

@@ -6,8 +6,9 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { AnimatedAvatar, type AvatarLike } from './AnimatedAvatar';
 import { VoicePlayer } from './VoicePlayer';
 import { Text } from '@/components/Themed';
-import { BUBBLE_SIDE, colors } from '@/constants/theme';
+import { BUBBLE_SIDE } from '@/constants/theme';
 import type { Message } from '@/lib/types';
+import { useColors } from '@/lib/theme';
 
 /** Las acciones de la escena (*se sonroja*) se muestran como acotación, en gris. */
 function renderWithGestures(text: string) {
@@ -45,6 +46,7 @@ interface Props {
  * nombre); tú a la DERECHA (violeta suave). Igual en móvil y en escritorio.
  */
 function ChatBubbleBase({ message, avatar, showName, showAvatar, speaking, localAudioUri, autoPlay, onSpeakingChange, pending }: Props) {
+  const colors = useColors();
   const isAvatar = message.role === 'avatar';
   const isLeft = (isAvatar ? BUBBLE_SIDE.avatar : BUBBLE_SIDE.user) === 'left';
 

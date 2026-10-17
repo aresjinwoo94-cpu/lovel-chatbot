@@ -7,9 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '@/components/Logo';
 import { Text } from '@/components/Themed';
 import { Button, Muted } from '@/components/ui';
-import { colors } from '@/constants/theme';
 import { useAgeGate } from '@/lib/ageGate';
 import { useI18n } from '@/lib/i18n';
+import { useColors } from '@/lib/theme';
 
 function LegalLinks() {
   const { t } = useI18n();
@@ -31,6 +31,7 @@ function LegalLinks() {
  * Mientras no se confirme, el resto de la app no está disponible (ver _layout.tsx).
  */
 export default function AgeGate() {
+  const colors = useColors();
   const { t } = useI18n();
   const { status, confirmAdult, declareMinor } = useAgeGate();
 

@@ -9,7 +9,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '@/components/Logo';
 import { Text } from '@/components/Themed';
 import { Button, IconButton, Muted } from '@/components/ui';
-import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { type CharacterPreset, PRESETS } from '@/lib/character/catalog';
 import { faceImage, presetPortrait } from '@/lib/character/media';
@@ -18,6 +17,7 @@ import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { genderize, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, SCENARIOS } from '@/lib/roleplay';
 import type { Gender } from '@/lib/types';
+import { useColors } from '@/lib/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 type Who = 'female' | 'male' | 'any';
@@ -52,6 +52,7 @@ function choosePreset(who: Who, age: number): CharacterPreset {
 
 /** Tarjeta de opción grande (una pregunta, una decisión). */
 function Option({ title, hint, selected, onPress, left }: { title: string; hint?: string; selected: boolean; onPress: () => void; left?: React.ReactNode }) {
+  const colors = useColors();
   return (
     <Pressable
       onPress={onPress}
@@ -91,6 +92,7 @@ function Faces({ gender }: { gender: Who }) {
  * lleva directo al chat: el personaje te escribe primero. Allí puedes personalizarlo.
  */
 export default function Welcome() {
+  const colors = useColors();
   const { t, language } = useI18n();
   const { session, startGuest } = useAuth();
   const [step, setStep] = useState(0);

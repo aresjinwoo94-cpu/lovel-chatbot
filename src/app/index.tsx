@@ -2,10 +2,10 @@ import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
-import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { loadDraft } from '@/lib/draft';
 import { supabase } from '@/lib/supabase';
+import { useColors } from '@/lib/theme';
 
 type Target = '/welcome' | '/start' | '/(tabs)' | { pathname: '/chat/[avatarId]'; params: { avatarId: string } };
 
@@ -16,6 +16,7 @@ type Target = '/welcome' | '/start' | '/(tabs)' | { pathname: '/chat/[avatarId]'
  *  - invitado con historia → su chat · con historias → inicio · sin historias → bienvenida
  */
 export default function Index() {
+  const colors = useColors();
   const { session, isGuest } = useAuth();
   const [target, setTarget] = useState<Target | null>(null);
 

@@ -11,10 +11,12 @@ import { updateProfile } from '@/lib/data';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
+import { type ThemePref, useTheme } from '@/lib/theme';
 import type { Language } from '@/lib/types';
 
 /** Configuración simple: idioma, privacidad, contraseña y borrado de datos. */
 export default function SettingsScreen() {
+  const { pref: themePref, setPref: setThemePref } = useTheme();
   const { t, language, setLanguage } = useI18n();
   const { profile, refreshProfile, signOut } = useAuth();
   const params = useLocalSearchParams<{ password?: string }>();
@@ -82,6 +84,19 @@ export default function SettingsScreen() {
             options={[
               { id: 'es', label: 'Español' },
               { id: 'en', label: 'English' },
+            ]}
+          />
+        </View>
+
+        <SectionLabel>{t('settings.theme')}</SectionLabel>
+        <View style={{ maxWidth: 360 }}>
+          <Segmented<ThemePref>
+            value={themePref}
+            onChange={setThemePref}
+            options={[
+              { id: 'system', label: t('settings.theme.system') },
+              { id: 'light', label: t('settings.theme.light') },
+              { id: 'dark', label: t('settings.theme.dark') },
             ]}
           />
         </View>

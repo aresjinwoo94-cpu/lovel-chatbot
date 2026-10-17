@@ -3,11 +3,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 
-import { colors } from '@/constants/theme';
 import { authErrorFromUrl, completeAuthFromUrl } from '@/lib/auth';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
+import { useColors } from '@/lib/theme';
 
 /**
  * Retorno de Google OAuth y de los enlaces del correo (confirmación / nueva contraseña).
@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
  * y muestra el error si Google o Supabase devolvieron uno.
  */
 export default function AuthCallback() {
+  const colors = useColors();
   const { t } = useI18n();
   const params = useLocalSearchParams<{ code?: string; next?: string }>();
 

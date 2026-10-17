@@ -67,7 +67,7 @@ export function DialogHost() {
                 accessibilityRole="button"
                 onPress={() => close(b)}
                 className={`mt-2 h-11 items-center justify-center rounded-full ${
-                  b.style === 'cancel' ? 'bg-transparent' : b.style === 'destructive' ? 'bg-[#B4233C]' : i === 0 ? 'bg-ink' : 'border border-line bg-paper'
+                  b.style === 'cancel' ? 'bg-transparent' : b.style === 'destructive' ? 'bg-danger' : i === 0 ? 'bg-ink' : 'border border-line bg-paper'
                 } active:opacity-80`}
               >
                 <Text

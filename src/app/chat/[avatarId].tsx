@@ -15,7 +15,6 @@ import { TypingIndicator } from '@/components/TypingIndicator';
 import { Button, IconButton } from '@/components/ui';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { VrmAvatar } from '@/components/VrmAvatar';
-import { colors } from '@/constants/theme';
 import { ApiError, callFunction, isPaywall } from '@/lib/api';
 import { base64ToPlayableUri, readRecording } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
@@ -29,6 +28,7 @@ import { useI18n } from '@/lib/i18n';
 import { detectEmotion } from '@/lib/emotion';
 import { genderize, sceneText as fillScene, scenarioById } from '@/lib/roleplay';
 import type { Avatar, ChatResponse, Message, QuotaState, VoiceChatResponse } from '@/lib/types';
+import { useColors } from '@/lib/theme';
 
 /** Cuánto "habla" el personaje tras un mensaje de texto (aprox. velocidad de lectura en voz alta). */
 const speakMs = (text: string) => Math.max(1400, Math.min(6000, 900 + text.length * 32));
@@ -40,6 +40,7 @@ const speakMs = (text: string) => Math.max(1400, Math.min(6000, 900 + text.lengt
  * Tus mensajes a la derecha; los suyos a la izquierda, con su foto y su nombre.
  */
 export default function ChatScreen() {
+  const colors = useColors();
   const { avatarId, intro } = useLocalSearchParams<{ avatarId: string; intro?: string }>();
   const { t, language } = useI18n();
   const { profile, refreshProfile, isGuest } = useAuth();

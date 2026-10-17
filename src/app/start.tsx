@@ -6,17 +6,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AnimatedAvatar } from '@/components/AnimatedAvatar';
 import { Text } from '@/components/Themed';
 import { Button, Muted } from '@/components/ui';
-import { colors } from '@/constants/theme';
 import { createFromDraft, isAvatarLimit } from '@/lib/createCharacter';
 import { showDialog } from '@/lib/dialog';
 import { type CharacterDraft, clearDraft, loadDraft } from '@/lib/draft';
 import { useI18n } from '@/lib/i18n';
+import { useColors } from '@/lib/theme';
 
 /**
  * Justo después de iniciar sesión: guarda el personaje que se creó sin cuenta
  * y abre el chat, donde el personaje escribe el primer mensaje.
  */
 export default function StartScreen() {
+  const colors = useColors();
   const { t } = useI18n();
   const [draft, setDraft] = useState<CharacterDraft | null>(null);
   const [limit, setLimit] = useState(false);

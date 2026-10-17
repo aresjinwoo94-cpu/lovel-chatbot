@@ -9,13 +9,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '@/components/Logo';
 import { Text } from '@/components/Themed';
 import { Button, Muted, SearchField, Tag, Title } from '@/components/ui';
-import { colors } from '@/constants/theme';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/supabaseConfig';
 import { useAuth } from '@/lib/auth';
 import { PRESETS, voiceById } from '@/lib/character/catalog';
 import { presetPortrait } from '@/lib/character/media';
 import { useI18n } from '@/lib/i18n';
 import { traitById, traitLabel } from '@/lib/roleplay';
+import { useColors } from '@/lib/theme';
 
 type Filter = 'all' | 'female' | 'male';
 
@@ -25,6 +25,7 @@ type Filter = 'all' | 'female' | 'male';
  * Sin cuenta: la cuenta solo se pide al empezar la historia.
  */
 export default function ExploreScreen() {
+  const colors = useColors();
   const { t, language } = useI18n();
   const { session } = useAuth();
   const { width } = useWindowDimensions();

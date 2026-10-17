@@ -3,7 +3,7 @@ import { useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, Pressable, Switch, useWindowDimensions, View, type GestureResponderEvent, type TextInputProps, type TextProps } from 'react-native';
 
 import { Text, TextInput } from '@/components/Themed';
-import { colors } from '@/constants/theme';
+import { useColors } from '@/lib/theme';
 
 /**
  * Sistema de interfaz de Lovel House.
@@ -92,6 +92,7 @@ export function Button({
   icon?: ComponentProps<typeof Ionicons>['name'];
   className?: string;
 }) {
+  const colors = useColors();
   const h = { sm: 'h-8 px-3.5', md: 'h-10 px-4', lg: 'h-11 px-5' }[size];
   const box: Record<ButtonVariant, string> = {
     primary: 'bg-ink',
@@ -100,7 +101,7 @@ export function Button({
     ghost: 'bg-transparent',
     danger: 'bg-paper border border-line',
   };
-  const fg: Record<ButtonVariant, string> = { primary: colors.paper, brand: colors.paper, secondary: colors.ink, ghost: colors.ink, danger: '#B4233C' };
+  const fg: Record<ButtonVariant, string> = { primary: colors.paper, brand: colors.paper, secondary: colors.ink, ghost: colors.ink, danger: colors.danger };
   const off = disabled || loading;
   return (
     <Pressable
@@ -139,6 +140,7 @@ export function IconButton({
   size?: number;
   disabled?: boolean;
 }) {
+  const colors = useColors();
   const box = { plain: '', subtle: 'bg-subtle', outline: 'border border-line bg-paper', brand: 'bg-primary' }[variant];
   return (
     <Pressable
@@ -234,10 +236,11 @@ export function ListRow({
   last?: boolean;
   right?: ReactNode;
 }) {
+  const colors = useColors();
   return (
     <Pressable onPress={onPress} disabled={!onPress} className={`min-h-[52px] flex-row items-center px-4 py-3 ${last ? '' : 'border-b border-line'} ${onPress ? 'active:bg-subtle' : ''}`}>
-      {icon ? <Ionicons name={icon} size={19} color={danger ? '#B4233C' : colors.ink} style={{ marginRight: 12 }} /> : null}
-      <Text className={`flex-1 text-[15px] ${danger ? 'text-[#B4233C]' : 'text-ink'}`}>{label}</Text>
+      {icon ? <Ionicons name={icon} size={19} color={danger ? colors.danger : colors.ink} style={{ marginRight: 12 }} /> : null}
+      <Text className={`flex-1 text-[15px] ${danger ? 'text-danger' : 'text-ink'}`}>{label}</Text>
       {value ? <Text className="ml-3 text-[14px] text-muted">{value}</Text> : null}
       {right}
       {onPress && !right ? <Ionicons name="chevron-forward" size={16} color={colors.muted} style={{ marginLeft: 6 }} /> : null}
@@ -246,6 +249,7 @@ export function ListRow({
 }
 
 export function Field({ label, hint, className = '', ...input }: TextInputProps & { label?: string; hint?: string; className?: string }) {
+  const colors = useColors();
   const [focus, setFocus] = useState(false);
   return (
     <View>
@@ -270,6 +274,7 @@ export function Field({ label, hint, className = '', ...input }: TextInputProps 
 }
 
 export function ToggleRow({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
+  const colors = useColors();
   return (
     <View className="flex-row items-center justify-between px-4 py-3">
       <View className="mr-4 flex-1">
@@ -288,6 +293,7 @@ export function ToggleRow({ label, hint, value, onChange }: { label: string; hin
 }
 
 export function EmptyState({ icon, title, text, action }: { icon: ComponentProps<typeof Ionicons>['name']; title: string; text?: string; action?: ReactNode }) {
+  const colors = useColors();
   return (
     <View className="items-center px-8 py-16">
       <View className="mb-4 h-12 w-12 items-center justify-center rounded-full bg-subtle">
@@ -302,8 +308,8 @@ export function EmptyState({ icon, title, text, action }: { icon: ComponentProps
 
 // ------------------------------------------------------------------ etiquetas y búsqueda
 export function Badge({ label, tone = 'neutral' }: { label: string; tone?: 'neutral' | 'brand' | 'success' | 'accent' }) {
-  const box = { neutral: 'bg-subtle', brand: 'bg-primary-soft', success: 'bg-[#E3F2E9]', accent: 'bg-accent-soft' }[tone];
-  const fg = { neutral: 'text-muted', brand: 'text-primary-deep', success: 'text-[#2F7A4F]', accent: 'text-[#9C4A62]' }[tone];
+  const box = { neutral: 'bg-subtle', brand: 'bg-primary-soft', success: 'bg-success-soft', accent: 'bg-accent-soft' }[tone];
+  const fg = { neutral: 'text-muted', brand: 'text-primary-deep', success: 'text-success-ink', accent: 'text-accent-ink' }[tone];
   return (
     <View className={`h-5 justify-center self-start rounded-md px-1.5 ${box}`}>
       <Text className={`font-semibold text-[11px] ${fg}`}>{label}</Text>
@@ -312,6 +318,7 @@ export function Badge({ label, tone = 'neutral' }: { label: string; tone?: 'neut
 }
 
 export function SearchField({ value, onChangeText, placeholder }: { value: string; onChangeText: (v: string) => void; placeholder: string }) {
+  const colors = useColors();
   return (
     <View className="h-10 flex-row items-center rounded-xl border border-line bg-paper px-3">
       <Ionicons name="search" size={16} color={colors.muted} />
@@ -416,6 +423,7 @@ export interface MenuItem {
 
 /** Menú desplegable anclado a su botón (acciones de fila, menú de usuario). */
 export function Menu({ items, label, icon = 'ellipsis-horizontal', size = 32, align = 'right' }: { items: MenuItem[]; label: string; icon?: ComponentProps<typeof Ionicons>['name']; size?: number; align?: 'left' | 'right' }) {
+  const colors = useColors();
   const ref = useRef<View>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const { width, height } = useWindowDimensions();
@@ -443,8 +451,8 @@ export function Menu({ items, label, icon = 'ellipsis-horizontal', size = 32, al
                 className="mx-1 h-9 flex-row items-center rounded-lg px-2.5 active:bg-subtle"
                 style={{ cursor: 'pointer' } as object}
               >
-                {it.icon ? <Ionicons name={it.icon} size={16} color={it.danger ? '#B4233C' : colors.ink} style={{ marginRight: 10 }} /> : null}
-                <Text className={`text-[13px] ${it.danger ? 'text-[#B4233C]' : 'text-ink'}`}>{it.label}</Text>
+                {it.icon ? <Ionicons name={it.icon} size={16} color={it.danger ? colors.danger : colors.ink} style={{ marginRight: 10 }} /> : null}
+                <Text className={`text-[13px] ${it.danger ? 'text-danger' : 'text-ink'}`}>{it.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -456,6 +464,7 @@ export function Menu({ items, label, icon = 'ellipsis-horizontal', size = 32, al
 
 /** Barra de progreso fina (uso del plan). */
 export function Meter({ value, max, tone = 'ink' }: { value: number; max: number; tone?: 'ink' | 'brand' | 'accent' }) {
+  const colors = useColors();
   const r = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   const bg = { ink: colors.ink, brand: colors.primary, accent: colors.accent }[tone];
   return (

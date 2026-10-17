@@ -10,7 +10,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text, TextInput } from '@/components/Themed';
 import { Badge, Button, Caption, Display, Field, IconButton, Muted, Segmented, Slider, Swatch, Tag } from '@/components/ui';
 import { VrmAvatar, type VrmAvatarHandle } from '@/components/VrmAvatar';
-import { colors } from '@/constants/theme';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/supabaseConfig';
 import { readRecording } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
@@ -54,6 +53,7 @@ import { type CharacterDraft, clearDraft, loadDraft, saveDraft } from '@/lib/dra
 import { useI18n } from '@/lib/i18n';
 import { conflictsWith, genderize, MAX_TRAITS, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, scenarioById, SCENARIOS, traitById, traitLabel, TRAITS } from '@/lib/roleplay';
 import type { Gender } from '@/lib/types';
+import { useColors } from '@/lib/theme';
 
 type Tab = 'model' | 'hair' | 'face' | 'outfit' | 'accessories' | 'pose' | 'scene' | 'voice' | 'identity';
 type View3D = 'face' | 'bust' | 'portrait';
@@ -148,6 +148,7 @@ const pct = (v: number) => `${Math.round(v * 100)}%`;
  * El borrador se guarda en el dispositivo; la cuenta solo se pide al empezar la historia.
  */
 export default function CreateCharacter() {
+  const colors = useColors();
   const { t, language } = useI18n();
   const { session } = useAuth();
   const { preset: presetId, edit: editId } = useLocalSearchParams<{ preset?: string; edit?: string }>();

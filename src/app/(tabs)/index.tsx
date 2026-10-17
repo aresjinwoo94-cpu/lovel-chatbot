@@ -8,12 +8,12 @@ import { AnimatedAvatar } from '@/components/AnimatedAvatar';
 import { Logo } from '@/components/Logo';
 import { Text } from '@/components/Themed';
 import { Button, EmptyState, Menu, Muted, Title } from '@/components/ui';
-import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { type AvatarThread, deleteAvatar } from '@/lib/data';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { useThreads } from '@/lib/threads';
+import { useColors } from '@/lib/theme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -51,6 +51,7 @@ function QuickAction({ icon, tint, bg, title, hint, onPress, width }: { icon: Ic
 
 /** INICIO: saludo, accesos rápidos y tus historias recientes (tabla en escritorio, lista en móvil). */
 export default function HomeScreen() {
+  const colors = useColors();
   const { t } = useI18n();
   const { profile, session } = useAuth();
   const { threads, loaded, failed, refresh } = useThreads();
@@ -138,11 +139,11 @@ export default function HomeScreen() {
 
           <View className="flex-row flex-wrap" style={{ gap: 12 }}>
             <QuickAction width={cardW} icon="sparkles-outline" tint={colors.primaryDeep} bg={colors.primarySoft} title={t('home.create')} hint={t('home.createHint')} onPress={newCharacter} />
-            <QuickAction width={cardW} icon="compass-outline" tint="#9C4A62" bg={colors.accentSoft} title={t('home.explore')} hint={t('home.exploreHint')} onPress={() => router.push('/explore')} />
+            <QuickAction width={cardW} icon="compass-outline" tint={colors.accentInk} bg={colors.accentSoft} title={t('home.explore')} hint={t('home.exploreHint')} onPress={() => router.push('/explore')} />
             {last ? (
-              <QuickAction width={cardW} icon="chatbubble-ellipses-outline" tint="#2F7A4F" bg="#E3F2E9" title={t('home.continue')} hint={t('home.continueHint', { name: last.name })} onPress={() => open(last)} />
+              <QuickAction width={cardW} icon="chatbubble-ellipses-outline" tint={colors.successInk} bg={colors.successSoft} title={t('home.continue')} hint={t('home.continueHint', { name: last.name })} onPress={() => open(last)} />
             ) : null}
-            {!profile?.is_pro ? <QuickAction width={cardW} icon="diamond-outline" tint="#8A6420" bg="#F6EDD8" title={t('home.upgrade')} hint={t('home.upgradeHint')} onPress={() => router.push('/pro')} /> : null}
+            {!profile?.is_pro ? <QuickAction width={cardW} icon="diamond-outline" tint={colors.goldInk} bg={colors.goldSoft} title={t('home.upgrade')} hint={t('home.upgradeHint')} onPress={() => router.push('/pro')} /> : null}
           </View>
 
           <Text className="mb-2 mt-10 font-semibold text-[15px] tracking-tight text-ink">{t('home.recent')}</Text>

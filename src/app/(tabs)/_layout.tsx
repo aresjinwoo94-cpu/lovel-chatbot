@@ -3,8 +3,9 @@ import { Tabs } from 'expo-router/js-tabs';
 import { useWindowDimensions } from 'react-native';
 
 import { AppSidebar } from '@/components/AppSidebar';
-import { colors, fonts } from '@/constants/theme';
+import { fonts } from '@/constants/theme';
 import { useI18n } from '@/lib/i18n';
+import { useColors } from '@/lib/theme';
 
 /**
  * Pestañas: Inicio · Perfil · Ajustes.
@@ -12,6 +13,7 @@ import { useI18n } from '@/lib/i18n';
  * navegación, personajes recientes, uso del plan y cuenta).
  */
 export default function TabsLayout() {
+  const colors = useColors();
   const { t } = useI18n();
   const { width } = useWindowDimensions();
   const side = width >= 900;

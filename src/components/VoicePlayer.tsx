@@ -3,12 +3,12 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 
-import { colors } from '@/constants/theme';
 import { formatDuration } from '@/lib/audio';
 import { signedAudioUrl } from '@/lib/data';
 import { Text } from '@/components/Themed';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
+import { useColors } from '@/lib/theme';
 
 interface Props {
   /** Ruta en Supabase Storage (bucket privado voice-messages). */
@@ -42,7 +42,9 @@ function useBars(seed: string, count = 28) {
 }
 
 /** Reproductor de nota de voz estilo WhatsApp: play/pausa, onda con progreso y duración. */
-export function VoicePlayer({ path, localUri, durationMs, autoPlay = false, onPlayingChange, tint = colors.primary, seed, onDark = false }: Props) {
+export function VoicePlayer({ path, localUri, durationMs, autoPlay = false, onPlayingChange, tint: tintProp, seed, onDark = false }: Props) {
+  const colors = useColors();
+  const tint = tintProp ?? colors.primary;
   const { t } = useI18n();
   const player = useAudioPlayer(localUri ? { uri: localUri } : null);
   const status = useAudioPlayerStatus(player);

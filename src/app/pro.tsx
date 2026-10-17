@@ -6,18 +6,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Logo } from '@/components/Logo';
 import { Button, IconButton, Muted } from '@/components/ui';
-import { colors } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { isBillingDisabled, openBillingPortal, startProCheckout, waitForPro } from '@/lib/billing';
 import { useI18n } from '@/lib/i18n';
 import { Text } from '@/components/Themed';
 import { showDialog } from '@/lib/dialog';
+import { useColors } from '@/lib/theme';
 
 /**
  * Página del plan Pro (también es la URL de retorno de Stripe Checkout en web:
  * /pro?status=success). Solo suscripción mensual: $9.90 USD.
  */
 export default function ProScreen() {
+  const colors = useColors();
   const { t } = useI18n();
   const { profile, refreshProfile } = useAuth();
   const { status } = useLocalSearchParams<{ status?: string }>();
