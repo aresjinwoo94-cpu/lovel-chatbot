@@ -58,7 +58,9 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "supabase:deploy": "bash ./supabase/deploy.sh"
+    "supabase:deploy": "bash ./supabase/deploy.sh",
+    "qa:characters": "node scripts/qa-characters.mjs",
+    "qa:check": "node scripts/qa-characters.mjs --check"
   },
   "private": true
 }

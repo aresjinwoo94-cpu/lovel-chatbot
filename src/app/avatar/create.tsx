@@ -15,6 +15,7 @@ import { readRecording } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
 import {
   ACCESSORIES,
+  accessoryAllowed,
   ACCESSORY_GROUPS,
   BACKGROUNDS,
   type ColorChoice,
@@ -246,7 +247,15 @@ export default function CreateCharacter() {
       return typeof next === 'function' ? next(l) : next;
     });
   }, []);
-  const patch = useCallback((p: Partial<CharacterLook>) => commit((l) => ({ ...l, ...p })), [commit]);
+  // Al cambiar de peinado se quitan los accesorios que chocan con él (QA de personajes).
+  const patch = useCallback(
+    (p: Partial<CharacterLook>) =>
+      commit((l) => {
+        const n = { ...l, ...p };
+        return { ...n, accessories: n.accessories.filter((a) => accessoryAllowed(n, a)) };
+      }),
+    [commit],
+  );
   const undo = () => {
     const prev = history.current.pop();
     if (prev) setLook(prev);
@@ -526,7 +535,7 @@ export default function CreateCharacter() {
     accessories: () => (
       <>
         {ACCESSORY_GROUPS.map((g, i) => {
-          const items = ACCESSORIES.filter((a) => a.slot === g.slot);
+          const items = ACCESSORIES.filter((a) => a.slot === g.slot && accessoryAllowed(look, a.id));
           const current = items.find((a) => look.accessories.includes(a.id))?.id ?? 'none';
           return (
             <Group key={g.slot} first={i === 0} title={g.label[language]}>

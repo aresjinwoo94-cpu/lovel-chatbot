@@ -229,9 +229,7 @@ export type AccessorySlot = 'eyes' | 'top' | 'halo' | 'side' | 'ears' | 'back';
 export const ACCESSORIES: (Choice & { slot: AccessorySlot })[] = [
   { id: 'glasses_round', slot: 'eyes', label: { es: 'Gafas redondas', en: 'Round glasses' } },
   { id: 'glasses_square', slot: 'eyes', label: { es: 'Gafas cuadradas', en: 'Square glasses' } },
-  { id: 'sunglasses', slot: 'eyes', label: { es: 'Gafas de sol', en: 'Sunglasses' } },
   { id: 'monocle', slot: 'eyes', label: { es: 'Monóculo', en: 'Monocle' } },
-  { id: 'eyepatch', slot: 'eyes', label: { es: 'Parche', en: 'Eyepatch' } },
   { id: 'cat_ears', slot: 'top', label: { es: 'Orejas de gato', en: 'Cat ears' } },
   { id: 'fox_ears', slot: 'top', label: { es: 'Orejas de zorro', en: 'Fox ears' } },
   { id: 'bunny_ears', slot: 'top', label: { es: 'Orejas de conejo', en: 'Bunny ears' } },
@@ -247,6 +245,26 @@ export const ACCESSORIES: (Choice & { slot: AccessorySlot })[] = [
   { id: 'demon_wings', slot: 'back', label: { es: 'Alas de demonio', en: 'Demon wings' } },
   { id: 'fairy_wings', slot: 'back', label: { es: 'Alas de hada', en: 'Fairy wings' } },
 ];
+
+/**
+ * Accesorios que chocan con un peinado (QA de personajes, WP-5). Las gafas de sol y el
+ * parche se retiraron del catálogo porque se veían como una mancha negra.
+ *  - "hair_f" y "vita" ya llevan orejas / cuernos en el propio peinado.
+ *  - Con la coleta alta de "victoria", los auriculares quedan flotando sobre la cabeza.
+ */
+const HAIR_ACCESSORY_CONFLICTS: Record<string, string[]> = {
+  hair_f: ['cat_ears', 'fox_ears', 'bunny_ears', 'horns'],
+  vita: ['cat_ears', 'fox_ears', 'bunny_ears', 'horns'],
+  victoria: ['headphones'],
+};
+
+/** Peinado que se ve de verdad: el elegido o, si no hay, el del propio modelo. */
+export const effectiveHair = (look: { model: string; hair: string | null }) => look.hair ?? look.model;
+
+/** ¿Se puede poner este accesorio con el peinado actual? */
+export function accessoryAllowed(look: { model: string; hair: string | null }, id: string): boolean {
+  return !(HAIR_ACCESSORY_CONFLICTS[effectiveHair(look)] ?? []).includes(id);
+}
 
 export const ACCESSORY_GROUPS: { slot: AccessorySlot; label: L }[] = [
   { slot: 'eyes', label: { es: 'Ojos', en: 'Eyes' } },
@@ -502,7 +520,9 @@ export function normalizeLook(raw: unknown, gender: string = 'female'): Characte
     headTilt: clamp(r.headTilt, -1, 1, 0),
     headTurn: clamp(r.headTurn, -1, 1, 0),
     headSize: clamp(r.headSize, 0.9, 1.12, 0.93),
-    accessories: Array.isArray(r.accessories) ? r.accessories.filter((a) => ACCESSORIES.some((x) => x.id === a)).reduce<string[]>(toggleAccessory, []) : [],
+    accessories: Array.isArray(r.accessories)
+      ? r.accessories.filter((a) => ACCESSORIES.some((x) => x.id === a) && accessoryAllowed({ model, hair }, a)).reduce<string[]>(toggleAccessory, [])
+      : [],
     accessoryColor: color(r.accessoryColor),
     background: BACKGROUNDS.some((b) => b.id === r.background) ? (r.background as string) : base.background,
     lighting: oneOf(LIGHTINGS, r.lighting, 'illustrated'),
@@ -527,8 +547,9 @@ export function randomLook(gender: 'female' | 'male' | 'other', voice?: VoiceSet
   const model = rnd(pool);
   const hair = model.needsHair ? rnd(HAIRSTYLES).id : !model.vrm1 && chance(0.4) ? rnd(HAIRSTYLES).id : null;
   const accessories: string[] = [];
-  if (chance(0.45)) accessories.push(rnd(ACCESSORIES).id);
-  if (chance(0.2)) accessories.push(rnd(ACCESSORIES).id);
+  const fits = ACCESSORIES.filter((a) => accessoryAllowed({ model: model.id, hair }, a.id));
+  if (chance(0.45)) accessories.push(rnd(fits).id);
+  if (chance(0.2)) accessories.push(rnd(fits).id);
   const dark = chance(0.15);
   return makeLook({
     model: model.id,

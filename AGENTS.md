@@ -39,3 +39,15 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Personajes: QA visual obligatoria
+
+Cada vez que se crea o cambia un personaje del catálogo (`src/lib/character/catalog.ts`) o el
+escenario 3D (`avatar-stage/stage.html`):
+
+1. `npm run qa:characters` (necesita `CHROMIUM_PATH`, `STAGE_URL`, `MODELS_URL`; ver la cabecera de
+   `scripts/qa-characters.mjs`) genera las hojas de contactos en `docs/qa/`.
+2. Un subagente que no haya hecho el cambio revisa las hojas con `docs/qa/CHECKLIST.md`.
+3. Solo si no marca fallos, el personaje pasa a `"status": "approved"` en `docs/qa/manifest.json`.
+4. `npm run qa:check` debe pasar antes de cerrar el trabajo: falla si un personaje o el motor
+   cambió sin QA aprobada.

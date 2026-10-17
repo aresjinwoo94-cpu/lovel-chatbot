@@ -754,6 +754,21 @@ function hornGeometry(r, h, bend) {
   return geo;
 }
 
+/**
+ * Gafas y monóculo van siempre por encima del flequillo (como en la ilustración anime):
+ * sin esto, los mechones que caen sobre los ojos atraviesan la montura.
+ * Solo tienen montura frontal, así que no se ven "a través" de la cabeza.
+ */
+function overHair(obj) {
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    o.renderOrder = 20;
+    o.material = o.material.clone();
+    o.material.depthTest = false;
+    o.material.depthWrite = false;
+  });
+}
+
 function buildAccessories(look) {
   for (const g of current.accessories) g.parent?.remove(g);
   current.accessories = [];
@@ -792,13 +807,15 @@ function buildAccessories(look) {
     }
     const bridge = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.06, r * 0.06, e * 0.2, 8), frame);
     bridge.rotation.z = Math.PI / 2; gl.add(bridge);
+    overHair(gl);
     put(gl, W(0, eyes.y + 0.003, front + e * 0.3));
   }
   if (has('monocle')) {
     const gold = mat('#D4AF37', 0.85, 0.25);
     const r = e * 0.5;
     const m1 = put(new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.08, 10, 40), gold), W(-e * 0.5, eyes.y, front + e * 0.3));
-    put(new THREE.Mesh(new THREE.CircleGeometry(r * 0.95, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 })), m1.position.clone());
+    const lens = put(new THREE.Mesh(new THREE.CircleGeometry(r * 0.95, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 })), m1.position.clone());
+    overHair(m1); overHair(lens);
     const chain = new THREE.Mesh(new THREE.CylinderGeometry(e * 0.012, e * 0.012, e * 1.6, 6), gold);
     put(chain, W(-e * 0.9, eyes.y - e * 0.95, front + e * 0.15), [0, 0, 0.35]);
   }
@@ -1086,14 +1103,14 @@ const ex = { happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0, blink: 0 };
 const EXPRESSIONS = {
   neutral: {},
   smile: { happy: 0.28 },
-  joy: { happy: 0.72 },
+  joy: { relaxed: 0.55, happy: 0.3 },
   calm: { relaxed: 0.45 },
   serious: { angry: 0.3 },
   shy: { happy: 0.2, sad: 0.2 },
   smug: { happy: 0.24, angry: 0.24 },
-  sad: { sad: 0.42 },
-  surprised: { surprised: 0.62 },
-  angry: { angry: 0.68 },
+  sad: { sad: 0.4 },
+  surprised: { surprised: 0.38 },
+  angry: { angry: 0.5 },
   sleepy: { blink: 0.5, relaxed: 0.15 },
 };
 
@@ -1102,11 +1119,27 @@ const EXPRESSIONS = {
  * head.x positivo = baja la cabeza; gaze en grados (pitch positivo = mira abajo).
  */
 const EMOTIONS = {
-  happy: { face: { happy: 0.75 }, head: { x: -0.04, z: 0.05 } },
-  sad: { face: { sad: 0.72, relaxed: 0.1 }, head: { x: 0.11, z: -0.04 }, gaze: { yaw: -18, pitch: 34 } },
-  surprised: { face: { surprised: 0.62 }, head: { x: -0.07, z: 0 } },
-  shy: { face: { happy: 0.38, sad: 0.24 }, head: { x: 0.1, z: 0.1 }, gaze: { yaw: 42, pitch: 24 } },
+  // alegría = sonrisa de boca cerrada (relaxed) + un poco de happy: el happy de VRoid a tope abre la boca con dientes
+  happy: { face: { relaxed: 0.6, happy: 0.3 }, head: { x: -0.04, z: 0.05 } },
+  sad: { face: { sad: 0.45 }, head: { x: 0.11, z: -0.04 }, gaze: { yaw: -18, pitch: 34 } },
+  surprised: { face: { surprised: 0.38 }, head: { x: -0.07, z: 0 } },
+  shy: { face: { relaxed: 0.35, sad: 0.2 }, head: { x: 0.1, z: 0.1 }, gaze: { yaw: 42, pitch: 24 } },
+  angry: { face: { angry: 0.5 }, head: { x: 0.03, z: 0 } },
 };
+
+// Límites de la cara (QA de personajes, WP-5): ninguna expresión al máximo, y mientras
+// habla la emoción se suaviza para que boca de emoción + boca de habla no se deformen.
+const FACE_CAP = { happy: 0.45, angry: 0.55, sad: 0.48, relaxed: 0.65, surprised: 0.4, blink: 1 };
+const FACE_TOTAL = 1.0; // suma máxima de emociones (sin contar parpadeo)
+// Topes por cuerpo, medidos con la calibración de QA (scripts/qa-characters.mjs): en los
+// cuerpos masculinos, "happy" y "angry" enseñan los dientes muy pronto; la alegría que
+// sobra pasa a "relaxed" (sonrisa de boca cerrada).
+const MODEL_FACE_CAP = { hair_m: { happy: 0.1, angry: 0.12 }, fumiriya: { happy: 0.1, angry: 0.12 } };
+const VISEMES = ['aa', 'ih', 'ou', 'ee', 'oh'];
+const VISEME_CAP = { aa: 0.6, ih: 0.45, ou: 0.5, ee: 0.42, oh: 0.5 };
+const SPEECH_DAMP = 0.6; // cuánto baja la emoción mientras habla (0..1)
+const vis = { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0 };
+let syllable = 'aa';
 const EMOTION_HOLD = 9; // segundos con la emoción marcada antes de volver al gesto base
 
 function step(dt, t, silent = false) {
@@ -1127,24 +1160,53 @@ function step(dt, t, silent = false) {
       if (k > 0.21) { blinkT = -1; nextBlink = t + 2.2 + Math.random() * 3.2; blinkAnim = 0; }
     }
   }
-  // labios al hablar
-  const speaking = mood === 'speaking';
-  if (speaking && t > nextSyll) { talkTarget = 0.2 + Math.random() * 0.8; nextSyll = t + 0.07 + Math.random() * 0.1; }
-  if (!speaking) talkTarget = 0;
-  talk += (talkTarget - talk) * Math.min(1, dt * 20);
-  em?.setValue('aa', talk * 0.75);
-  em?.setValue('oh', speaking ? talk * 0.22 * (Math.sin(t * 7) * 0.5 + 0.5) : 0);
+  // labios al hablar: una vocal (visema) por sílaba, con tope por vocal
+  const qa = current.qa;
+  const speaking = qa ? !!qa.viseme : mood === 'speaking';
+  if (qa) { blinkAnim = 0; talk = qa.viseme ? 1 : 0; syllable = qa.viseme || 'aa'; }
+  else {
+    if (speaking && t > nextSyll) {
+      talkTarget = 0.35 + Math.random() * 0.65; nextSyll = t + 0.07 + Math.random() * 0.1;
+      syllable = VISEMES[Math.floor(Math.random() * VISEMES.length)];
+    }
+    if (!speaking) talkTarget = 0;
+    talk += (talkTarget - talk) * Math.min(1, dt * 20);
+  }
+  for (const v of VISEMES) {
+    const target = v === syllable ? talk * VISEME_CAP[v] : 0;
+    vis[v] = qa ? target : vis[v] + (target - vis[v]) * Math.min(1, dt * 18);
+    em?.setValue(v, vis[v]);
+  }
   // expresión: base elegida + estado
   const want = { ...{ happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0, blink: 0 }, ...base };
-  // emoción del último mensaje: se impone un rato y luego se suaviza
-  const E = !silent && current.emotion && EMOTIONS[current.emotion] ? EMOTIONS[current.emotion] : null;
-  const emoOn = E && t - (current.emotionAt || 0) < EMOTION_HOLD ? 1 : 0;
-  emoAmt += (emoOn - emoAmt) * Math.min(1, dt * 2.5);
-  if (E) for (const k in E.face) want[k] = Math.max(want[k] * (1 - emoAmt), E.face[k] * emoAmt + want[k] * (1 - emoAmt));
-  if (mood === 'happy') want.happy = Math.max(want.happy, 0.45);
+  // emoción del último mensaje: se impone un rato y luego se suaviza (en QA, fija)
+  const emoId = qa ? qa.emotion : current.emotion;
+  const E = !silent && emoId && EMOTIONS[emoId] ? EMOTIONS[emoId] : null;
+  const emoOn = E && (qa || t - (current.emotionAt || 0) < EMOTION_HOLD) ? 1 : 0;
+  emoAmt = qa ? emoOn : emoAmt + (emoOn - emoAmt) * Math.min(1, dt * 2.5);
+  // la emoción sustituye al gesto base (no se suman: enfado + sonrisa = mueca con dientes)
+  if (E) for (const k in want) if (k !== 'blink') want[k] = want[k] * (1 - emoAmt) + (E.face[k] || 0) * emoAmt;
+  if (mood === 'happy') { want.relaxed = Math.max(want.relaxed, 0.45); want.happy = Math.max(want.happy, 0.2); }
   if (speaking) want.happy = Math.max(want.happy, 0.1);
   if (mood === 'thinking') want.relaxed = Math.max(want.relaxed, 0.45);
-  const lerp = Math.min(1, dt * 4);
+  // enfado y alegría a la vez solo en dosis pequeñas (la sonrisa pícara); si no, gana el mayor
+  const joy = want.happy + want.relaxed;
+  if (want.angry > 0.3 && joy > 0.3) { if (want.angry >= joy) { want.happy = 0; want.relaxed = 0; } else want.angry = 0; }
+  // calibración (solo QA): pesos crudos, sin topes
+  if (qa?.raw) { for (const k in want) want[k] = qa.raw[k] || 0; }
+  // topes: por expresión, suma total, y menos emoción mientras la boca habla
+  const damp = 1 - SPEECH_DAMP * Math.min(1, talk * 1.4);
+  const bodyCap = MODEL_FACE_CAP[look.model] || {};
+  if (bodyCap.happy != null && want.happy > bodyCap.happy) { want.relaxed = Math.max(want.relaxed, want.relaxed + (want.happy - bodyCap.happy) * 0.8); want.happy = bodyCap.happy; }
+  let sum = 0;
+  for (const k in want) {
+    if (k === 'blink') continue;
+    want[k] = Math.min(want[k], FACE_CAP[k] ?? 1, bodyCap[k] ?? 1) * (k === 'relaxed' ? 1 : damp);
+    sum += want[k];
+  }
+  if (sum > FACE_TOTAL) for (const k in want) if (k !== 'blink') want[k] *= FACE_TOTAL / sum;
+  if (qa?.raw) for (const k in want) want[k] = qa.raw[k] || 0;
+  const lerp = qa ? 1 : Math.min(1, dt * 4);
   for (const k in ex) ex[k] += (want[k] - ex[k]) * lerp;
   em?.setValue('happy', ex.happy);
   em?.setValue('angry', ex.angry);
@@ -1314,6 +1376,12 @@ async function handle(msg) {
       document.getElementById('loading').style.display = 'none';
       send({ type: 'error', message: String((e && e.message) || e) });
     }
+  } else if (msg.type === 'qa') {
+    // QA de personajes: cara fija (sin parpadeo ni miradas) con una emoción y/o una vocal.
+    current.qa = msg.off ? null : { emotion: msg.emotion || null, viseme: msg.viseme || null, raw: msg.raw || null };
+    if (current.qa) { gazeYaw = gazePitch = 0; glanceEnd = 0; nextGlance = Infinity; }
+    else nextGlance = clock.elapsedTime + 3;
+    send({ type: 'qa-ok' });
   } else if (msg.type === 'state') {
     current.mood = msg.mood || 'idle';
     const emoKey = \`\${msg.emotion || ''}|\${msg.emotionId || ''}\`;
