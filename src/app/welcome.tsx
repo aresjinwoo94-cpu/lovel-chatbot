@@ -16,7 +16,7 @@ import { faceImage, presetPortrait } from '@/lib/character/media';
 import { createFromDraft } from '@/lib/createCharacter';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
-import { fillName, SCENARIO_CATEGORIES, type ScenarioCategory, SCENARIOS } from '@/lib/roleplay';
+import { genderize, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, SCENARIOS } from '@/lib/roleplay';
 import type { Gender } from '@/lib/types';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -26,7 +26,7 @@ const CATEGORY_ICON: Record<ScenarioCategory, IconName> = {
   romance: 'heart-outline',
   drama: 'rainy-outline',
   friendship: 'people-outline',
-  school: 'school-outline',
+  university: 'school-outline',
   work: 'briefcase-outline',
   fantasy: 'sparkles-outline',
   mystery: 'search-outline',
@@ -102,6 +102,8 @@ export default function Welcome() {
   /** Personaje elegido en cuanto se sabe género y edad (así las escenas ya llevan su nombre). */
   const [chosen, setChosen] = useState<CharacterPreset | null>(null);
   const scenarios = useMemo(() => SCENARIOS.filter((s) => s.category === category), [category]);
+  /** Género del personaje para escribir las escenas sin "o/a". */
+  const sceneGender: Gender = chosen?.gender ?? (who === 'male' ? 'male' : 'female');
 
   const back = () => {
     if (step === 3 && category) {
@@ -245,7 +247,7 @@ export default function Welcome() {
                     </View>
                     <Text className="mt-2.5 font-semibold text-[15px] tracking-tight text-ink">{c.label[language]}</Text>
                     <Text className="mt-0.5 text-[12px] leading-[17px] text-muted" numberOfLines={2}>
-                      {SCENARIOS.find((s) => s.category === c.id)?.title[language]}
+                      {genderize(SCENARIOS.find((s) => s.category === c.id)?.title[language] ?? '', sceneGender)}
                     </Text>
                   </Pressable>
                 ))}
@@ -256,7 +258,7 @@ export default function Welcome() {
               <>
                 <Option title={t('welcome.surprise')} hint={t('welcome.surpriseHint')} selected={scenarioId === null} onPress={() => setScenarioId(null)} left={<Ionicons name="shuffle" size={18} color={colors.ink} style={{ marginRight: 12 }} />} />
                 {scenarios.map((s) => (
-                  <Option key={s.id} title={s.title[language]} hint={fillName(s.setup[language], chosen?.name ?? '…')} selected={scenarioId === s.id} onPress={() => setScenarioId(s.id)} />
+                  <Option key={s.id} title={genderize(s.title[language], sceneGender)} hint={sceneText(s.setup[language], chosen?.name ?? '…', sceneGender)} selected={scenarioId === s.id} onPress={() => setScenarioId(s.id)} />
                 ))}
               </>
             ) : null}

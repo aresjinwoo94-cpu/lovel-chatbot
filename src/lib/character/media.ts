@@ -41,23 +41,23 @@ const PRESET_FACES: Record<string, ImageSourcePropType> = {
 
 const MODEL_PORTRAITS: Record<string, ImageSourcePropType> = {
   bibi: require('@/assets/characters/models/bibi.jpg'),
-  shino: require('@/assets/characters/models/shino.jpg'),
   noir: require('@/assets/characters/models/noir.jpg'),
   victoria: require('@/assets/characters/models/victoria.jpg'),
   vita: require('@/assets/characters/models/vita.jpg'),
   hair_f: require('@/assets/characters/models/hair_f.jpg'),
   shibu: require('@/assets/characters/models/shibu.jpg'),
   mei: require('@/assets/characters/models/mei.jpg'),
-  sample_b: require('@/assets/characters/models/sample_b.jpg'),
   aria: require('@/assets/characters/models/aria.jpg'),
   fumiriya: require('@/assets/characters/models/fumiriya.jpg'),
   hair_m: require('@/assets/characters/models/hair_m.jpg'),
-  base_f: require('@/assets/characters/models/base_f.jpg'),
-  base_m: require('@/assets/characters/models/base_m.jpg'),
 };
 
 export const presetPortrait = (id: string) => PRESET_PORTRAITS[id];
 export const modelPortrait = (id: string) => MODEL_PORTRAITS[id];
+
+/** Peinados de cuerpos retirados: se muestran con un personaje adulto que lo lleva. */
+const HAIR_ONLY_PORTRAITS: Record<string, ImageSourcePropType> = { shino: PRESET_PORTRAITS.mei };
+export const hairPortrait = (id: string) => MODEL_PORTRAITS[id] ?? HAIR_ONLY_PORTRAITS[id];
 
 /** Si el aspecto coincide exactamente con un personaje listo, su retrato. */
 function presetFor(look: CharacterLook) {

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -170,6 +170,15 @@ export default function LoginScreen() {
             <View className="mt-8 flex-row items-center justify-center">
               <Ionicons name="lock-closed-outline" size={13} color={colors.muted} />
               <Muted className="ml-1 text-[12px]">{t('login.privacy')}</Muted>
+            </View>
+            <View className="mt-2 flex-row items-center justify-center" style={{ gap: 6 }}>
+              <Link href="/terms" className="text-[12px] text-muted underline">
+                {t('legal.terms')}
+              </Link>
+              <Muted className="text-[12px]">·</Muted>
+              <Link href="/privacy" className="text-[12px] text-muted underline">
+                {t('legal.privacy')}
+              </Link>
             </View>
           </View>
         </ScrollView>

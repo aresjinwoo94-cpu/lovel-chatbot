@@ -19,26 +19,38 @@ export interface BaseModel {
   hairDonor?: boolean;
   /** Modelo base sin peinado propio: usa siempre uno del catálogo. */
   needsHair?: string;
+  /** Su ropa original lee como uniforme escolar: se muestra siempre en versión lisa (sin corbata ni lazos). */
+  alwaysPlain?: boolean;
 }
 
 export const MODELS: BaseModel[] = [
   { id: 'bibi', gender: 'female', label: { es: 'Campestre', en: 'Countryside' }, hairDonor: true },
-  { id: 'shino', gender: 'female', label: { es: 'Colegiala', en: 'Schoolgirl' }, hairDonor: true },
   { id: 'noir', gender: 'female', label: { es: 'Gótica élfica', en: 'Gothic elf' }, hairDonor: true },
   { id: 'victoria', gender: 'female', label: { es: 'Princesa', en: 'Princess' }, hairDonor: true },
   { id: 'vita', gender: 'female', label: { es: 'Ciencia ficción', en: 'Sci-fi' }, hairDonor: true },
   { id: 'hair_f', gender: 'female', label: { es: 'Gatita', en: 'Kitten' }, hairDonor: true },
   { id: 'shibu', gender: 'female', label: { es: 'Clásica', en: 'Classic' }, hairDonor: true },
   { id: 'mei', gender: 'female', label: { es: 'Casual', en: 'Casual' }, hairDonor: true },
-  { id: 'base_f', gender: 'female', label: { es: 'Uniforme', en: 'Uniform' }, needsHair: 'mei' },
-  { id: 'sample_b', gender: 'female', label: { es: 'Urbana', en: 'Streetwear' }, vrm1: true },
   { id: 'aria', gender: 'female', label: { es: 'Minimal', en: 'Minimal' }, vrm1: true },
-  { id: 'fumiriya', gender: 'male', label: { es: 'Estudiante', en: 'Student' }, hairDonor: true },
+  { id: 'fumiriya', gender: 'male', label: { es: 'Camisa', en: 'Shirt' }, hairDonor: true, alwaysPlain: true },
   { id: 'hair_m', gender: 'male', label: { es: 'Urbano', en: 'Urban' }, hairDonor: true },
-  { id: 'base_m', gender: 'male', label: { es: 'Uniforme', en: 'Uniform' }, needsHair: 'fumiriya' },
 ];
 
 export const modelById = (id: string | null | undefined) => MODELS.find((m) => m.id === id);
+
+/**
+ * Cuerpos retirados porque su ropa lee como uniforme escolar (todo personaje es adulto):
+ * uniformes, colegiala y el conjunto de falda plisada con chaqueta universitaria.
+ * Los personajes guardados con ellos pasan al cuerpo adulto más cercano, conservando
+ * su peinado (los modelos VRoid comparten esqueleto) y con ropa lisa.
+ * La misma tabla se aplica en la base de datos (supabase/migrations/0006_adults_only.sql).
+ */
+export const RETIRED_MODELS: Record<string, { model: string; hair: string | null }> = {
+  shino: { model: 'mei', hair: 'shino' },
+  base_f: { model: 'mei', hair: null },
+  base_m: { model: 'fumiriya', hair: null },
+  sample_b: { model: 'mei', hair: null },
+};
 export const isCustomModel = (model: string) => /^https?:/.test(model);
 
 export interface Choice<T extends string = string> {
@@ -346,7 +358,8 @@ export const LOOK_DEFAULTS: Omit<CharacterLook, 'model'> = {
 
 export const makeLook = (l: Partial<CharacterLook> & { model: string }): CharacterLook => {
   const m = modelById(l.model);
-  return { ...LOOK_DEFAULTS, ...l, hair: l.hair ?? m?.needsHair ?? null };
+  const look = { ...LOOK_DEFAULTS, ...l, hair: l.hair ?? m?.needsHair ?? null };
+  return m?.alwaysPlain ? { ...look, plainOutfit: true } : look;
 };
 
 // ------------------------------------------------------------------ personajes listos
@@ -360,7 +373,7 @@ export interface CharacterPreset {
   look: CharacterLook;
 }
 
-// Personajes adultos con estética VTuber: ropa sencilla, sombreado anime plano y fondos ilustrados.
+// Personajes adultos: ropa de persona adulta (camiseta, camisa, vestido, sudadera), nada que lea como uniforme.
 const v = (id: string, speed = 1, style = 0.35) => ({ id, speed, style });
 export const PRESETS: CharacterPreset[] = [
   {
@@ -379,25 +392,25 @@ export const PRESETS: CharacterPreset[] = [
     id: 'nyx', name: 'Nyx', gender: 'female', age: 26,
     tagline: { es: 'Misteriosa, orgullosa y magnética', en: 'Mysterious, proud and magnetic' },
     traits: ['mysterious', 'proud', 'flirty'],
-    look: makeLook({ model: 'base_f', hair: 'noir', hairColor: '#7A2338', eyeColor: '#C8283F', plainOutfit: true, expression: 'smug', background: 'dusk', voice: v('pFZP5JQG7iQjIQuC4Bku', 0.95, 0.45) }),
+    look: makeLook({ model: 'noir', hairColor: '#7A2338', eyeColor: '#C8283F', expression: 'smug', background: 'dusk', voice: v('pFZP5JQG7iQjIQuC4Bku', 0.95, 0.45) }),
   },
   {
     id: 'mei', name: 'Mei', gender: 'female', age: 28,
     tagline: { es: 'Fría por fuera, cariñosa por dentro', en: 'Cold outside, caring inside' },
     traits: ['cold', 'confident', 'protective'],
-    look: makeLook({ model: 'shino', plainOutfit: true, expression: 'serious', eyeColor: '#C8283F', background: 'starry', voice: v('Xb7hH8MSUJpSbSDYk0k2', 0.97, 0.2) }),
+    look: makeLook({ model: 'mei', hair: 'shino', plainOutfit: true, outfitColor: '#2A2730', expression: 'serious', eyeColor: '#C8283F', background: 'starry', voice: v('Xb7hH8MSUJpSbSDYk0k2', 0.97, 0.2) }),
   },
   {
     id: 'ren', name: 'Ren', gender: 'male', age: 29,
     tagline: { es: 'Reservado, intelectual y misterioso', en: 'Reserved, intellectual and mysterious' },
     traits: ['reserved', 'intellectual', 'mysterious'],
-    look: makeLook({ model: 'base_m', hair: 'fumiriya', hairColor: '#4A3026', plainOutfit: true, accessories: ['glasses_square'], expression: 'calm', background: 'room', voice: v('cjVigY5qzO86Huf0OWal', 0.95, 0.2) }),
+    look: makeLook({ model: 'fumiriya', hairColor: '#4A3026', outfitColor: '#3B4A5E', accessories: ['glasses_square'], expression: 'calm', background: 'room', voice: v('cjVigY5qzO86Huf0OWal', 0.95, 0.2) }),
   },
   {
     id: 'luna', name: 'Luna', gender: 'female', age: 23,
     tagline: { es: 'Extrovertida, juguetona y brillante', en: 'Outgoing, playful and bright' },
     traits: ['extrovert', 'playful', 'optimistic'],
-    look: makeLook({ model: 'base_f', hair: 'victoria', hairColor: '#D9AE6A', eyeColor: '#3D7BD9', plainOutfit: true, outfitColor: '#F4F1EC', expression: 'joy', background: 'dawn', voice: v('FGY2WhTYpPnrIDTdsKH5', 1.05, 0.55) }),
+    look: makeLook({ model: 'mei', hair: 'victoria', hairColor: '#D9AE6A', eyeColor: '#3D7BD9', outfitColor: '#F2C9B8', expression: 'joy', background: 'dawn', voice: v('FGY2WhTYpPnrIDTdsKH5', 1.05, 0.55) }),
   },
   {
     id: 'dante', name: 'Dante', gender: 'male', age: 27,
@@ -409,13 +422,13 @@ export const PRESETS: CharacterPreset[] = [
     id: 'victoria', name: 'Victoria', gender: 'female', age: 26,
     tagline: { es: 'Dramática, orgullosa y encantadora', en: 'Dramatic, proud and charming' },
     traits: ['dramatic', 'proud', 'romantic'],
-    look: makeLook({ model: 'base_f', hair: 'mei', hairColor: '#EEE4CF', eyeColor: '#8B5BD6', plainOutfit: true, outfitColor: '#5B3F8C', expression: 'smile', lipColor: '#D9708A', background: 'aurora', voice: v('Xb7hH8MSUJpSbSDYk0k2', 1, 0.5) }),
+    look: makeLook({ model: 'victoria', hair: 'mei', hairColor: '#EEE4CF', eyeColor: '#8B5BD6', outfitColor: '#5B3F8C', expression: 'smile', lipColor: '#D9708A', background: 'aurora', voice: v('Xb7hH8MSUJpSbSDYk0k2', 1, 0.5) }),
   },
   {
     id: 'zoe', name: 'Zoe', gender: 'female', age: 24,
     tagline: { es: 'Rebelde, divertida y sin filtro', en: 'Rebellious, funny and unfiltered' },
     traits: ['rebellious', 'funny', 'confident'],
-    look: makeLook({ model: 'sample_b', expression: 'smug', background: 'city', voice: v('cgSgspJ2msm6clMCkdW9', 1.05, 0.6) }),
+    look: makeLook({ model: 'mei', hair: 'noir', hairColor: '#5B3F8C', hairTip: '#5C7FD6', skinTone: '#9A6446', plainOutfit: true, outfitColor: '#8C2F46', expression: 'smug', background: 'city', voice: v('cgSgspJ2msm6clMCkdW9', 1.05, 0.6) }),
   },
   {
     id: 'vita', name: 'Vita', gender: 'female', age: 27,
@@ -427,13 +440,13 @@ export const PRESETS: CharacterPreset[] = [
     id: 'hana', name: 'Hana', gender: 'female', age: 22,
     tagline: { es: 'Soñadora, tierna y curiosa', en: 'Dreamy, tender and curious' },
     traits: ['kind', 'optimistic', 'shy'],
-    look: makeLook({ model: 'base_f', hair: 'shibu', hairColor: '#B7A2E8', eyeColor: '#B79BEA', plainOutfit: true, outfitColor: '#F4F1EC', expression: 'shy', blush: 0.45, background: 'room', voice: v('EXAVITQu4vr4xnSDxMaL', 1.03, 0.45) }),
+    look: makeLook({ model: 'hair_f', hair: 'shibu', hairColor: '#B7A2E8', eyeColor: '#B79BEA', outfitColor: '#F4F1EC', expression: 'shy', blush: 0.45, background: 'room', voice: v('EXAVITQu4vr4xnSDxMaL', 1.03, 0.45) }),
   },
   {
     id: 'sora', name: 'Sora', gender: 'male', age: 25,
     tagline: { es: 'Tranquilo, atento y leal', en: 'Calm, attentive and loyal' },
     traits: ['loyal', 'kind', 'reserved'],
-    look: makeLook({ model: 'base_m', hair: 'fumiriya', hairColor: '#2B2A3A', hairTip: '#5C7FD6', eyeColor: '#3D7BD9', plainOutfit: true, expression: 'calm', accessories: ['headphones'], background: 'dusk', voice: v('bIHbv24MWmeRgasZH58o', 1, 0.25) }),
+    look: makeLook({ model: 'hair_m', hair: 'fumiriya', hairColor: '#2B2A3A', hairTip: '#5C7FD6', eyeColor: '#3D7BD9', plainOutfit: true, outfitColor: '#56708F', expression: 'calm', accessories: ['headphones'], background: 'dusk', voice: v('bIHbv24MWmeRgasZH58o', 1, 0.25) }),
   },
 ];
 
@@ -456,9 +469,12 @@ export function normalizeLook(raw: unknown, gender: string = 'female'): Characte
   const base = (gender === 'male' ? DEFAULT_MALE : DEFAULT_FEMALE).look;
   if (!raw || typeof raw !== 'object' || (raw as { v?: number }).v !== 3) return base;
   const r = raw as Partial<CharacterLook>;
-  const model = typeof r.model === 'string' && (modelById(r.model) || isCustomModel(r.model)) ? r.model : base.model;
+  const retired = typeof r.model === 'string' ? RETIRED_MODELS[r.model] : undefined;
+  const model = retired ? retired.model : typeof r.model === 'string' && (modelById(r.model) || isCustomModel(r.model)) ? r.model : base.model;
   const needs = modelById(model)?.needsHair;
-  const hair = typeof r.hair === 'string' && HAIRSTYLES.some((h) => h.id === r.hair) && hairCompatible(model) ? r.hair : (needs ?? null);
+  const savedHair = typeof r.hair === 'string' && HAIRSTYLES.some((h) => h.id === r.hair) ? r.hair : retired?.hair;
+  // El peinado propio del modelo se guarda como null.
+  const hair = savedHair && savedHair !== model && hairCompatible(model) ? savedHair : (needs ?? null);
   const color = (v: unknown) => (isHex(v) ? v : null);
   const v = (r.voice ?? {}) as Partial<VoiceSettings>;
   return {
@@ -474,7 +490,7 @@ export function normalizeLook(raw: unknown, gender: string = 'female'): Characte
     bottomColor: color(r.bottomColor),
     shoesColor: color(r.shoesColor),
     accentColor: color(r.accentColor),
-    plainOutfit: r.plainOutfit === true,
+    plainOutfit: r.plainOutfit === true || !!retired || !!modelById(model)?.alwaysPlain,
     expression: oneOf(EXPRESSIONS, r.expression, 'neutral'),
     blush: clamp(r.blush, 0, 1, 0),
     lipColor: color(r.lipColor),

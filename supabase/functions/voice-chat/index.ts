@@ -8,7 +8,7 @@ import { replyAsAvatar, saveExchange } from '../_shared/companion.ts';
 import { pickVoice, speechToText, textToSpeech, voiceTuning } from '../_shared/elevenlabs.ts';
 import { base64ToBytes, bytesToBase64, HttpError, json, readJson, serve } from '../_shared/http.ts';
 import { refundFree, reserveFree } from '../_shared/quota.ts';
-import { admin, getConversationId, getOwnedAvatar, getProfile, requireUser } from '../_shared/supabase.ts';
+import { admin, getConversationId, getOwnedAvatar, getProfile, requireAdult, requireUser } from '../_shared/supabase.ts';
 
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
 const MAX_DURATION_MS = 125_000;
@@ -17,8 +17,9 @@ const extFor = (mime: string) => (mime.includes('webm') ? 'webm' : mime.includes
 
 serve(async (req) => {
   const user = await requireUser(req);
-  const { avatarId, audioBase64, mimeType = 'audio/mp4', durationMs } = await readJson<{
+  const { avatarId, audioBase64, mimeType = 'audio/mp4', durationMs, adultConfirmed } = await readJson<{
     avatarId?: string;
+    adultConfirmed?: boolean;
     audioBase64?: string;
     mimeType?: string;
     durationMs?: number;
@@ -32,6 +33,7 @@ serve(async (req) => {
   }
 
   const profile = await getProfile(user.id);
+  await requireAdult(profile, adultConfirmed);
   const avatar = await getOwnedAvatar(user.id, avatarId);
   const conversationId = await getConversationId(avatarId);
   const quota = await reserveFree(profile, 'voice', !!user.is_anonymous);
