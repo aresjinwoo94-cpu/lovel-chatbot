@@ -9,10 +9,10 @@ import {
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { useFonts } from 'expo-font';
-import { type Href, router, Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, type Href, router, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -35,7 +35,11 @@ SplashScreen.preventAutoHideAsync();
 function RootNavigator() {
   const { session, loading, isGuest } = useAuth();
   const { status: age, takeResume } = useAgeGate();
-  const { colors, scheme } = useTheme();
+  const { colors, scheme, loaded: themeLoaded } = useTheme();
+  const navTheme = useMemo(() => {
+    const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+    return { ...base, colors: { ...base.colors, background: colors.cream, card: colors.paper, text: colors.ink, border: colors.line, primary: colors.primary } };
+  }, [scheme, colors]);
   const adult = age === 'adult';
 
   // Quien llegó por un enlace (p. ej. restablecer contraseña o un chat) sigue ahí tras la puerta.
@@ -51,7 +55,7 @@ function RootNavigator() {
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
   });
-  const ready = !loading && age !== 'loading' && (fontsLoaded || !!fontError);
+  const ready = !loading && age !== 'loading' && themeLoaded && (fontsLoaded || !!fontError);
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
@@ -60,7 +64,7 @@ function RootNavigator() {
   if (!ready) return null;
 
   return (
-    <>
+    <NavThemeProvider value={navTheme}>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.cream } }}>
         {/* Primera pantalla disponible mientras no se haya confirmado la edad. */}
         <Stack.Protected guard={!adult}>
@@ -88,7 +92,7 @@ function RootNavigator() {
       </Stack>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <DialogHost />
-    </>
+    </NavThemeProvider>
   );
 }
 

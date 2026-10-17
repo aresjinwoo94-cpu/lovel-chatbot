@@ -16,25 +16,44 @@ import { cssVars, PALETTES, type Palette, type Scheme, setActiveScheme } from '@
 export type ThemePref = 'system' | 'light' | 'dark';
 const KEY = 'lovel.theme.v1';
 
+function readWebPref(): ThemePref {
+  try {
+    const v = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY) : null;
+    return v === 'light' || v === 'dark' ? v : 'system';
+  } catch {
+    return 'system';
+  }
+}
+
 interface ThemeState {
   pref: ThemePref;
   setPref: (p: ThemePref) => void;
   scheme: Scheme;
   colors: Palette;
+  /** Preferencia guardada ya leída (la raíz espera a esto para quitar el splash). */
+  loaded: boolean;
 }
 
 const ThemeContext = createContext<ThemeState | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [pref, setPrefState] = useState<ThemePref>('system');
+  // En web, AsyncStorage es localStorage: se lee al instante (sin parpadeo del tema).
+  const [pref, setPrefState] = useState<ThemePref>(() => (Platform.OS === 'web' ? readWebPref() : 'system'));
+  const [loaded, setLoaded] = useState(Platform.OS === 'web');
   const system = useColorScheme();
 
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     AsyncStorage.getItem(KEY)
       .then((v) => {
-        if (v === 'light' || v === 'dark' || v === 'system') setPrefState(v);
+        if (v === 'light' || v === 'dark' || v === 'system') {
+          setPrefState(v);
+          // teclado, alertas y selectores del sistema también siguen la elección guardada
+          Appearance.setColorScheme(v === 'system' ? 'unspecified' : v);
+        }
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => setLoaded(true));
   }, []);
 
   const scheme: Scheme = pref === 'system' ? (system === 'dark' ? 'dark' : 'light') : pref;
@@ -56,7 +75,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (Platform.OS !== 'web') Appearance.setColorScheme(p === 'system' ? 'unspecified' : p);
   }, []);
 
-  const value = useMemo(() => ({ pref, setPref, scheme, colors: PALETTES[scheme] }), [pref, setPref, scheme]);
+  const value = useMemo(() => ({ pref, setPref, scheme, colors: PALETTES[scheme], loaded }), [pref, setPref, scheme, loaded]);
   const rootVars = useMemo(() => (Platform.OS === 'web' ? undefined : vars(cssVars(scheme))), [scheme]);
 
   return (

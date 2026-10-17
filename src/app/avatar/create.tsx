@@ -467,7 +467,7 @@ export default function CreateCharacter() {
               <Text className="font-medium text-[13px] text-ink">{t('create.sec.eyeShine')}</Text>
               <Text className="mt-0.5 text-[12px] text-muted">{t('create.sec.eyeShineHint')}</Text>
             </View>
-            <Switch value={look.eyeShine} onValueChange={(v) => patch({ eyeShine: v })} trackColor={{ true: colors.ink, false: colors.line }} thumbColor={colors.paper} />
+            <Switch value={look.eyeShine} onValueChange={(v) => patch({ eyeShine: v })} trackColor={{ true: colors.ink, false: colors.muted }} thumbColor="#FFFFFF" />
           </View>
         </Group>
         <Group title={t('create.sec.skin')}>
@@ -506,7 +506,7 @@ export default function CreateCharacter() {
             <Text className="font-medium text-[13px] text-ink">{t('create.sec.plain')}</Text>
             <Text className="mt-0.5 text-[12px] text-muted">{t('create.sec.plainHint')}</Text>
           </View>
-          <Switch value={look.plainOutfit} onValueChange={(v) => patch({ plainOutfit: v })} trackColor={{ true: colors.ink, false: colors.line }} thumbColor={colors.paper} />
+          <Switch value={look.plainOutfit} onValueChange={(v) => patch({ plainOutfit: v })} trackColor={{ true: colors.ink, false: colors.muted }} thumbColor="#FFFFFF" />
         </View>
         )}
         <Group title={t('create.sec.top')} hint={t('create.sec.outfitHint')}>

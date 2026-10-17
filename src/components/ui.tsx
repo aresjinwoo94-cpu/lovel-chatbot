@@ -208,7 +208,7 @@ export function Swatch({ color, selected, onPress, label }: { color: string; sel
       accessibilityState={{ selected }}
       className={`mb-2 mr-2 h-9 w-9 items-center justify-center rounded-full border-2 ${selected ? 'border-ink' : 'border-transparent'}`}
     >
-      <View className="h-7 w-7 rounded-full border border-black/10" style={{ backgroundColor: color }} />
+      <View className="h-7 w-7 rounded-full border border-ink/15" style={{ backgroundColor: color }} />
     </Pressable>
   );
 }
@@ -285,7 +285,7 @@ export function ToggleRow({ label, hint, value, onChange }: { label: string; hin
         value={value}
         onValueChange={onChange}
         trackColor={{ true: colors.primary, false: colors.line }}
-        thumbColor={colors.paper}
+        thumbColor="#FFFFFF"
         {...({ activeThumbColor: colors.paper } as object)}
       />
     </View>

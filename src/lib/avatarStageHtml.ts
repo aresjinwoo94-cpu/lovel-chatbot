@@ -29,6 +29,8 @@ export const AVATAR_STAGE_HTML = `<!doctype html>
 } }
 </script>
 <style>
+  /* misma preferencia de esquema que la app: si no, Chrome pinta el iframe de blanco en oscuro */
+  :root { color-scheme: light dark; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
   #gl { position: fixed; inset: 0; width: 100%; height: 100%; }
   /* Acabado de ilustración: viñeta suave y grano de papel (capas baratas sobre el lienzo). */

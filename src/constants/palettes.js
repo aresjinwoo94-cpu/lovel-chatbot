@@ -17,7 +17,7 @@ const light = {
   accentSoft: '#F8E8ED',
   /** Texto principal y secundario */
   ink: '#242229',
-  muted: '#6E6A74',
+  muted: '#66626C',
   line: '#E8E4DE',
   /** En línea / éxito */
   success: '#69B58A',

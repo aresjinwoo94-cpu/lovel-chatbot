@@ -69,7 +69,11 @@ module.exports = {
     // Valores iniciales en web (antes de que cargue la app) según prefers-color-scheme.
     ({ addBase }) => {
       const { cssVarsLight, cssVarsDark } = require('./src/constants/palettes.js');
-      addBase({ ':root': cssVarsLight, '@media (prefers-color-scheme: dark)': { ':root': cssVarsDark } });
+      addBase({
+        ':root': { ...cssVarsLight, colorScheme: 'light dark' },
+        '@media (prefers-color-scheme: dark)': { ':root': cssVarsDark },
+        'html, body': { backgroundColor: 'rgb(var(--c-cream))' },
+      });
     },
   ],
 };

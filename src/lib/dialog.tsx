@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 
 import { Text } from '@/components/Themed';
+import { useTheme } from '@/lib/theme';
 
 /**
  * Diálogos de la app (reemplazo de Alert.alert).
@@ -45,6 +46,7 @@ function close(button?: DialogButton) {
 }
 
 export function DialogHost() {
+  const { scheme } = useTheme();
   const [dialog, setDialog] = useState<DialogState | null>(current);
   useEffect(() => {
     listeners.add(setDialog);
@@ -56,7 +58,7 @@ export function DialogHost() {
   const cancel = dialog?.buttons.find((b) => b.style === 'cancel');
   return (
     <Modal visible={!!dialog} transparent animationType="fade" onRequestClose={() => close(cancel)}>
-      <Pressable className="flex-1 items-center justify-center bg-black/30 px-5" onPress={() => cancel && close(cancel)}>
+      <Pressable className={`flex-1 items-center justify-center px-5 ${scheme === 'dark' ? 'bg-black/60' : 'bg-black/30'}`} onPress={() => cancel && close(cancel)}>
         <Pressable className="w-full rounded-2xl border border-line bg-paper p-5" style={{ maxWidth: 380 }} onPress={() => undefined}>
           <Text className="font-semibold text-[17px] leading-[23px] tracking-tight text-ink">{dialog?.title}</Text>
           {dialog?.message ? <Text className="mt-1.5 text-[14px] leading-[20px] text-muted">{dialog.message}</Text> : null}
