@@ -542,7 +542,7 @@ export function randomLook(gender: 'female' | 'male' | 'other', voice?: VoiceSet
     expression: rnd(EXPRESSIONS.slice(0, 7)).id,
     blush: chance(0.4) ? Math.round(Math.random() * 10) / 10 : 0,
     marks: chance(0.25) ? [rnd(MARKS).id] : [],
-    pose: rnd(POSES).id,
+    pose: rnd(POSES.filter((p) => p.id !== 'straight')).id,
     accessories: accessories.reduce<string[]>(toggleAccessory, []),
     background: chance(0.7) ? rnd(PAINTED_BACKGROUNDS) : dark ? rnd(DARK_BACKGROUNDS) : rnd(BACKGROUNDS.filter((b) => !DARK_BACKGROUNDS.includes(b.id))).id,
     lighting: chance(0.75) ? 'illustrated' : dark ? rnd(['night', 'dramatic'] as Lighting[]) : rnd(['studio', 'soft', 'warm', 'cool', 'sunset'] as Lighting[]),

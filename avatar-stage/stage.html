@@ -123,7 +123,7 @@ const PAINTED = {
   aurora: { sky: ['#14213D', '#25406B', '#3E7C8F', '#9AD3C6'], bands: '#BFF0E2', horizon: '#14213D', water: '#5FA8A6', stars: 70, hills: true },
   starry: { sky: ['#0E1024', '#1C1F45', '#3A2F6B', '#6A4C8C'], bands: '#8E7CC3', horizon: '#121330', water: null, stars: 140, hills: true },
   city: { sky: ['#1A1630', '#2E2350', '#5B3B72', '#B0628A'], bands: '#E39AB4', horizon: '#15122A', water: null, stars: 20, city: true },
-  dawn: { sky: ['#F7D6C9', '#F5C1C9', '#D9C3EE', '#BFD3F2'], bands: '#FFFFFF', horizon: '#9D8BC8', water: '#F2C6B8', stars: 0, hills: true },
+  dawn: { sky: ['#F7D6C9', '#F5C1C9', '#D9C3EE', '#BFD3F2'], bands: '#FFFFFF', horizon: '#9D8BC8', water: '#F2C6B8', stars: 0, hills: true, light: true },
   room: { room: true },
 };
 function paintBackdrop(g, W, H, P) {
@@ -189,7 +189,7 @@ function softBlur(c, factor) {
 
 let backdropTex = null;
 function setBackdrop(id, transparent) {
-  const light = !PAINTED[id] && !['night', 'midnight', 'wine'].includes(id);
+  const light = PAINTED[id] ? !!PAINTED[id].light : !['night', 'midnight', 'wine'].includes(id);
   document.body.classList.toggle('light', light);
   document.body.classList.toggle('nofx', !!transparent);
   if (transparent) { scene.background = null; return; }
@@ -439,7 +439,7 @@ function applyFinish(look) {
         const normal = ill ? o * 0.55 : o;
         m.outlineWidthFactor = outline === 'none' ? 0 : outline === 'bold' ? Math.max(o * 3.5, 0.0025) : normal;
         if (m.outlineColorFactor) {
-          if (ill) { m.outlineColorFactor.setRGB(0.36, 0.3, 0.36); m.outlineLightingMixFactor = 1; }
+          if (ill) { const k = outline === 'bold' ? 0.14 : 0.36; m.outlineColorFactor.setRGB(k, k * 0.85, k); m.outlineLightingMixFactor = 1; }
           else { if (m.userData.outlineColor0) m.outlineColorFactor.copy(m.userData.outlineColor0); m.outlineLightingMixFactor = m.userData.outlineMix0 ?? m.outlineLightingMixFactor; }
         }
       }
@@ -517,7 +517,7 @@ const POSES = {
   confident: { u: [0.05, -0.35, 0.78], l: [0, -0.55, 1.55], h: [0, 0, -0.3] },
   shy: { u: [0.15, -0.55, 1.22], l: [0, -1.15, 0.35], h: [0, -0.3, 0] },
   hands_back: { u: [0.05, 0.7, 1.22], l: [0, 1.25, 0.2], h: [0, 0, 0] },
-  wave: { u: [0.1, -0.08, 1.3], l: [-0.15, -0.5, 0.12], h: [-0.25, 0.1, -0.15], body: true, right: { u: [0, -0.25, 0.45], l: [0, -0.1, -1.9], h: [0, 0, 0] } },
+  wave: { u: [0.1, -0.08, 1.3], l: [-0.15, -0.5, 0.12], h: [-0.25, 0.1, -0.15], body: true, turn: 0.06, right: { u: [0, -0.25, 0.45], l: [0, -0.1, -1.9], h: [0, 0, 0] } },
   // La pose de prueba de siempre (brazos rectos), por si alguien la prefiere.
   straight: { u: [0.1, 0, 1.2], l: [0, 0, 0.14], h: [0, 0, 0] },
 };
@@ -549,6 +549,7 @@ function applyPose(vrm, pose) {
   set(b('rightUpperLeg'), leg.ru, false); set(b('rightLowerLeg'), leg.rl, false);
   vrm.userData = vrm.userData || {};
   vrm.userData.natural = !!P.body;
+  vrm.userData.turn = P.body ? (P.turn ?? 0.3) : 0;
   current.pose = pose;
 }
 
@@ -624,6 +625,9 @@ async function load(look, base) {
   followSkeleton();
   settle();
   frameCamera();
+  perf.loadedAt = clock.elapsedTime;
+  // una emoción que llegó mientras cargaba empieza a contar ahora
+  if (current.emotionAt) current.emotionAt = Math.max(current.emotionAt, clock.elapsedTime);
   return true;
 }
 
@@ -1043,7 +1047,8 @@ function frameCamera() {
 const clock = new THREE.Clock();
 let nextBlink = 1.5, blinkT = -1, talk = 0, talkTarget = 0, nextSyll = 0, nod = 0, dim = 0;
 // mirada viva: de vez en cuando aparta la vista y vuelve
-let nextGlance = 4, glanceEnd = 0, glance = { yaw: 0, pitch: 0 }, gazeYaw = 0, gazePitch = 0, emoAmt = 0;
+let nextGlance = 4, glanceEnd = 0, gazeYaw = 0, gazePitch = 0, emoAmt = 0;
+const glance = { yaw: 0, pitch: 0 }, NO_GAZE = { yaw: 0, pitch: 0 };
 const ex = { happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0, blink: 0 };
 
 /** Expresión base (valores de las expresiones estándar de VRM). */
@@ -1061,12 +1066,15 @@ const EXPRESSIONS = {
   sleepy: { blink: 0.5, relaxed: 0.15 },
 };
 
-/** Emoción del momento (de lo que acaba de decir el personaje): cara y gesto marcados. */
+/**
+ * Emoción del momento (de lo que acaba de decir el personaje): cara y gesto marcados.
+ * head.x positivo = baja la cabeza; gaze en grados (pitch positivo = mira abajo).
+ */
 const EMOTIONS = {
-  happy: { face: { happy: 0.75 }, head: { x: -0.03, z: 0.05 } },
-  sad: { face: { sad: 0.72, relaxed: 0.1 }, head: { x: 0.11, z: -0.04 }, gaze: { yaw: -6, pitch: -9 } },
+  happy: { face: { happy: 0.75 }, head: { x: -0.04, z: 0.05 } },
+  sad: { face: { sad: 0.72, relaxed: 0.1 }, head: { x: 0.11, z: -0.04 }, gaze: { yaw: -18, pitch: 34 } },
   surprised: { face: { surprised: 0.62 }, head: { x: -0.07, z: 0 } },
-  shy: { face: { happy: 0.38, sad: 0.24 }, head: { x: 0.1, z: 0.1 }, gaze: { yaw: 12, pitch: -7 } },
+  shy: { face: { happy: 0.38, sad: 0.24 }, head: { x: 0.1, z: 0.1 }, gaze: { yaw: 42, pitch: 24 } },
 };
 const EMOTION_HOLD = 9; // segundos con la emoción marcada antes de volver al gesto base
 
@@ -1122,37 +1130,48 @@ function step(dt, t, silent = false) {
   const th = current.think, at = current.attend;
   const tilt = (+look.headTilt || 0) * 0.3, turn = (+look.headTurn || 0) * 0.42;
   const nat = vrm.userData?.natural ? 1 : 0;
-  const eh = E ? { x: (E.head.x || 0) * emoAmt, z: (E.head.z || 0) * emoAmt } : { x: 0, z: 0 };
+  const bodyTurn = vrm.userData?.turn || 0;
+  // Las rotaciones se escriben en el marco de un VRM 0 (como las poses): un VRM 1 está
+  // girado 180°, así que X y Z cambian de signo. `up` = sentido "mirar hacia abajo".
+  const v0 = vrm.meta?.metaVersion === '0';
+  const sx = v0 ? 1 : -1, down = v0 ? -1 : 1;
+  const ehx = E ? (E.head.x || 0) * emoAmt : 0, ehz = E ? (E.head.z || 0) * emoAmt : 0;
   // respiración (pecho) y micro-balanceo (cadera); en reposo natural, 3/4 suave y peso en una pierna
   const breath = Math.sin(t * 1.55);
-  if (b('hips')) {
-    b('hips').rotation.y = nat * 0.3;
-    b('hips').rotation.z = nat * (0.035 + Math.sin(t * 0.42) * 0.012);
+  const hips = b('hips');
+  if (hips) {
+    hips.rotation.y = bodyTurn;
+    hips.rotation.z = sx * nat * (0.035 + Math.sin(t * 0.42) * 0.012);
   }
   b('spine').rotation.x = breath * 0.012;
-  b('spine').rotation.z = nat * -0.045;
-  b('spine').rotation.y = nat * -0.06;
-  if (b('chest')) { b('chest').rotation.x = Math.sin(t * 1.55 + 0.5) * 0.016; b('chest').rotation.z = nat * -0.012; }
-  if (b('upperChest')) b('upperChest').rotation.x = breath * 0.008;
-  for (const [side, sgn] of [['left', 1], ['right', -1]]) { const sh = b(`${side}Shoulder`); if (sh) sh.rotation.z = sgn * (vrm.meta?.metaVersion === '0' ? 1 : -1) * breath * 0.012; }
+  b('spine').rotation.z = sx * nat * -0.045;
+  b('spine').rotation.y = -bodyTurn * 0.2;
+  const chest = b('chest');
+  if (chest) { chest.rotation.x = Math.sin(t * 1.55 + 0.5) * 0.016; chest.rotation.z = sx * nat * -0.012; }
+  const upperChest = b('upperChest');
+  if (upperChest) upperChest.rotation.x = breath * 0.008;
+  const shL = b('leftShoulder'), shR = b('rightShoulder');
+  if (shL) shL.rotation.z = sx * breath * 0.012;
+  if (shR) shR.rotation.z = -sx * breath * 0.012;
   // la cabeza compensa el giro del cuerpo: mira a cámara, con la cara en 3/4 leve
-  b('neck').rotation.y = Math.sin(t * 0.5) * 0.04 + turn * 0.45 - nat * 0.12;
+  b('neck').rotation.y = Math.sin(t * 0.5) * 0.04 + turn * 0.45 - bodyTurn * 0.4;
   b('neck').rotation.z = tilt * 0.35;
-  // mirada: aparta la vista cada pocos segundos (no mientras escucha) y vuelve
+  // mirada (grados; en three-vrm, pitch positivo = mirar abajo): aparta la vista cada
+  // pocos segundos (no mientras escucha) y vuelve
   if (!silent) {
     if (t > nextGlance && mood !== 'listening') {
-      glance = { yaw: (Math.random() < 0.5 ? -1 : 1) * (7 + Math.random() * 8), pitch: -2 - Math.random() * 6 };
+      glance.yaw = (Math.random() < 0.5 ? -1 : 1) * (28 + Math.random() * 22);
+      glance.pitch = 6 + Math.random() * 14;
       glanceEnd = t + 0.7 + Math.random() * 1.1; nextGlance = glanceEnd + 3.5 + Math.random() * 5;
     }
-    const away = t < glanceEnd ? glance : { yaw: 0, pitch: 0 };
-    const gz = E?.gaze && emoAmt > 0.3 ? E.gaze : away;
+    const gz = E?.gaze && emoAmt > 0.3 ? E.gaze : t < glanceEnd ? glance : NO_GAZE;
     gazeYaw += (gz.yaw - gazeYaw) * Math.min(1, dt * 6);
     gazePitch += (gz.pitch - gazePitch) * Math.min(1, dt * 6);
     if (vrm.lookAt) { vrm.lookAt.yaw = gazeYaw; vrm.lookAt.pitch = gazePitch; }
   }
-  b('head').rotation.z = tilt + nat * 0.05 + th * 0.12 + at * -0.06 + eh.z + Math.sin(t * 0.7) * 0.025;
-  b('head').rotation.x = th * -0.07 + at * (0.05 + Math.sin(t * 2.2) * 0.03) + nod * Math.sin(t * 6) * 0.05 + eh.x;
-  b('head').rotation.y = turn * 0.65 - nat * 0.08 + th * 0.12 + gazeYaw * 0.006 + Math.sin(t * 0.37) * 0.035;
+  b('head').rotation.z = tilt + sx * (nat * 0.05 + ehz) + th * 0.12 + at * -0.06 + Math.sin(t * 0.7) * 0.025;
+  b('head').rotation.x = th * -0.07 + at * (0.05 + Math.sin(t * 2.2) * 0.03) + nod * Math.sin(t * 6) * 0.05 + down * ehx;
+  b('head').rotation.y = turn * 0.65 - bodyTurn * 0.27 + th * 0.12 + gazeYaw * 0.002 + Math.sin(t * 0.37) * 0.035;
   if (current.pose === 'wave' && !silent) {
     const v0 = vrm.meta?.metaVersion === '0';
     const lower = b('rightLowerArm');
@@ -1173,27 +1192,39 @@ function step(dt, t, silent = false) {
 const MOBILE = matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
 // ?fx=on desactiva el ajuste automático (solo para medir con los efectos siempre puestos).
 const FORCE_FX = new URLSearchParams(location.search).get('fx') === 'on';
-const perf = { frames: 0, fps: null, since: 0, checks: 0, lowfx: false, pixelRatio: renderer.getPixelRatio() };
-function governor(t) {
-  perf.frames++;
-  if (!current.vrm || perf.checks >= 3) return;
+const perf = { frames: 0, fps: null, since: 0, checks: 0, slow: 0, lowfx: false, pixelRatio: renderer.getPixelRatio(), loadedAt: 0 };
+const resetWindow = () => { perf.since = 0; perf.frames = 0; };
+document.addEventListener('visibilitychange', resetWindow);
+/**
+ * Mide en ventanas de 3 s, empezando 1,5 s después de cargar (la primera imagen compila
+ * los shaders). Una ventana con un tirón de más de 250 ms (pestaña en segundo plano,
+ * compilación) se descarta. Hacen falta dos ventanas lentas seguidas para quitar efectos,
+ * y vuelven si después va sobrado (> 55 fps).
+ */
+function governor(t, rawDt) {
+  if (!current.vrm || t - perf.loadedAt < 1.5) { resetWindow(); return; }
+  if (rawDt > 0.25) { resetWindow(); return; }
   if (!perf.since) { perf.since = t; perf.frames = 0; return; }
+  perf.frames++;
   if (t - perf.since < 3) return;
   perf.fps = perf.frames / (t - perf.since);
-  perf.since = t; perf.frames = 0; perf.checks++;
+  resetWindow(); perf.checks++;
   if (!MOBILE || FORCE_FX) return;
-  if (perf.fps < 45 && !perf.lowfx) { perf.lowfx = true; document.body.classList.add('lowfx'); }
-  else if (perf.fps < 30 && renderer.getPixelRatio() > 1.25) {
+  perf.slow = perf.fps < 45 ? perf.slow + 1 : 0;
+  if (perf.slow >= 2 && !perf.lowfx) { perf.lowfx = true; document.body.classList.add('lowfx'); }
+  else if (perf.lowfx && perf.fps < 30 && perf.slow >= 2 && renderer.getPixelRatio() > 1.25) {
     renderer.setPixelRatio(Math.max(1.25, renderer.getPixelRatio() - 0.5));
     perf.pixelRatio = renderer.getPixelRatio();
+    perf.slow = 0;
     resize();
-  }
+  } else if (perf.lowfx && perf.fps > 55) { perf.lowfx = false; document.body.classList.remove('lowfx'); }
 }
 
 function frame() {
-  const dt = Math.min(clock.getDelta(), 0.05);
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05);
   const t = clock.elapsedTime;
-  governor(t);
+  governor(t, rawDt);
   step(dt, t);
   updateEffect(dt, t);
   dim += ((current.mood === 'offline' ? 1 : 0) - dim) * Math.min(1, dt * 3);
@@ -1218,7 +1249,7 @@ function paintFinish(out) {
   const v = g.createRadialGradient(W / 2, H * 0.42, Math.min(W, H) * 0.42, W / 2, H * 0.42, Math.max(W, H) * 0.78);
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, cls.contains('light') ? 'rgba(60,40,70,0.12)' : 'rgba(24,14,34,0.30)');
   g.fillStyle = v; g.fillRect(0, 0, W, H);
-  g.globalAlpha = 0.05; g.fillStyle = g.createPattern(grainCanvas, 'repeat'); g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+  g.globalAlpha = 0.07; g.fillStyle = g.createPattern(grainCanvas, 'repeat'); g.fillRect(0, 0, W, H); g.globalAlpha = 1;
 }
 
 // ------------------------------------------------------------------ mensajes
@@ -1259,6 +1290,8 @@ async function handle(msg) {
   } else if (msg.type === 'snapshot') {
     const em = current.vrm?.expressionManager;
     if (em) { blinkT = -1; nextBlink = clock.elapsedTime + 2; em.setValue('blink', ex.blink); em.update(); }
+    // la foto mira a cámara (sin la mirada de reojo del reposo)
+    if (current.vrm?.lookAt) { gazeYaw = gazePitch = 0; glanceEnd = 0; current.vrm.lookAt.yaw = 0; current.vrm.lookAt.pitch = 0; current.vrm.lookAt.update(0); }
     const prevFraming = current.framing;
     const prevAspect = camera.aspect;
     if (msg.framing) { current.framing = msg.framing; if (!msg.width) { camera.aspect = 1; camera.updateProjectionMatrix(); } frameCamera(); }

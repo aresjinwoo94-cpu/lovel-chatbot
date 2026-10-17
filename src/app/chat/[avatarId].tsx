@@ -49,6 +49,8 @@ export default function ChatScreen() {
 
   const [avatar, setAvatar] = useState<Avatar | null>(null);
   const [messages, setMessages] = useState<Message[]>([]); // del más nuevo al más viejo
+  // momento en que se abrió el chat: solo los mensajes nuevos marcan emoción en la cara
+  const [openedAt] = useState(() => Date.now() - 10_000);
   const [loading, setLoading] = useState(true);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -339,8 +341,10 @@ export default function ChatScreen() {
 
   const busy = typing || opening;
   // la cara marca la emoción del último mensaje del personaje
+  // (solo mensajes de esta visita: al abrir un chat antiguo no se repite la última emoción)
   const lastAvatarMsg = messages.find((m) => m.role === 'avatar');
-  const emotion = detectEmotion(lastAvatarMsg?.content);
+  const freshMsg = lastAvatarMsg && new Date(lastAvatarMsg.created_at).getTime() > openedAt ? lastAvatarMsg : undefined;
+  const emotion = detectEmotion(freshMsg?.content);
   const scenario = scenarioById(avatar.scenario_id);
   const sceneText = scenario ? fillScene(scenario.setup[language], avatar.name, avatar.gender) : avatar.situation_description;
   const sceneTitle = scenario ? genderize(scenario.title[language], avatar.gender) : '';
@@ -355,7 +359,7 @@ export default function ChatScreen() {
   const stageH = Math.round(Math.min(height * 0.36, 300));
   const stage = (
     <View className={wide ? 'flex-1' : ''} style={wide ? undefined : { height: stageH }}>
-      <VrmAvatar look={look} gender={avatar.gender} presence={presence} emotion={emotion} emotionId={lastAvatarMsg?.id} framing={wide ? 'portrait' : 'bust'} style={{ flex: 1 }} />
+      <VrmAvatar look={look} gender={avatar.gender} presence={presence} emotion={emotion} emotionId={freshMsg?.id} framing={wide ? 'portrait' : 'bust'} style={{ flex: 1 }} />
       {/* Nombre y estado sobre el escenario */}
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 flex-row items-end justify-between px-4 pb-3">
         <View className={`rounded-xl px-3 py-2 ${darkStage ? 'bg-black/40' : 'bg-paper/90'}`}>
