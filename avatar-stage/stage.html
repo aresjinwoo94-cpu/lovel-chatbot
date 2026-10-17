@@ -151,7 +151,8 @@ function paintBackdrop(g, W, H, P, id = '') {
     const win = g.createLinearGradient(0, H * 0.1, 0, H * 0.6); win.addColorStop(0, '#6E5C9C'); win.addColorStop(1, '#C88BA8');
     g.fillStyle = win; g.fillRect(W * 0.58, H * 0.12, W * 0.32, H * 0.46);
     g.fillStyle = 'rgba(40,30,50,0.9)'; g.fillRect(W * 0.735, H * 0.12, W * 0.012, H * 0.46); g.fillRect(W * 0.58, H * 0.345, W * 0.32, H * 0.01);
-    g.fillStyle = '#1F1826'; g.fillRect(0, H * 0.78, W, H * 0.22);
+    const floor = g.createLinearGradient(0, H * 0.7, 0, H); floor.addColorStop(0, 'rgba(31,24,38,0)'); floor.addColorStop(1, 'rgba(31,24,38,0.95)');
+    g.fillStyle = floor; g.fillRect(0, H * 0.7, W, H * 0.3);
     for (let i = 0; i < 38; i++) {
       const x = rnd() * W, y = rnd() * H * 0.75, r = 6 + rnd() * 26;
       blob(g, x, y, r, ['255,198,140', '255,170,200', '200,170,255'][i % 3], 0.55);
@@ -176,19 +177,23 @@ function paintBackdrop(g, W, H, P, id = '') {
   const clouds = 7;
   for (let c = 0; c < clouds; c++) {
     const cx = (c + 0.5 + (rnd() - 0.5) * 0.8) * (W / clouds);
-    const cy = H * (0.18 + rnd() * 0.62);
+    // en fondos claros, las nubes no se acumulan detrás del cuerpo (la ropa clara se perdería)
+    const cy = H * (0.18 + rnd() * (P.light ? 0.4 : 0.62));
     const size = W * (0.07 + rnd() * 0.08) * (0.7 + (cy / H) * 0.6);
     const puffs = 6 + Math.floor(rnd() * 6);
     for (let k = 0; k < puffs; k++) {
       const dx = (rnd() - 0.5) * size * 3.2, dy = (rnd() - 0.5) * size * 0.9;
-      blob(g, cx + dx, cy + dy, size * (0.7 + rnd() * 0.8), P.cloud, (P.light ? 0.5 : 0.3) * (0.6 + rnd() * 0.5));
+      blob(g, cx + dx, cy + dy, size * (0.7 + rnd() * 0.8), P.cloud, (P.light ? 0.35 : 0.3) * (0.6 + rnd() * 0.5));
     }
   }
   // 5) luces lejanas de ciudad: bokeh cálido cerca del horizonte (en vez de edificios)
   if (P.cityLights) {
-    for (let i = 0; i < 70; i++) {
-      const x = rnd() * W, y = hz - 30 + rnd() * H * 0.3, r = 4 + rnd() * 14;
-      blob(g, x, y, r, P.bokeh[i % P.bokeh.length], 0.35 + rnd() * 0.35);
+    const band = g.createLinearGradient(0, hz - H * 0.12, 0, hz + H * 0.12);
+    band.addColorStop(0, 'rgba(255,190,150,0)'); band.addColorStop(0.5, 'rgba(255,190,150,0.28)'); band.addColorStop(1, 'rgba(255,190,150,0)');
+    g.fillStyle = band; g.fillRect(0, hz - H * 0.12, W, H * 0.24);
+    for (let i = 0; i < 46; i++) {
+      const x = rnd() * W, y = hz - H * 0.06 + rnd() * H * 0.16, r = 12 + rnd() * 18;
+      blob(g, x, y, r, P.bokeh[i % P.bokeh.length], 0.45 + rnd() * 0.35);
     }
   }
   // 6) bokeh suave por todo el cielo
@@ -221,7 +226,7 @@ function setBackdrop(id, transparent) {
   if (PAINTED[id]) {
     c.width = c.height = 1024;
     paintBackdrop(g, 1024, 1024, PAINTED[id], id);
-    softBlur(c, 2);
+    softBlur(c, PAINTED[id].room ? 4 : 2);
   } else {
     const [c1, c2] = BACKDROPS[id] || BACKDROPS.lilac;
     c.width = c.height = 512;
