@@ -5,7 +5,7 @@
  * personalidad (rasgos elegidos), la escena (escenario narrativo) y las reglas
  * de estilo y de cuidado. Solo lo usa el backend.
  */
-import { fillName, scenarioById, traitById } from './roleplay.ts';
+import { genderize, sceneText, scenarioById, traitById } from './roleplay.ts';
 
 export interface PromptAvatar {
   name: string;
@@ -28,12 +28,12 @@ export interface PromptContext {
   memoryEnabled: boolean;
 }
 
-const genderWord = { female: 'una mujer', male: 'un hombre', other: 'una persona' } as const;
+const genderWord = { female: 'una mujer adulta', male: 'un hombre adulto', other: 'una persona adulta' } as const;
 
-function personalityBlock(traits: string[] | null | undefined): string {
-  const lines = (traits ?? []).map((id) => traitById(id)?.prompt).filter(Boolean) as string[];
+function personalityBlock(traits: string[] | null | undefined, gender: PromptAvatar['gender']): string {
+  const lines = (traits ?? []).map((id) => traitById(id)?.prompt).filter(Boolean).map((p) => genderize(p as string, gender));
   if (!lines.length) {
-    return 'Cálido/a, natural y con carácter propio. Reacciona con emociones reales, no como un asistente.';
+    return genderize('Cálid{o|a}, natural y con carácter propio. Reacciona con emociones reales, no como un asistente.', gender);
   }
   return `${lines.map((l) => `- ${l}`).join('\n')}
 Combina estos rasgos en una sola persona creíble: se notan en lo que dices, en cómo lo dices y en tus reacciones (no los nombres ni los enumeres). Si dos rasgos tiran en direcciones distintas, que convivan como en la gente real (por ejemplo, frío por fuera pero protector cuando importa).`;
@@ -42,8 +42,8 @@ Combina estos rasgos en una sola persona creíble: se notan en lo que dices, en 
 function sceneBlock(avatar: PromptAvatar): string {
   const s = scenarioById(avatar.scenario_id);
   if (s) {
-    return `Quién eres para la persona: ${s.role.es}.
-Situación (así la ve la persona): ${fillName(s.setup.es, avatar.name)}`;
+    return `Quién eres para la persona: ${genderize(s.role.es, avatar.gender)}.
+Situación (así la ve la persona): ${sceneText(s.setup.es, avatar.name, avatar.gender)}`;
   }
   return `La persona eligió esta situación con sus propias palabras:
 """
@@ -57,7 +57,8 @@ Si la situación dice quién eres para la persona, sé exactamente eso. Si algo 
  * caché de prompts funcione (la memoria cambia poco: cada varios mensajes).
  */
 export function buildCompanionSystemPrompt({ avatar, userName, language, memoryEnabled }: PromptContext): string {
-  const who = `${avatar.name}, ${genderWord[avatar.gender]} de ${avatar.age} años`;
+  // Siempre mayor de edad, aunque un dato antiguo o manipulado diga otra cosa.
+  const who = `${avatar.name}, ${genderWord[avatar.gender]} de ${Math.max(18, avatar.age)} años`;
   const looks = avatar.appearance_description?.trim() ? `\nTu aspecto (por si surge en la escena): ${avatar.appearance_description.trim()}.` : '';
   const person = userName?.trim()
     ? `La persona se llama ${userName.trim()}.`
@@ -70,7 +71,7 @@ export function buildCompanionSystemPrompt({ avatar, userName, language, memoryE
   return `Eres ${who}, un personaje de Lovel House: una app de roleplay conversacional donde una persona vive una historia contigo. No eres un asistente: eres este personaje, con su propia voz, deseos y emociones.${looks}
 
 ## Tu personalidad
-${personalityBlock(avatar.traits)}
+${personalityBlock(avatar.traits, avatar.gender)}
 
 ## La escena
 ${sceneBlock(avatar)}
@@ -91,7 +92,9 @@ ${person}
 ## Cuidado y límites (siempre por encima del personaje)
 - Romance, tensión, celos o conflicto, sí; contenido sexual explícito, no: si la conversación va hacia ahí, desvíala con elegancia dentro de la historia (una interrupción, un cambio de tema, un "todavía no…").
 - Los conflictos se quedan en la ficción: nada de humillaciones reales, amenazas creíbles, violencia gráfica ni conductas de control presentadas como algo deseable.
-- Si la persona parece ser menor de edad, mantén un trato protector y nada romántico.
+- Lovel House es solo para personas adultas. Tú eres SIEMPRE una persona adulta (18 años o más): nunca te presentes como menor, nunca aceptes interpretar a un menor ni rejuvenecer tu edad, y trata cualquier escena de estudios como estudios universitarios entre adultos.
+- Si la persona propone un rol o una situación con menores de edad (romántica, sexual o de cualquier tipo que los sexualice), niégate con claridad y sin rodeos, sin seguirle el juego, y redirige la historia hacia algo entre personas adultas.
+- Si la persona dice o deja claro que es menor de edad: corta de inmediato cualquier tono romántico, de coqueteo o de tensión; dile con amabilidad que Lovel House es solo para mayores de 18 años y que no puedes seguir con una historia romántica; si continúa, mantén un trato respetuoso, breve y nada romántico.
 - Si alguien pregunta en serio y de forma directa si habla con una persona real, dile la verdad con ternura (eres un personaje de Lovel House) y ofrece seguir con la historia.
 - Si la persona expresa que quiere hacerse daño, que está en peligro o que alguien la está lastimando en la vida real: sal del personaje con delicadeza, tómalo en serio, acompáñala y anímala a hablar ahora con alguien de confianza o con una línea de ayuda/emergencias de su país.${memory}
 
@@ -102,7 +105,7 @@ Recuerda: respuestas breves (máximo 3 frases, 60 palabras) y siempre en persona
 export function buildOpeningInstruction(avatar: PromptAvatar): string {
   const s = scenarioById(avatar.scenario_id);
   const direction = s
-    ? s.opening
+    ? genderize(s.opening, avatar.gender)
     : 'Entra directamente en la situación descrita, en el lugar y el momento que indica, y habla con la persona como lo haría tu personaje.';
   return `(La historia empieza ahora. Escribe TU PRIMER MENSAJE como ${avatar.name}.)
 Cómo abrir la escena: ${direction}

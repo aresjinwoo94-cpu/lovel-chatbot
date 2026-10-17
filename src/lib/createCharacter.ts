@@ -1,7 +1,7 @@
 import { describeLook } from './character/catalog';
 import { createAvatar, saveAvatarThumbnail } from './data';
 import type { CharacterDraft } from './draft';
-import { fillName, scenarioById } from './roleplay';
+import { sceneText, scenarioById } from './roleplay';
 
 /** Convierte el borrador del creador en un personaje guardado en la cuenta. */
 export async function createFromDraft(d: CharacterDraft) {
@@ -13,7 +13,7 @@ export async function createFromDraft(d: CharacterDraft) {
     age: d.age,
     appearance: d.look,
     appearance_description: describeLook(d.look, 'es'),
-    situation_description: scenario ? fillName(scenario.setup.es, name) : d.customScene.trim(),
+    situation_description: scenario ? sceneText(scenario.setup.es, name, d.gender) : d.customScene.trim(),
     traits: d.traits,
     scenario_id: scenario ? scenario.id : null,
     voice_id: d.look.voice?.id ?? null,

@@ -15,7 +15,7 @@ import { useAuth } from '@/lib/auth';
 import { PRESETS, voiceById } from '@/lib/character/catalog';
 import { presetPortrait } from '@/lib/character/media';
 import { useI18n } from '@/lib/i18n';
-import { traitById } from '@/lib/roleplay';
+import { traitById, traitLabel } from '@/lib/roleplay';
 
 type Filter = 'all' | 'female' | 'male';
 
@@ -50,7 +50,7 @@ export default function ExploreScreen() {
   const q = query.trim().toLowerCase();
   const list = PRESETS.filter((p) => filter === 'all' || p.gender === filter)
     .filter((p) => !trait || p.traits.includes(trait))
-    .filter((p) => !q || p.name.toLowerCase().includes(q) || p.tagline[language].toLowerCase().includes(q) || p.traits.some((id) => traitById(id)?.label[language].toLowerCase().includes(q)));
+    .filter((p) => !q || p.name.toLowerCase().includes(q) || p.tagline[language].toLowerCase().includes(q) || p.traits.some((id) => { const tr = traitById(id); return !!tr && traitLabel(tr, language, p.gender).toLowerCase().includes(q); }));
 
   const listen = async (id: string, voiceId: string | null) => {
     if (playing === id) {
@@ -113,7 +113,7 @@ export default function ExploreScreen() {
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-5 mt-1" contentContainerStyle={{ paddingRight: 8 }}>
             {traitIds.map((id) => (
-              <Tag key={id} label={traitById(id)?.label[language] ?? id} selected={trait === id} onPress={() => setTrait(trait === id ? null : id)} />
+              <Tag key={id} label={(() => { const tr = traitById(id); return tr ? traitLabel(tr, language, filter === 'all' ? null : filter) : id; })()} selected={trait === id} onPress={() => setTrait(trait === id ? null : id)} />
             ))}
           </ScrollView>
 
@@ -162,7 +162,7 @@ export default function ExploreScreen() {
                     <View className="mt-2 flex-row flex-wrap" style={{ gap: 4 }}>
                       {p.traits.slice(0, 3).map((id) => (
                         <View key={id} className="h-5 justify-center rounded-md bg-subtle px-1.5">
-                          <Text className="text-[11px] text-muted">{traitById(id)?.label[language]}</Text>
+                          <Text className="text-[11px] text-muted">{(() => { const tr = traitById(id); return tr ? traitLabel(tr, language, p.gender) : id; })()}</Text>
                         </View>
                       ))}
                     </View>

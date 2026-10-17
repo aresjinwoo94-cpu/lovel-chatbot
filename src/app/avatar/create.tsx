@@ -52,7 +52,7 @@ import { fetchAvatar, saveAvatarThumbnail, updateAvatar, uploadCustomVrm } from 
 import { showDialog } from '@/lib/dialog';
 import { type CharacterDraft, clearDraft, loadDraft, saveDraft } from '@/lib/draft';
 import { useI18n } from '@/lib/i18n';
-import { conflictsWith, fillName, MAX_TRAITS, SCENARIO_CATEGORIES, type ScenarioCategory, scenarioById, SCENARIOS, traitById, TRAITS } from '@/lib/roleplay';
+import { conflictsWith, genderize, MAX_TRAITS, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, scenarioById, SCENARIOS, traitById, traitLabel, TRAITS } from '@/lib/roleplay';
 import type { Gender } from '@/lib/types';
 
 type Tab = 'model' | 'hair' | 'face' | 'outfit' | 'accessories' | 'pose' | 'scene' | 'voice' | 'identity';
@@ -416,7 +416,7 @@ export default function CreateCharacter() {
                 label={m.label[language]}
                 image={modelPortrait(m.id)}
                 selected={look.model === m.id}
-                onPress={() => patch({ model: m.id, hair: m.needsHair ?? (m.vrm1 ? null : look.hair), outfitColor: null, bottomColor: null, shoesColor: null, accentColor: null })}
+                onPress={() => patch({ model: m.id, hair: m.needsHair ?? (m.vrm1 ? null : look.hair), outfitColor: null, bottomColor: null, shoesColor: null, accentColor: null, ...(m.alwaysPlain ? { plainOutfit: true } : {}) })}
               />
             ))}
           </View>
@@ -499,6 +499,7 @@ export default function CreateCharacter() {
     ),
     outfit: () => (
       <>
+        {modelById(look.model)?.alwaysPlain ? null : (
         <View className="mt-4 flex-row items-center justify-between rounded-xl border border-line px-3 py-2.5">
           <View className="mr-3 flex-1">
             <Text className="font-medium text-[13px] text-ink">{t('create.sec.plain')}</Text>
@@ -506,6 +507,7 @@ export default function CreateCharacter() {
           </View>
           <Switch value={look.plainOutfit} onValueChange={(v) => patch({ plainOutfit: v })} trackColor={{ true: colors.ink, false: colors.line }} thumbColor={colors.paper} />
         </View>
+        )}
         <Group title={t('create.sec.top')} hint={t('create.sec.outfitHint')}>
           <ColorRow items={OUTFIT_COLORS} value={look.outfitColor} onPick={(hex) => patch({ outfitColor: hex })} language={language} originalLabel={t('create.sec.original')} />
         </Group>
@@ -722,7 +724,7 @@ export default function CreateCharacter() {
         {TRAITS.map((tr) => {
           const selected = traits.includes(tr.id);
           const blocked = !selected && (traits.length >= MAX_TRAITS || !!conflictsWith(tr.id, traits));
-          return <Tag key={tr.id} label={tr.label[language]} selected={selected} disabled={blocked} onPress={() => toggleTrait(tr.id)} />;
+          return <Tag key={tr.id} label={traitLabel(tr, language, gender)} selected={selected} disabled={blocked} onPress={() => toggleTrait(tr.id)} />;
         })}
       </View>
       <Caption className="mt-2">
@@ -735,8 +737,8 @@ export default function CreateCharacter() {
             const tr = traitById(id);
             return tr ? (
               <View key={id} className={`px-4 py-3 ${i < traits.length - 1 ? 'border-b border-line' : ''}`}>
-                <Text className="font-semibold text-[13px] text-ink">{tr.label[language]}</Text>
-                <Text className="mt-0.5 text-[13px] leading-[18px] text-muted">{tr.prompt.split(': ').slice(1).join(': ')}</Text>
+                <Text className="font-semibold text-[13px] text-ink">{traitLabel(tr, language, gender)}</Text>
+                <Text className="mt-0.5 text-[13px] leading-[18px] text-muted">{genderize(tr.prompt, gender).split(': ').slice(1).join(': ')}</Text>
               </View>
             ) : null;
           })}
@@ -768,8 +770,8 @@ export default function CreateCharacter() {
               className={`flex-row px-4 py-3.5 ${i < scenarios.length - 1 ? 'border-b border-line' : ''} ${selected ? 'bg-subtle' : 'active:bg-subtle'}`}
             >
               <View className="mr-3 flex-1">
-                <Text className="font-semibold text-[13px] text-ink">{s.title[language]}</Text>
-                <Text className="mt-1 text-[13px] leading-[19px] text-muted">{fillName(s.setup[language], displayName)}</Text>
+                <Text className="font-semibold text-[13px] text-ink">{genderize(s.title[language], gender)}</Text>
+                <Text className="mt-1 text-[13px] leading-[19px] text-muted">{sceneText(s.setup[language], displayName, gender)}</Text>
               </View>
               <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={18} color={selected ? colors.ink : colors.line} />
             </Pressable>
@@ -805,14 +807,14 @@ export default function CreateCharacter() {
       <View className="flex-row flex-wrap">
         {traits.map((id) => (
           <View key={id} className="mb-2 mr-2 h-7 justify-center rounded-full bg-subtle px-3">
-            <Text className="font-medium text-[12px] text-ink">{traitById(id)?.label[language]}</Text>
+            <Text className="font-medium text-[12px] text-ink">{(() => { const tr = traitById(id); return tr ? traitLabel(tr, language, gender) : id; })()}</Text>
           </View>
         ))}
       </View>
       <Text className="mb-2 mt-5 font-semibold text-[13px] text-ink">{t('create.preview.scene')}</Text>
       <View className="rounded-xl border border-line bg-paper p-4">
-        {scenario ? <Text className="mb-1 font-semibold text-[13px] text-ink">{scenario.title[language]}</Text> : null}
-        <Text className="text-[14px] leading-[21px] text-ink">{scenario ? fillName(scenario.setup[language], displayName) : customScene.trim()}</Text>
+        {scenario ? <Text className="mb-1 font-semibold text-[13px] text-ink">{genderize(scenario.title[language], gender)}</Text> : null}
+        <Text className="text-[14px] leading-[21px] text-ink">{scenario ? sceneText(scenario.setup[language], displayName, gender) : customScene.trim()}</Text>
       </View>
       <View className="mt-4 flex-row items-center">
         <Ionicons name="chatbubble-ellipses-outline" size={15} color={colors.muted} />

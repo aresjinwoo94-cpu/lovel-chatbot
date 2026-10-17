@@ -41,7 +41,6 @@ const PRESET_FACES: Record<string, ImageSourcePropType> = {
 
 const MODEL_PORTRAITS: Record<string, ImageSourcePropType> = {
   bibi: require('@/assets/characters/models/bibi.jpg'),
-  shino: require('@/assets/characters/models/shino.jpg'),
   noir: require('@/assets/characters/models/noir.jpg'),
   victoria: require('@/assets/characters/models/victoria.jpg'),
   vita: require('@/assets/characters/models/vita.jpg'),
@@ -52,8 +51,6 @@ const MODEL_PORTRAITS: Record<string, ImageSourcePropType> = {
   aria: require('@/assets/characters/models/aria.jpg'),
   fumiriya: require('@/assets/characters/models/fumiriya.jpg'),
   hair_m: require('@/assets/characters/models/hair_m.jpg'),
-  base_f: require('@/assets/characters/models/base_f.jpg'),
-  base_m: require('@/assets/characters/models/base_m.jpg'),
 };
 
 export const presetPortrait = (id: string) => PRESET_PORTRAITS[id];

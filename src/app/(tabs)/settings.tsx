@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -89,6 +89,9 @@ export default function SettingsScreen() {
         <SectionLabel>{t('settings.privacy')}</SectionLabel>
         <Card>
           <ToggleRow label={t('settings.storeVoice')} hint={t('settings.storeVoiceHint')} value={storeVoice} onChange={toggleVoice} />
+          <View className="h-px bg-line" />
+          <ListRow icon="document-text-outline" label={t('legal.terms')} onPress={() => router.push('/terms')} />
+          <ListRow icon="shield-checkmark-outline" label={t('legal.privacy')} onPress={() => router.push('/privacy')} last />
         </Card>
         <Muted className="mt-2 px-1 text-[13px] leading-[18px]">{t('settings.privacyNote')}</Muted>
 
@@ -133,7 +136,7 @@ export default function SettingsScreen() {
         </Card>
 
         <Muted className="mt-8 text-center text-[12px]">
-          {t('appName')} · {t('settings.version', { v: Constants.expoConfig?.version ?? '1.0.0' })}
+          {t('appName')} · {t('legal.adultsOnly')} · {t('settings.version', { v: Constants.expoConfig?.version ?? '1.0.0' })}
         </Muted>
       </ScrollView>
     </SafeAreaView>

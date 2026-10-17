@@ -69,6 +69,8 @@ export interface Profile {
   free_messages_used: number;
   free_voice_used: number;
   store_voice: boolean;
+  /** Cuándo confirmó que es mayor de 18 (puerta 18+). */
+  adult_confirmed_at: string | null;
   created_at: string;
 }
 

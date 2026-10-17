@@ -26,7 +26,7 @@ import { fetchAvatar, fetchMessages, PAGE_SIZE, startChat } from '@/lib/data';
 import { showDialog } from '@/lib/dialog';
 import { exportConversation } from '@/lib/exportConversation';
 import { useI18n } from '@/lib/i18n';
-import { fillName, scenarioById } from '@/lib/roleplay';
+import { genderize, sceneText as fillScene, scenarioById } from '@/lib/roleplay';
 import type { Avatar, ChatResponse, Message, QuotaState, VoiceChatResponse } from '@/lib/types';
 
 /** Cuánto "habla" el personaje tras un mensaje de texto (aprox. velocidad de lectura en voz alta). */
@@ -338,7 +338,8 @@ export default function ChatScreen() {
 
   const busy = typing || opening;
   const scenario = scenarioById(avatar.scenario_id);
-  const sceneText = scenario ? fillName(scenario.setup[language], avatar.name) : avatar.situation_description;
+  const sceneText = scenario ? fillScene(scenario.setup[language], avatar.name, avatar.gender) : avatar.situation_description;
+  const sceneTitle = scenario ? genderize(scenario.title[language], avatar.gender) : '';
   const darkStage = DARK_BACKGROUNDS.includes(look.background);
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)'));
   const customize = () => {
@@ -452,7 +453,7 @@ export default function ChatScreen() {
                 <View className="w-full max-w-[560px] rounded-2xl border border-line bg-paper px-4 py-3">
                   <Text className="font-medium text-[12px] text-muted">
                     {t('chat.situation')}
-                    {scenario ? ` · ${scenario.title[language]}` : ''}
+                    {scenario ? ` · ${sceneTitle}` : ''}
                   </Text>
                   <Text className="mt-1 text-[14px] leading-[21px] text-ink">{sceneText}</Text>
                 </View>
@@ -545,7 +546,7 @@ export default function ChatScreen() {
               </Text>
               {scenario ? (
                 <Text className="text-[12px] text-muted" numberOfLines={1}>
-                  {scenario.title[language]}
+                  {sceneTitle}
                 </Text>
               ) : null}
             </View>
