@@ -47,7 +47,6 @@ const MODEL_PORTRAITS: Record<string, ImageSourcePropType> = {
   hair_f: require('@/assets/characters/models/hair_f.jpg'),
   shibu: require('@/assets/characters/models/shibu.jpg'),
   mei: require('@/assets/characters/models/mei.jpg'),
-  sample_b: require('@/assets/characters/models/sample_b.jpg'),
   aria: require('@/assets/characters/models/aria.jpg'),
   fumiriya: require('@/assets/characters/models/fumiriya.jpg'),
   hair_m: require('@/assets/characters/models/hair_m.jpg'),

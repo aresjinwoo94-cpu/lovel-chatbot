@@ -31,7 +31,6 @@ export const MODELS: BaseModel[] = [
   { id: 'hair_f', gender: 'female', label: { es: 'Gatita', en: 'Kitten' }, hairDonor: true },
   { id: 'shibu', gender: 'female', label: { es: 'Clásica', en: 'Classic' }, hairDonor: true },
   { id: 'mei', gender: 'female', label: { es: 'Casual', en: 'Casual' }, hairDonor: true },
-  { id: 'sample_b', gender: 'female', label: { es: 'Urbana', en: 'Streetwear' }, vrm1: true },
   { id: 'aria', gender: 'female', label: { es: 'Minimal', en: 'Minimal' }, vrm1: true },
   { id: 'fumiriya', gender: 'male', label: { es: 'Camisa', en: 'Shirt' }, hairDonor: true, alwaysPlain: true },
   { id: 'hair_m', gender: 'male', label: { es: 'Urbano', en: 'Urban' }, hairDonor: true },
@@ -40,15 +39,17 @@ export const MODELS: BaseModel[] = [
 export const modelById = (id: string | null | undefined) => MODELS.find((m) => m.id === id);
 
 /**
- * Cuerpos retirados porque su ropa lee como uniforme escolar (todo personaje es adulto).
+ * Cuerpos retirados porque su ropa lee como uniforme escolar (todo personaje es adulto):
+ * uniformes, colegiala y el conjunto de falda plisada con chaqueta universitaria.
  * Los personajes guardados con ellos pasan al cuerpo adulto más cercano, conservando
  * su peinado (los modelos VRoid comparten esqueleto) y con ropa lisa.
  * La misma tabla se aplica en la base de datos (supabase/migrations/0006_adults_only.sql).
  */
-export const RETIRED_MODELS: Record<string, { model: string; hair: string }> = {
+export const RETIRED_MODELS: Record<string, { model: string; hair: string | null }> = {
   shino: { model: 'mei', hair: 'shino' },
-  base_f: { model: 'mei', hair: 'mei' },
-  base_m: { model: 'fumiriya', hair: 'fumiriya' },
+  base_f: { model: 'mei', hair: null },
+  base_m: { model: 'fumiriya', hair: null },
+  sample_b: { model: 'mei', hair: null },
 };
 export const isCustomModel = (model: string) => /^https?:/.test(model);
 
@@ -427,7 +428,7 @@ export const PRESETS: CharacterPreset[] = [
     id: 'zoe', name: 'Zoe', gender: 'female', age: 24,
     tagline: { es: 'Rebelde, divertida y sin filtro', en: 'Rebellious, funny and unfiltered' },
     traits: ['rebellious', 'funny', 'confident'],
-    look: makeLook({ model: 'sample_b', expression: 'smug', background: 'city', voice: v('cgSgspJ2msm6clMCkdW9', 1.05, 0.6) }),
+    look: makeLook({ model: 'mei', hair: 'noir', hairColor: '#5B3F8C', hairTip: '#5C7FD6', skinTone: '#9A6446', plainOutfit: true, outfitColor: '#8C2F46', expression: 'smug', background: 'city', voice: v('cgSgspJ2msm6clMCkdW9', 1.05, 0.6) }),
   },
   {
     id: 'vita', name: 'Vita', gender: 'female', age: 27,
@@ -472,7 +473,8 @@ export function normalizeLook(raw: unknown, gender: string = 'female'): Characte
   const model = retired ? retired.model : typeof r.model === 'string' && (modelById(r.model) || isCustomModel(r.model)) ? r.model : base.model;
   const needs = modelById(model)?.needsHair;
   const savedHair = typeof r.hair === 'string' && HAIRSTYLES.some((h) => h.id === r.hair) ? r.hair : retired?.hair;
-  const hair = savedHair && hairCompatible(model) ? savedHair : (needs ?? null);
+  // El peinado propio del modelo se guarda como null.
+  const hair = savedHair && savedHair !== model && hairCompatible(model) ? savedHair : (needs ?? null);
   const color = (v: unknown) => (isHex(v) ? v : null);
   const v = (r.voice ?? {}) as Partial<VoiceSettings>;
   return {

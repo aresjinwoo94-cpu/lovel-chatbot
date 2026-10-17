@@ -6,16 +6,17 @@
 import { replyAsAvatar, saveExchange } from '../_shared/companion.ts';
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
 import { refundFree, reserveFree } from '../_shared/quota.ts';
-import { getConversationId, getOwnedAvatar, getProfile, requireUser } from '../_shared/supabase.ts';
+import { getConversationId, getOwnedAvatar, getProfile, requireAdult, requireUser } from '../_shared/supabase.ts';
 
 serve(async (req) => {
   const user = await requireUser(req);
-  const { avatarId, text } = await readJson<{ avatarId?: string; text?: string }>(req);
+  const { avatarId, text, adultConfirmed } = await readJson<{ avatarId?: string; text?: string; adultConfirmed?: boolean }>(req);
   const body = text?.trim() ?? '';
   if (!avatarId || !body) throw new HttpError(400, 'Mensaje vacío');
   if (body.length > 4000) throw new HttpError(400, 'Mensaje demasiado largo');
 
   const profile = await getProfile(user.id);
+  await requireAdult(profile, adultConfirmed);
   const avatar = await getOwnedAvatar(user.id, avatarId);
   const conversationId = await getConversationId(avatarId);
   const quota = await reserveFree(profile, 'text', !!user.is_anonymous);

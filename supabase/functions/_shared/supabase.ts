@@ -21,6 +21,7 @@ export interface ProfileRow {
   free_messages_used: number;
   free_voice_used: number;
   store_voice: boolean;
+  adult_confirmed_at: string | null;
 }
 
 export interface AvatarRow {
@@ -52,6 +53,19 @@ export async function getProfile(userId: string): Promise<ProfileRow> {
   const { data, error } = await admin.from('profiles').select('*').eq('id', userId).single();
   if (error || !data) throw new HttpError(404, 'Perfil no encontrado');
   return data as ProfileRow;
+}
+
+/**
+ * Lovel House es solo para mayores de 18. La app manda `adultConfirmed: true`
+ * cuando la persona pasó la puerta 18+ en ese dispositivo; la primera vez se
+ * guarda en el perfil. Sin confirmación (ni guardada ni enviada) se rechaza.
+ */
+export async function requireAdult(profile: ProfileRow, claimed: unknown): Promise<void> {
+  if (profile.adult_confirmed_at) return;
+  if (claimed !== true) throw new HttpError(403, 'Lovel House es solo para mayores de 18 años.', 'AGE_REQUIRED');
+  const now = new Date().toISOString();
+  await admin.from('profiles').update({ adult_confirmed_at: now }).eq('id', profile.id).is('adult_confirmed_at', null);
+  profile.adult_confirmed_at = now;
 }
 
 export async function getOwnedAvatar(userId: string, avatarId: string): Promise<AvatarRow> {

@@ -3,6 +3,7 @@ import * as Linking from 'expo-linking';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform } from 'react-native';
 
+import { AGE_KEY as KEY } from './ageStore';
 import { useAuth } from './auth';
 import { supabase } from './supabase';
 
@@ -15,7 +16,6 @@ import { supabase } from './supabase';
  */
 export type AgeStatus = 'loading' | 'unknown' | 'adult' | 'minor';
 
-const KEY = 'lovel.ageGate.v1';
 
 // En web, la URL con la que se abrió la app (antes de que la puerta redirija).
 const LAUNCH_URL = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.href : null;
