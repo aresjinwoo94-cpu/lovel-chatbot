@@ -31,7 +31,7 @@ update public.avatars
 update public.avatars
    set appearance = appearance || jsonb_build_object('plainOutfit', true)
  where appearance ->> 'model' = 'fumiriya'
-   and coalesce((appearance ->> 'plainOutfit')::boolean, false) = false;
+   and (appearance -> 'plainOutfit') is distinct from 'true'::jsonb;
 
 -- 3 ---------------------------------------------------------------------------
 update public.avatars a

@@ -56,6 +56,10 @@ const MODEL_PORTRAITS: Record<string, ImageSourcePropType> = {
 export const presetPortrait = (id: string) => PRESET_PORTRAITS[id];
 export const modelPortrait = (id: string) => MODEL_PORTRAITS[id];
 
+/** Peinados de cuerpos retirados: se muestran con un personaje adulto que lo lleva. */
+const HAIR_ONLY_PORTRAITS: Record<string, ImageSourcePropType> = { shino: PRESET_PORTRAITS.mei };
+export const hairPortrait = (id: string) => MODEL_PORTRAITS[id] ?? HAIR_ONLY_PORTRAITS[id];
+
 /** Si el aspecto coincide exactamente con un personaje listo, su retrato. */
 function presetFor(look: CharacterLook) {
   const key = JSON.stringify(look);

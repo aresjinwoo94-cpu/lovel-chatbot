@@ -45,7 +45,7 @@ import {
   toggleAccessory,
   VOICES,
 } from '@/lib/character/catalog';
-import { modelPortrait } from '@/lib/character/media';
+import { hairPortrait, modelPortrait } from '@/lib/character/media';
 import type { CharacterLook, Outline } from '@/lib/character/types';
 import { createFromDraft, isAvatarLimit } from '@/lib/createCharacter';
 import { fetchAvatar, saveAvatarThumbnail, updateAvatar, uploadCustomVrm } from '@/lib/data';
@@ -416,7 +416,7 @@ export default function CreateCharacter() {
                 label={m.label[language]}
                 image={modelPortrait(m.id)}
                 selected={look.model === m.id}
-                onPress={() => patch({ model: m.id, hair: m.needsHair ?? (m.vrm1 ? null : look.hair), outfitColor: null, bottomColor: null, shoesColor: null, accentColor: null, ...(m.alwaysPlain ? { plainOutfit: true } : {}) })}
+                onPress={() => patch({ model: m.id, hair: m.needsHair ?? (m.vrm1 ? null : look.hair), outfitColor: null, bottomColor: null, shoesColor: null, accentColor: null, ...(m.alwaysPlain ? { plainOutfit: true } : modelById(look.model)?.alwaysPlain ? { plainOutfit: false } : {}) })}
               />
             ))}
           </View>
@@ -442,7 +442,7 @@ export default function CreateCharacter() {
               <OptionTile width={tile} label={t('create.hairOwn')} image={isCustomModel(look.model) ? undefined : modelPortrait(look.model)} selected={!look.hair} onPress={() => patch({ hair: null })} />
             ) : null}
             {HAIRSTYLES.filter((h) => h.id !== look.model).map((h) => (
-              <OptionTile key={h.id} width={tile} label={h.label[language]} image={modelPortrait(h.id)} selected={look.hair === h.id} disabled={!canHair} onPress={() => patch({ hair: h.id })} />
+              <OptionTile key={h.id} width={tile} label={h.label[language]} image={hairPortrait(h.id)} selected={look.hair === h.id} disabled={!canHair} onPress={() => patch({ hair: h.id })} />
             ))}
           </View>
         </Group>

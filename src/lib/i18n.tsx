@@ -129,7 +129,7 @@ const es = {
   'welcome.age.years': '{range} años',
   'welcome.age.a': 'Juventud y espontaneidad',
   'welcome.age.b': 'Chispa y algo de experiencia',
-  'welcome.age.c': 'Seguridad en sí',
+  'welcome.age.c': 'Aplomo y confianza',
   'welcome.age.d': 'Madurez y serenidad',
   'welcome.q.situation': '¿Qué quieres vivir?',
   'welcome.h.situation': 'Elige el tipo de historia.',

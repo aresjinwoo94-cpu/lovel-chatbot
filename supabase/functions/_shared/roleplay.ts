@@ -197,7 +197,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'rainy-bus-stop', category: 'romance', emoji: '☔',
     title: { es: 'Bajo la misma parada', en: 'Sharing the bus stop' },
-    setup: { es: 'Llueve a cántaros. Te refugias en una parada de autobús y {name}, la persona que siempre ves en la cafetería y que te gusta en secreto, llega corriendo y queda a tu lado, empapad{o|a}.', en: 'It is pouring. You take shelter at a bus stop and {name}, the person you always see at the café and secretly like, runs in and ends up right next to you, soaked.' },
+    setup: { es: 'Llueve a cántaros. Te refugias en una parada de autobús y {name}, {ese hombre|esa mujer|esa persona} que siempre ves en la cafetería y que te gusta en secreto, llega corriendo y queda a tu lado, empapad{o|a}.', en: 'It is pouring. You take shelter at a bus stop and {name}, the person you always see at the café and secretly like, runs in and ends up right next to you, soaked.' },
     role: { es: 'alguien que te gusta en secreto', en: 'someone you secretly like' },
     opening: 'Llega corriendo, se sacude la lluvia, reconoce a la persona de la cafetería y rompe el hielo con un comentario natural sobre la lluvia o sobre haberla visto antes, dejando una pregunta abierta.',
   },
@@ -240,7 +240,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'goodbye-airport', category: 'drama', emoji: '✈️',
     title: { es: 'Última llamada', en: 'Final call' },
-    setup: { es: 'Estás en el aeropuerto a punto de mudarte a otro país. Por los altavoces anuncian la última llamada… y {name} llega corriendo, sin aliento, con algo que nunca se atrevió a decirte.', en: 'You are at the airport about to move abroad. The final boarding call sounds… and {name} runs in, breathless, with something never dared to be said.' },
+    setup: { es: 'Estás en el aeropuerto a punto de mudarte a otro país. Por los altavoces anuncian la última llamada… y {name} llega corriendo, sin aliento, con algo que nunca se atrevió a decirte.', en: 'You are at the airport about to move abroad. The final boarding call sounds… and {name} runs in, breathless, with something never said until now.' },
     role: { es: '{tu amigo|tu amiga} de toda la vida', en: 'your lifelong friend' },
     opening: 'Llega sin aliento, le detiene justo antes del control y le dice que no podía dejarle ir sin decirle algo importante; se le quiebra la voz.',
   },
@@ -313,7 +313,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'boss-after-hours', category: 'work', emoji: '📞',
     title: { es: 'Llamada fuera de horario', en: 'After-hours call' },
-    setup: { es: 'Son las once de la noche y te llama {name}, {tu jefe|tu jefa}. No es sobre el trabajo: su voz suena distinta y dice que necesita hablar contigo de algo personal.', en: 'It’s 11 p.m. and {name}, your boss, is calling. It’s not about work: the voice sounds different, asking to talk about something personal.' },
+    setup: { es: 'Son las once de la noche y te llama {name}, {tu jefe|tu jefa}. No es sobre el trabajo: su voz suena distinta y dice que necesita hablar contigo de algo personal.', en: 'It’s 11 p.m. and {name}, your boss, is calling. It’s not about work: something in that voice sounds different: it’s something personal.' },
     role: { es: '{tu jefe|tu jefa}', en: 'your boss' },
     opening: 'Se disculpa por la hora, duda, deja claro que no llama por trabajo y pide un momento para contar algo personal que le pesa.',
   },
@@ -392,7 +392,7 @@ export const SCENARIOS: Scenario[] = [
   // ---------------------------------------------------------------- conflicto
   {
     id: 'enemy-confession', category: 'conflict', emoji: '🥊',
-    title: { es: 'Mi enemigo me ama', en: 'My enemy loves me' },
+    title: { es: '{Mi enemigo|Mi enemiga} me ama', en: 'My enemy loves me' },
     setup: { es: '{name} ha sido {tu enemigo declarado|tu enemiga declarada} desde siempre. Hoy te acorrala después de otra discusión y, con la voz temblando de rabia, te confiesa que está {enamorado|enamorada} de ti.', en: '{name} has always been your sworn enemy. Today, after another fight, you get cornered and, voice shaking with anger, {name} confesses to being in love with you.' },
     role: { es: '{tu enemigo|tu enemiga} de siempre', en: 'your long-time enemy' },
     opening: 'Aún enfadad{o|a} por la discusión, le corta el paso y, entre reproches, se le escapa la confesión de que está enamorad{o|a}, furios{o|a} consigo mism{o|a} por sentirlo.',
@@ -437,7 +437,7 @@ export const SCENARIOS: Scenario[] = [
     id: 'sick-day', category: 'slice', emoji: '🤒',
     title: { es: 'Día de fiebre', en: 'Sick day' },
     setup: { es: 'Tienes fiebre y no puedes levantarte. {name}, que vive al lado, aparece con sopa, medicinas y cero intención de irse hasta verte mejor.', en: 'You have a fever and can’t get up. {name}, who lives next door, shows up with soup, medicine and zero intention of leaving until you’re better.' },
-    role: { es: '{tu vecino|tu vecina} y amistad cercana', en: 'your neighbor and friend' },
+    role: { es: '{tu vecino y amigo|tu vecina y amiga}', en: 'your neighbor and friend' },
     opening: 'Entra con la sopa y las medicinas, regaña con cariño a la persona por no haber avisado y se pone a cuidarla, preguntándole cómo se siente.',
   },
   {

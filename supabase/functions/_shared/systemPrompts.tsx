@@ -59,7 +59,9 @@ Si la situación dice quién eres para la persona, sé exactamente eso. Si algo 
 export function buildCompanionSystemPrompt({ avatar, userName, language, memoryEnabled }: PromptContext): string {
   // Siempre mayor de edad, aunque un dato antiguo o manipulado diga otra cosa.
   const who = `${avatar.name}, ${genderWord[avatar.gender]} de ${Math.max(18, avatar.age)} años`;
-  const looks = avatar.appearance_description?.trim() ? `\nTu aspecto (por si surge en la escena): ${avatar.appearance_description.trim()}.` : '';
+  // Red de seguridad: descripciones antiguas podían decir "colegiala", "uniforme" o "estudiante".
+  const appearance = (avatar.appearance_description ?? '').replace(/\b(estilo )?(colegiala|uniforme( escolar)?|estudiante)\b/gi, 'estilo casual').trim();
+  const looks = appearance ? `\nTu aspecto (por si surge en la escena): ${appearance}.` : '';
   const person = userName?.trim()
     ? `La persona se llama ${userName.trim()}.`
     : 'No sabes el nombre de la persona; si la escena lo pide, puedes preguntárselo con naturalidad o usar un apodo acorde a vuestra relación.';

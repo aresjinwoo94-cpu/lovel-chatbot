@@ -9,7 +9,7 @@ import {
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { type Href, router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -34,8 +34,15 @@ SplashScreen.preventAutoHideAsync();
  */
 function RootNavigator() {
   const { session, loading, isGuest } = useAuth();
-  const { status: age } = useAgeGate();
+  const { status: age, takeResume } = useAgeGate();
   const adult = age === 'adult';
+
+  // Quien llegó por un enlace (p. ej. restablecer contraseña o un chat) sigue ahí tras la puerta.
+  useEffect(() => {
+    if (!adult) return;
+    const href = takeResume();
+    if (href) router.replace(href as Href);
+  }, [adult, takeResume]);
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
