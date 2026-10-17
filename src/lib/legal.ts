@@ -1,11 +1,11 @@
 /**
  * Textos legales de Lovel House (Términos y Privacidad): cortos y en lenguaje claro.
- * Revisados por la persona responsable del servicio antes de publicarlos como definitivos.
+ * Textos aprobados por la persona responsable del servicio.
  */
 import type { Language } from './types';
 
-/** Correo de contacto que aparece en los textos legales (pendiente: lo indica la persona responsable). */
-export const CONTACT_EMAIL = '';
+/** Correo de contacto que aparece en los textos legales. */
+export const CONTACT_EMAIL = 'aresjinwoo94@gmail.com';
 
 export interface LegalDoc {
   title: string;
