@@ -27,6 +27,7 @@ import {
   EYE_COLORS,
   EYESHADOWS,
   HAIR_COLORS,
+  hairAllowed,
   hairCompatible,
   HAIRSTYLES,
   isCustomModel,
@@ -451,7 +452,7 @@ export default function CreateCharacter() {
             {!needsHair ? (
               <OptionTile width={tile} label={t('create.hairOwn')} image={isCustomModel(look.model) ? undefined : modelPortrait(look.model)} selected={!look.hair} onPress={() => patch({ hair: null })} />
             ) : null}
-            {HAIRSTYLES.filter((h) => h.id !== look.model).map((h) => (
+            {HAIRSTYLES.filter((h) => h.id !== look.model && hairAllowed(look.model, h.id)).map((h) => (
               <OptionTile key={h.id} width={tile} label={h.label[language]} image={hairPortrait(h.id)} selected={look.hair === h.id} disabled={!canHair} onPress={() => patch({ hair: h.id })} />
             ))}
           </View>

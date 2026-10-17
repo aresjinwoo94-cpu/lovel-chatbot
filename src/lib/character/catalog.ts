@@ -337,10 +337,23 @@ export function toggleAccessory(current: string[], id: string): string[] {
   return [...current.filter((a) => ACCESSORIES.find((x) => x.id === a)?.slot !== slot), id];
 }
 
-/** ¿Se puede usar el peinado `hair` con el modelo `model`? */
+/** ¿Admite este modelo peinados de otros modelos? (los VRM 1 no) */
 export function hairCompatible(model: string): boolean {
   const m = modelById(model);
   return !!m && !m.vrm1;
+}
+
+/**
+ * Peinados prestados que no encajan en un cuerpo (QA de personajes, WP-5): cejas que asoman
+ * por el flequillo, huecos en el cuero cabelludo o marcas de la cara por encima del pelo.
+ * Se rellena con la revisión de la matriz cuerpo × peinado (scripts/qa-characters.mjs).
+ */
+export const BODY_HAIR_CONFLICTS: Record<string, string[]> = {};
+
+/** ¿Se puede usar el peinado `hair` en el cuerpo `model`? */
+export function hairAllowed(model: string, hair: string): boolean {
+  if (hair === model) return true;
+  return hairCompatible(model) && !(BODY_HAIR_CONFLICTS[model] ?? []).includes(hair);
 }
 
 // ------------------------------------------------------------------ aspecto por defecto
@@ -494,7 +507,7 @@ export function normalizeLook(raw: unknown, gender: string = 'female'): Characte
   const needs = modelById(model)?.needsHair;
   const savedHair = typeof r.hair === 'string' && HAIRSTYLES.some((h) => h.id === r.hair) ? r.hair : retired?.hair;
   // El peinado propio del modelo se guarda como null.
-  const hair = savedHair && savedHair !== model && hairCompatible(model) ? savedHair : (needs ?? null);
+  const hair = savedHair && savedHair !== model && hairAllowed(model, savedHair) ? savedHair : (needs ?? null);
   const color = (v: unknown) => (isHex(v) ? v : null);
   const v = (r.voice ?? {}) as Partial<VoiceSettings>;
   return {
@@ -545,7 +558,8 @@ const chance = (p: number) => Math.random() < p;
 export function randomLook(gender: 'female' | 'male' | 'other', voice?: VoiceSettings): CharacterLook {
   const pool = MODELS.filter((m) => gender === 'other' || m.gender === gender);
   const model = rnd(pool);
-  const hair = model.needsHair ? rnd(HAIRSTYLES).id : !model.vrm1 && chance(0.4) ? rnd(HAIRSTYLES).id : null;
+  const hairs = HAIRSTYLES.filter((h) => h.id !== model.id && hairAllowed(model.id, h.id));
+  const hair = model.needsHair ? rnd(hairs).id : !model.vrm1 && chance(0.4) && hairs.length ? rnd(hairs).id : null;
   const accessories: string[] = [];
   const fits = ACCESSORIES.filter((a) => accessoryAllowed({ model: model.id, hair }, a.id));
   if (chance(0.45)) accessories.push(rnd(fits).id);

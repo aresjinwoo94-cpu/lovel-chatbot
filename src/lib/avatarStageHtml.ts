@@ -606,7 +606,9 @@ function faceWidth(vrm) {
  * donante sigue a los huesos de este personaje (copiamos la pose cada fotograma)
  * y conserva su propia física.
  */
+// Algunos peinados quedan más atrás en caras ajenas (las cejas asoman por el flequillo): más margen.
 const HAIR_FIT = 1.04;
+const HAIR_FIT_BY = { vita: 1.09, fumiriya: 1.08, hair_m: 1.08, hair_f: 1.07, victoria: 1.06, noir: 1.06 };
 function attachHair(target, donor) {
   donor.scene.traverse((o) => { if (o.isMesh) o.visible = isHairMesh(o); });
   target.scene.traverse((o) => { if (o.isMesh && isHairMesh(o)) o.visible = false; });
@@ -621,7 +623,7 @@ function attachHair(target, donor) {
   const ratio = tw && dw ? tw / dw : 1;
   // un pelo prestado queda unos milímetros más atrás que el propio: un 4 % más grande cubre la
   // frente (sin cejas por delante del flequillo) y no deja huecos en la coronilla (QA, WP-5)
-  current.headScale = (ratio > 0.86 && ratio < 1.16 ? ratio : 1) * HAIR_FIT;
+  current.headScale = (ratio > 0.86 && ratio < 1.16 ? ratio : 1) * (HAIR_FIT_BY[current.look?.hair] ?? HAIR_FIT);
   current.hairPairs = pairs;
 }
 
@@ -819,26 +821,41 @@ function buildAccessories(look) {
     const round = has('glasses_round');
     const sun = has('sunglasses');
     const frame = mat(sun ? '#141218' : '#2b2733', 0.6, 0.3);
+    // montura rectangular de esquinas redondeadas (antes un anillo de 4 lados: en 3/4 se veía torcida)
+    const rrect = (w, h, rad) => {
+      const sh = new THREE.Shape();
+      sh.moveTo(-w / 2 + rad, -h / 2); sh.lineTo(w / 2 - rad, -h / 2); sh.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + rad);
+      sh.lineTo(w / 2, h / 2 - rad); sh.quadraticCurveTo(w / 2, h / 2, w / 2 - rad, h / 2); sh.lineTo(-w / 2 + rad, h / 2);
+      sh.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - rad); sh.lineTo(-w / 2, -h / 2 + rad); sh.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + rad, -h / 2);
+      return sh;
+    };
     for (const sx of [-1, 1]) {
-      const geo = round ? new THREE.TorusGeometry(r, r * 0.09, 10, 40) : new THREE.TorusGeometry(r, r * (sun ? 0.13 : 0.1), 6, 4);
-      const ring = new THREE.Mesh(geo, frame);
-      if (!round) { ring.rotation.z = Math.PI / 4; ring.scale.set(sun ? 1.25 : 1.15, sun ? 0.86 : 0.8, 1); }
+      let ring, lens;
+      if (round) {
+        ring = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.09, 10, 40), frame);
+        lens = new THREE.Mesh(new THREE.CircleGeometry(r * 0.96, 32), null);
+      } else {
+        const w = r * 2.15, h = r * 1.55, t = r * 0.16;
+        const outer = rrect(w, h, r * 0.42);
+        outer.holes.push(rrect(w - t * 2, h - t * 2, r * 0.3));
+        ring = new THREE.Mesh(new THREE.ExtrudeGeometry(outer, { depth: r * 0.06, bevelEnabled: false, curveSegments: 6 }), frame);
+        lens = new THREE.Mesh(new THREE.ShapeGeometry(rrect(w - t * 2, h - t * 2, r * 0.3), 6), null);
+      }
+      lens.material = new THREE.MeshStandardMaterial({ color: sun ? 0x1a1820 : 0xffffff, transparent: true, opacity: sun ? 0.86 : 0.12, roughness: 0.05, metalness: sun ? 0.4 : 0 });
       ring.position.set(sx * e * 0.5, 0, 0);
-      gl.add(ring);
-      const lens = new THREE.Mesh(new THREE.CircleGeometry(r * 0.96, 32), new THREE.MeshStandardMaterial({ color: sun ? 0x1a1820 : 0xffffff, transparent: true, opacity: sun ? 0.86 : 0.12, roughness: 0.05, metalness: sun ? 0.4 : 0 }));
-      if (!round) lens.scale.set(sun ? 1.2 : 1.1, sun ? 0.82 : 0.75, 1);
       lens.position.copy(ring.position);
-      gl.add(lens);
+      gl.add(ring, lens);
     }
     const bridge = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.06, r * 0.06, e * 0.2, 8), frame);
     bridge.rotation.z = Math.PI / 2; gl.add(bridge);
     overHair(gl);
-    put(gl, W(0, eyes.y + 0.003, front + e * 0.3));
+    // pegadas al plano de la cara: si flotan delante, al inclinar la cabeza se deslizan sobre los ojos
+    put(gl, W(0, eyes.y + 0.003, front + e * 0.08));
   }
   if (has('monocle')) {
     const gold = mat('#D4AF37', 0.85, 0.25);
     const r = e * 0.5;
-    const m1 = put(new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.08, 10, 40), gold), W(-e * 0.5, eyes.y, front + e * 0.3));
+    const m1 = put(new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.08, 10, 40), gold), W(-e * 0.5, eyes.y, front + e * 0.08));
     const lens = put(new THREE.Mesh(new THREE.CircleGeometry(r * 0.95, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 })), m1.position.clone());
     overHair(m1); overHair(lens);
     const chain = new THREE.Mesh(new THREE.CylinderGeometry(e * 0.012, e * 0.012, e * 1.6, 6), gold);
@@ -948,9 +965,10 @@ function buildAccessories(look) {
     // las copas van sobre las orejas (ancho de la cara), no al ancho del pelo: si no, flotan
     const r = halfW * 1.12;
     const band = new THREE.Mesh(new THREE.TorusGeometry(r, e * 0.13, 10, 48, Math.PI), mat(0x2f2b38, 0.4));
-    band.scale.set(1, (hairTop + e * 0.12 - (eyes.y - e * 0.3)) / r, 1);
-    put(band, W(0, eyes.y - e * 0.3, eyes.z - e * 0.5));
-    for (const sx of [-1, 1]) put(new THREE.Mesh(new THREE.CylinderGeometry(e * 0.5, e * 0.5, e * 0.36, 24), mat(col('headphones'), 0.2)), W(sx * (r + e * 0.05), eyes.y - e * 0.35, eyes.z - e * 0.5), [0, 0, Math.PI / 2]);
+    band.scale.set(1, (hairTop + e * 0.12 - (eyes.y - e * 0.12)) / r, 1);
+    put(band, W(0, eyes.y - e * 0.12, eyes.z - e * 0.55));
+    // a la altura de las orejas (algo por debajo de los ojos), pegadas a la cabeza
+    for (const sx of [-1, 1]) put(new THREE.Mesh(new THREE.CylinderGeometry(e * 0.5, e * 0.5, e * 0.36, 24), mat(col('headphones'), 0.2)), W(sx * r, eyes.y - e * 0.12, eyes.z - e * 0.55), [0, 0, Math.PI / 2]);
   }
   current.extraTop = extraTop;
   if (g.children.length) attachTo(head, g);
@@ -1405,7 +1423,13 @@ async function handle(msg) {
   } else if (msg.type === 'qa') {
     // QA de personajes: cara fija (sin parpadeo ni miradas) con una emoción y/o una vocal.
     current.qa = msg.off ? null : { emotion: msg.emotion || null, viseme: msg.viseme || null, raw: msg.raw || null };
-    if (current.qa) { gazeYaw = gazePitch = 0; glanceEnd = 0; nextGlance = Infinity; }
+    if (current.qa) {
+      gazeYaw = gazePitch = 0; glanceEnd = 0; nextGlance = Infinity;
+      // el pelo se coloca en la postura nueva antes de la foto (si no, un mechón puede salir volando)
+      for (let i = 0; i < 3; i++) step(1 / 60, clock.elapsedTime);
+      for (const v of [current.vrm, current.hairVrm]) { v?.springBoneManager?.setInitState(); v?.springBoneManager?.reset(); }
+      for (let i = 0; i < 90; i++) step(1 / 60, clock.elapsedTime);
+    }
     else nextGlance = clock.elapsedTime + 3;
     send({ type: 'qa-ok' });
   } else if (msg.type === 'state') {
