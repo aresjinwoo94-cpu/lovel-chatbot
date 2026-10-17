@@ -118,16 +118,33 @@ function setLighting(look) {
   ambient.color.setHex(L.amb[0]); ambient.intensity = L.amb[1];
 }
 
-// Fondos ilustrados de stream (cielo a capas, horizonte, estrellas, luces de ciudad), con colores propios.
+// Fondos ilustrados: cielo pintado tipo acuarela (degradado, nubes redondas y difusas,
+// luces bokeh). Sin siluetas oscuras ni franjas. Cada uno conserva su paleta.
 const PAINTED = {
-  dusk: { sky: ['#2B1F4A', '#7B3F86', '#D9677F', '#F2A58A'], bands: '#F6C2B4', horizon: '#3A2A55', water: '#F0A07E', stars: 30, hills: true },
-  aurora: { sky: ['#14213D', '#25406B', '#3E7C8F', '#9AD3C6'], bands: '#BFF0E2', horizon: '#14213D', water: '#5FA8A6', stars: 70, hills: true },
-  starry: { sky: ['#0E1024', '#1C1F45', '#3A2F6B', '#6A4C8C'], bands: '#8E7CC3', horizon: '#121330', water: null, stars: 140, hills: true },
-  city: { sky: ['#1A1630', '#2E2350', '#5B3B72', '#B0628A'], bands: '#E39AB4', horizon: '#15122A', water: null, stars: 20, city: true },
-  dawn: { sky: ['#F7D6C9', '#F5C1C9', '#D9C3EE', '#BFD3F2'], bands: '#FFFFFF', horizon: '#9D8BC8', water: '#F2C6B8', stars: 0, hills: true, light: true },
+  dusk: { sky: ['#2B1F4A', '#7B3F86', '#D9677F', '#F2A58A'], cloud: '#F6C2B4', glow: '#FFD2B8', bokeh: ['255,206,170', '255,170,200'], stars: 26 },
+  aurora: { sky: ['#14213D', '#25406B', '#3E7C8F', '#9AD3C6'], cloud: '#BFF0E2', glow: '#C9F5E6', bokeh: ['190,240,226', '160,200,255'], stars: 60 },
+  starry: { sky: ['#0E1024', '#1C1F45', '#3A2F6B', '#6A4C8C'], cloud: '#8E7CC3', glow: '#B7A6EE', bokeh: ['200,180,255', '150,170,255'], stars: 130 },
+  city: { sky: ['#1A1630', '#2E2350', '#5B3B72', '#B0628A'], cloud: '#E39AB4', glow: '#FFB3CC', bokeh: ['255,200,150', '255,150,200', '180,170,255'], stars: 18, cityLights: true },
+  dawn: { sky: ['#F7D6C9', '#F5C1C9', '#D9C3EE', '#BFD3F2'], cloud: '#FFFFFF', glow: '#FFF3EA', bokeh: ['255,255,255', '255,214,200'], stars: 0, light: true },
   room: { room: true },
 };
-function paintBackdrop(g, W, H, P) {
+
+/** Azar con semilla: el mismo fondo se pinta igual siempre (también en los retratos). */
+function seeded(str) {
+  let a = 0; for (let i = 0; i < str.length; i++) a = (a * 31 + str.charCodeAt(i)) | 0;
+  return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+/** Mancha redonda y difusa (base de nubes y bokeh). */
+function blob(g, x, y, r, color, a) {
+  const grd = g.createRadialGradient(x, y, 0, x, y, r);
+  grd.addColorStop(0, color.startsWith('#') ? rgba(color, a) : \`rgba(\${color},\${a})\`);
+  grd.addColorStop(0.55, color.startsWith('#') ? rgba(color, a * 0.55) : \`rgba(\${color},\${a * 0.55})\`);
+  grd.addColorStop(1, color.startsWith('#') ? rgba(color, 0) : \`rgba(\${color},0)\`);
+  g.fillStyle = grd; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+}
+
+function paintBackdrop(g, W, H, P, id = '') {
+  const rnd = seeded(id || 'x');
   if (P.room) {
     // Habitación acogedora desenfocada: pared, ventana con luz y bokeh cálido.
     const wall = g.createLinearGradient(0, 0, 0, H); wall.addColorStop(0, '#3B2E45'); wall.addColorStop(1, '#2A2133');
@@ -137,47 +154,53 @@ function paintBackdrop(g, W, H, P) {
     g.fillStyle = 'rgba(40,30,50,0.9)'; g.fillRect(W * 0.735, H * 0.12, W * 0.012, H * 0.46); g.fillRect(W * 0.58, H * 0.345, W * 0.32, H * 0.01);
     g.fillStyle = '#1F1826'; g.fillRect(0, H * 0.78, W, H * 0.22);
     for (let i = 0; i < 38; i++) {
-      const x = Math.random() * W, y = Math.random() * H * 0.75, r = 6 + Math.random() * 26;
-      const c = ['255,198,140', '255,170,200', '200,170,255'][i % 3];
-      const grd = g.createRadialGradient(x, y, 0, x, y, r); grd.addColorStop(0, \`rgba(\${c},0.55)\`); grd.addColorStop(1, \`rgba(\${c},0)\`);
-      g.fillStyle = grd; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+      const x = rnd() * W, y = rnd() * H * 0.75, r = 6 + rnd() * 26;
+      blob(g, x, y, r, ['255,198,140', '255,170,200', '200,170,255'][i % 3], 0.55);
     }
     return;
   }
-  const sky = g.createLinearGradient(0, 0, 0, H * 0.78);
+  // 1) cielo: degradado vertical de la paleta
+  const sky = g.createLinearGradient(0, 0, 0, H);
   P.sky.forEach((c, i) => sky.addColorStop(i / (P.sky.length - 1), c));
   g.fillStyle = sky; g.fillRect(0, 0, W, H);
-  // nubes en franjas suaves (como un cielo pintado)
-  g.globalAlpha = 0.16;
-  for (let i = 0; i < 9; i++) {
-    const y = H * (0.08 + i * 0.075) + Math.sin(i * 1.7) * 12;
-    g.fillStyle = P.bands; g.beginPath(); g.moveTo(0, y);
-    for (let x = 0; x <= W; x += W / 8) g.quadraticCurveTo(x + W / 16, y - 14 + Math.sin(x * 0.01 + i) * 10, x + W / 8, y + Math.cos(x * 0.013 + i) * 8);
-    g.lineTo(W, y + 22); g.lineTo(0, y + 18); g.closePath(); g.fill();
+  // 2) resplandor suave en el horizonte (sin línea dura)
+  const hz = H * 0.74;
+  const glow = g.createRadialGradient(W * 0.5, hz, 0, W * 0.5, hz, W * 0.75);
+  glow.addColorStop(0, rgba(P.glow, P.light ? 0.55 : 0.4)); glow.addColorStop(1, rgba(P.glow, 0));
+  g.fillStyle = glow; g.fillRect(0, 0, W, H);
+  // 3) estrellas pequeñas y suaves en la parte alta
+  for (let i = 0; i < P.stars; i++) {
+    const x = rnd() * W, y = rnd() * H * 0.55, r = 0.8 + rnd() * 1.6;
+    g.fillStyle = \`rgba(255,255,255,\${0.25 + rnd() * 0.55})\`; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
   }
-  g.globalAlpha = 1;
-  for (let i = 0; i < P.stars; i++) { g.fillStyle = \`rgba(255,255,255,\${0.35 + Math.random() * 0.6})\`; g.fillRect(Math.random() * W, Math.random() * H * 0.55, 1.6, 1.6); }
-  const hy = H * 0.78;
-  if (P.city) {
-    for (let i = 0; i < 26; i++) {
-      const w = W * (0.03 + Math.random() * 0.05), h = H * (0.06 + Math.random() * 0.2), x = (i / 26) * W;
-      g.fillStyle = P.horizon; g.fillRect(x, hy - h, w, h + H * 0.25);
-      for (let k = 0; k < 10; k++) { g.fillStyle = \`rgba(255,\${200 + Math.random() * 50},\${150 + Math.random() * 80},\${Math.random() * 0.8})\`; g.fillRect(x + Math.random() * w, hy - Math.random() * h, 3, 3); }
+  // 4) nubes de acuarela: racimos de manchas redondas, más densas abajo
+  const clouds = 7;
+  for (let c = 0; c < clouds; c++) {
+    const cx = (c + 0.5 + (rnd() - 0.5) * 0.8) * (W / clouds);
+    const cy = H * (0.18 + rnd() * 0.62);
+    const size = W * (0.07 + rnd() * 0.08) * (0.7 + (cy / H) * 0.6);
+    const puffs = 6 + Math.floor(rnd() * 6);
+    for (let k = 0; k < puffs; k++) {
+      const dx = (rnd() - 0.5) * size * 3.2, dy = (rnd() - 0.5) * size * 0.9;
+      blob(g, cx + dx, cy + dy, size * (0.7 + rnd() * 0.8), P.cloud, (P.light ? 0.5 : 0.3) * (0.6 + rnd() * 0.5));
     }
   }
-  if (P.hills) {
-    g.fillStyle = P.horizon; g.beginPath(); g.moveTo(0, hy);
-    for (let x = 0; x <= W; x += 32) g.lineTo(x, hy - 10 - Math.abs(Math.sin(x * 0.006)) * 24);
-    g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fill();
-    for (const tx of [W * 0.88, W * 0.93, W * 0.1]) { g.beginPath(); g.moveTo(tx, hy - 70); g.lineTo(tx - 16, hy - 4); g.lineTo(tx + 16, hy - 4); g.fill(); }
+  // 5) luces lejanas de ciudad: bokeh cálido cerca del horizonte (en vez de edificios)
+  if (P.cityLights) {
+    for (let i = 0; i < 70; i++) {
+      const x = rnd() * W, y = hz - 30 + rnd() * H * 0.3, r = 4 + rnd() * 14;
+      blob(g, x, y, r, P.bokeh[i % P.bokeh.length], 0.35 + rnd() * 0.35);
+    }
   }
-  if (P.water) {
-    const w = g.createLinearGradient(0, hy, 0, H); w.addColorStop(0, P.water); w.addColorStop(1, P.sky[0]);
-    g.fillStyle = w; g.fillRect(0, hy + 4, W, H - hy);
-    g.globalAlpha = 0.35; g.fillStyle = '#FFFFFF';
-    for (let i = 0; i < 60; i++) g.fillRect(Math.random() * W, hy + 8 + Math.random() * (H - hy), 6 + Math.random() * 14, 1.5);
-    g.globalAlpha = 1;
+  // 6) bokeh suave por todo el cielo
+  for (let i = 0; i < 26; i++) {
+    const x = rnd() * W, y = rnd() * H * 0.9, r = 10 + rnd() * 34;
+    blob(g, x, y, r, P.bokeh[i % P.bokeh.length], (P.light ? 0.3 : 0.18) + rnd() * 0.15);
   }
+  // 7) suelo de luz: el tercio bajo se aclara en neblina (sin silueta)
+  const mist = g.createLinearGradient(0, hz - H * 0.08, 0, H);
+  mist.addColorStop(0, rgba(P.glow, 0)); mist.addColorStop(1, rgba(P.glow, P.light ? 0.45 : 0.22));
+  g.fillStyle = mist; g.fillRect(0, hz - H * 0.08, W, H);
 }
 
 /** Desenfoque barato del fondo (profundidad de campo): se reduce y se vuelve a ampliar. Una sola vez por fondo. */
@@ -198,8 +221,8 @@ function setBackdrop(id, transparent) {
   const g = c.getContext('2d');
   if (PAINTED[id]) {
     c.width = c.height = 1024;
-    paintBackdrop(g, 1024, 1024, PAINTED[id]);
-    softBlur(c, 3);
+    paintBackdrop(g, 1024, 1024, PAINTED[id], id);
+    softBlur(c, 2);
   } else {
     const [c1, c2] = BACKDROPS[id] || BACKDROPS.lilac;
     c.width = c.height = 512;

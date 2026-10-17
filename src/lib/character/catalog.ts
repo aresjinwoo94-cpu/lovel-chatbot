@@ -258,7 +258,7 @@ export const ACCESSORY_GROUPS: { slot: AccessorySlot; label: L }[] = [
 ];
 
 export const BACKGROUNDS: (Choice & { hex: string })[] = [
-  // Fondos ilustrados de stream
+  // Fondos ilustrados (cielo de acuarela con bokeh)
   { id: 'dusk', hex: '#B2557F', label: { es: 'Atardecer pintado', en: 'Painted dusk' } },
   { id: 'city', hex: '#3E2D5E', label: { es: 'Ciudad de noche', en: 'City at night' } },
   { id: 'starry', hex: '#25275A', label: { es: 'Cielo estrellado', en: 'Starry sky' } },
