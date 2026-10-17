@@ -26,6 +26,7 @@ import { fetchAvatar, fetchMessages, PAGE_SIZE, startChat } from '@/lib/data';
 import { showDialog } from '@/lib/dialog';
 import { exportConversation } from '@/lib/exportConversation';
 import { useI18n } from '@/lib/i18n';
+import { detectEmotion } from '@/lib/emotion';
 import { genderize, sceneText as fillScene, scenarioById } from '@/lib/roleplay';
 import type { Avatar, ChatResponse, Message, QuotaState, VoiceChatResponse } from '@/lib/types';
 
@@ -337,6 +338,9 @@ export default function ChatScreen() {
   }
 
   const busy = typing || opening;
+  // la cara marca la emoción del último mensaje del personaje
+  const lastAvatarMsg = messages.find((m) => m.role === 'avatar');
+  const emotion = detectEmotion(lastAvatarMsg?.content);
   const scenario = scenarioById(avatar.scenario_id);
   const sceneText = scenario ? fillScene(scenario.setup[language], avatar.name, avatar.gender) : avatar.situation_description;
   const sceneTitle = scenario ? genderize(scenario.title[language], avatar.gender) : '';
@@ -351,7 +355,7 @@ export default function ChatScreen() {
   const stageH = Math.round(Math.min(height * 0.36, 300));
   const stage = (
     <View className={wide ? 'flex-1' : ''} style={wide ? undefined : { height: stageH }}>
-      <VrmAvatar look={look} gender={avatar.gender} presence={presence} framing={wide ? 'portrait' : 'bust'} style={{ flex: 1 }} />
+      <VrmAvatar look={look} gender={avatar.gender} presence={presence} emotion={emotion} emotionId={lastAvatarMsg?.id} framing={wide ? 'portrait' : 'bust'} style={{ flex: 1 }} />
       {/* Nombre y estado sobre el escenario */}
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 flex-row items-end justify-between px-4 pb-3">
         <View className={`rounded-xl px-3 py-2 ${darkStage ? 'bg-black/40' : 'bg-paper/90'}`}>

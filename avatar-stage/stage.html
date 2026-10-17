@@ -11,7 +11,7 @@
 
   Mensajes que acepta (postMessage con JSON):
     { type: 'look', look: {...}, modelBaseUrl, framing: 'bust'|'face'|'portrait', transparent?: bool }
-    { type: 'state', mood: 'idle'|'thinking'|'listening'|'speaking'|'happy'|'offline' }
+    { type: 'state', mood: 'idle'|'thinking'|'listening'|'speaking'|'happy'|'offline', emotion?: 'happy'|'sad'|'surprised'|'shy'|null }
     { type: 'snapshot', framing?, size? | width & height }  → responde { type: 'snapshot', dataUrl }
   Envía: { type: 'ready' } · { type: 'loaded' } · { type: 'error', message }
 
@@ -30,6 +30,12 @@
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
   #gl { position: fixed; inset: 0; width: 100%; height: 100%; }
+  /* Acabado de ilustración: viñeta suave y grano de papel (capas baratas sobre el lienzo). */
+  #vignette, #grain { position: fixed; inset: 0; pointer-events: none; }
+  #vignette { background: radial-gradient(ellipse 75% 70% at 50% 42%, transparent 58%, rgba(24,14,34,.30) 100%); }
+  #grain { opacity: .07; background-size: 160px 160px; }
+  body.light #vignette { background: radial-gradient(ellipse 75% 70% at 50% 42%, transparent 62%, rgba(60,40,70,.12) 100%); }
+  body.nofx #vignette, body.nofx #grain, body.lowfx #grain, body.lowfx #vignette { display: none; }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
   #loading i { width: 22px; height: 22px; border-radius: 50%; border: 2px solid rgba(111,91,211,.2); border-top-color: #6F5BD3; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -37,6 +43,7 @@
 </head>
 <body>
 <canvas id="gl"></canvas>
+<div id="vignette"></div><div id="grain"></div>
 <div id="loading"><i></i></div>
 <script type="module">
 import * as THREE from 'three';
@@ -63,6 +70,9 @@ const BACKDROPS = {
 
 // Iluminación: luz principal, relleno, contorno y ambiente.
 const LIGHTS = {
+  // Ilustración anime (por defecto): luz principal cálida lateral, relleno frío suave y un
+  // contorno de luz de color (según el fondo) que separa la figura. Sombreado menos plano.
+  illustrated: { key: [0xffe0c2, 1.6], fill: [0xb9c9ff, 0.4], rim: [0xffb8d8, 1.3], amb: [0xfff2ea, 0.36], keyPos: [-1.55, 1.3, 1.15], fillPos: [1.5, 0.45, 1.3], rimPos: [1.0, 1.4, -1.5], toony: 0.7, shift: 0.04, illustrated: true },
   // Luz de stream VTuber: frontal y plana, sombra anime limpia, casi sin contorno.
   vtuber: { key: [0xfffaf6, 1.5], fill: [0xf3f0ff, 0.4], rim: [0xffffff, 0.35], amb: [0xffffff, 0.85], keyPos: [0.25, 0.9, 2.2], toony: 0.97, shift: 0.18 },
   studio: { key: [0xfff6ee, 2.1], fill: [0xdcd6ff, 0.55], rim: [0xffffff, 1.2], amb: [0xffffff, 0.42] },
@@ -91,13 +101,19 @@ rim.position.set(0.4, 1.2, -1.6);
 const ambient = new THREE.AmbientLight(0xffffff, 0.42);
 scene.add(key, fill, rim, ambient);
 
-const KEY_POS = [-0.7, 1.5, 1.6];
-function setLighting(id) {
-  const L = LIGHTS[id] || LIGHTS.vtuber;
+const KEY_POS = [-0.7, 1.5, 1.6], FILL_POS = [1.2, 0.4, 1.0], RIM_POS = [0.4, 1.2, -1.6];
+// Color del contorno de luz en la iluminación ilustrada: sale del propio fondo.
+const RIM_TINT = { dusk: 0xffa6c4, aurora: 0x92f0dc, starry: 0xb9a8ff, city: 0xff92c9, dawn: 0xffc4a6, room: 0xffc995, night: 0xa9b8ff, midnight: 0x9fb2ff, wine: 0xff9cb8 };
+const lightingOf = (look) => LIGHTS[look?.lighting] || LIGHTS.illustrated;
+const rimTint = (look) => RIM_TINT[look?.background] ?? 0xd8ccff;
+function setLighting(look) {
+  const L = lightingOf(look);
   key.position.set(...(L.keyPos || KEY_POS));
+  fill.position.set(...(L.fillPos || FILL_POS));
+  rim.position.set(...(L.rimPos || RIM_POS));
   key.color.setHex(L.key[0]); key.intensity = L.key[1];
   fill.color.setHex(L.fill[0]); fill.intensity = L.fill[1];
-  rim.color.setHex(L.rim[0]); rim.intensity = L.rim[1];
+  rim.color.setHex(L.illustrated ? rimTint(look) : L.rim[0]); rim.intensity = L.rim[1];
   ambient.color.setHex(L.amb[0]); ambient.intensity = L.amb[1];
 }
 
@@ -163,14 +179,26 @@ function paintBackdrop(g, W, H, P) {
   }
 }
 
+/** Desenfoque barato del fondo (profundidad de campo): se reduce y se vuelve a ampliar. Una sola vez por fondo. */
+function softBlur(c, factor) {
+  const s = document.createElement('canvas');
+  s.width = Math.round(c.width / factor); s.height = Math.round(c.height / factor);
+  const sg = s.getContext('2d'); sg.imageSmoothingQuality = 'high'; sg.drawImage(c, 0, 0, s.width, s.height);
+  const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.clearRect(0, 0, c.width, c.height); g.drawImage(s, 0, 0, c.width, c.height);
+}
+
 let backdropTex = null;
 function setBackdrop(id, transparent) {
+  const light = !PAINTED[id] && !['night', 'midnight', 'wine'].includes(id);
+  document.body.classList.toggle('light', light);
+  document.body.classList.toggle('nofx', !!transparent);
   if (transparent) { scene.background = null; return; }
   const c = document.createElement('canvas');
   const g = c.getContext('2d');
   if (PAINTED[id]) {
     c.width = c.height = 1024;
     paintBackdrop(g, 1024, 1024, PAINTED[id]);
+    softBlur(c, 3);
   } else {
     const [c1, c2] = BACKDROPS[id] || BACKDROPS.lilac;
     c.width = c.height = 512;
@@ -378,24 +406,42 @@ function eachMaterial(root, fn) {
 function applyFinish(look) {
   const shine = look.shine == null ? 0.2 : Math.max(0, Math.min(1, +look.shine));
   const outline = look.outline || 'normal';
-  const L = LIGHTS[look.lighting] || LIGHTS.vtuber;
+  const L = lightingOf(look);
+  const ill = !!L.illustrated;
   for (const root of [current.vrm?.scene, current.hairVrm?.scene].filter(Boolean)) {
     eachMaterial(root, (m) => {
-      // Sombreado anime: sombra de corte limpio y menos superficie en sombra (estilo VTuber).
+      // Sombreado anime: corte de sombra (casi plano en VTuber, con más volumen en ilustración).
       if (m.shadingToonyFactor != null) {
         if (m.userData.toony0 == null) { m.userData.toony0 = m.shadingToonyFactor; m.userData.shift0 = m.shadingShiftFactor; }
         m.shadingToonyFactor = L.toony ?? m.userData.toony0;
         m.shadingShiftFactor = m.userData.shift0 + (L.shift || 0);
       }
       if (m.parametricRimColorFactor) {
-        m.parametricRimColorFactor.setHex(0xf1ecff).multiplyScalar(shine * 2);
-        m.parametricRimFresnelPowerFactor = 5 - shine * 1.5;
-        m.parametricRimLiftFactor = 0.02 + shine * 0.06;
+        if (ill) {
+          // contorno de luz de color (no blanco): siempre algo presente, más con "brillo"
+          m.parametricRimColorFactor.setHex(rimTint(look)).multiplyScalar(0.16 + shine * 0.9);
+          m.parametricRimFresnelPowerFactor = 4 - shine;
+          m.parametricRimLiftFactor = 0.04 + shine * 0.05;
+        } else {
+          m.parametricRimColorFactor.setHex(0xf1ecff).multiplyScalar(shine * 2);
+          m.parametricRimFresnelPowerFactor = 5 - shine * 1.5;
+          m.parametricRimLiftFactor = 0.02 + shine * 0.06;
+        }
       }
       if (m.outlineWidthFactor != null) {
-        if (m.userData.outline0 == null) m.userData.outline0 = m.outlineWidthFactor;
+        if (m.userData.outline0 == null) {
+          m.userData.outline0 = m.outlineWidthFactor;
+          m.userData.outlineColor0 = m.outlineColorFactor?.clone();
+          m.userData.outlineMix0 = m.outlineLightingMixFactor;
+        }
         const o = m.userData.outline0;
-        m.outlineWidthFactor = outline === 'none' ? 0 : outline === 'bold' ? Math.max(o * 3.5, 0.0025) : o;
+        // ilustración: línea más fina y teñida con el color oscuro del propio material
+        const normal = ill ? o * 0.55 : o;
+        m.outlineWidthFactor = outline === 'none' ? 0 : outline === 'bold' ? Math.max(o * 3.5, 0.0025) : normal;
+        if (m.outlineColorFactor) {
+          if (ill) { m.outlineColorFactor.setRGB(0.36, 0.3, 0.36); m.outlineLightingMixFactor = 1; }
+          else { if (m.userData.outlineColor0) m.outlineColorFactor.copy(m.userData.outlineColor0); m.outlineLightingMixFactor = m.userData.outlineMix0 ?? m.outlineLightingMixFactor; }
+        }
       }
     });
   }
@@ -464,13 +510,16 @@ async function fetchVrm(url) {
 
 // ------------------------------------------------------------------ poses
 // Valores para el brazo izquierdo de un VRM 0 (el derecho es su espejo).
+// `body`: reposo natural (peso en una pierna, cadera y hombros con algo de giro, 3/4 suave).
 const POSES = {
-  relaxed: { u: [0.1, 0, 1.2], l: [0, 0, 0.14], h: [0, 0, 0] },
+  relaxed: { u: [0.1, -0.08, 1.3], l: [-0.15, -0.5, 0.12], h: [-0.25, 0.1, -0.15], body: true },
   formal: { u: [0.02, 0, 1.36], l: [0, 0, 0.05], h: [0, 0, 0.1] },
   confident: { u: [0.05, -0.35, 0.78], l: [0, -0.55, 1.55], h: [0, 0, -0.3] },
   shy: { u: [0.15, -0.55, 1.22], l: [0, -1.15, 0.35], h: [0, -0.3, 0] },
   hands_back: { u: [0.05, 0.7, 1.22], l: [0, 1.25, 0.2], h: [0, 0, 0] },
-  wave: { u: [0.1, 0, 1.2], l: [0, 0, 0.14], h: [0, 0, 0], right: { u: [0, -0.25, 0.45], l: [0, -0.1, -1.9], h: [0, 0, 0] } },
+  wave: { u: [0.1, -0.08, 1.3], l: [-0.15, -0.5, 0.12], h: [-0.25, 0.1, -0.15], body: true, right: { u: [0, -0.25, 0.45], l: [0, -0.1, -1.9], h: [0, 0, 0] } },
+  // La pose de prueba de siempre (brazos rectos), por si alguien la prefiere.
+  straight: { u: [0.1, 0, 1.2], l: [0, 0, 0.14], h: [0, 0, 0] },
 };
 const FINGERS = ['Index', 'Middle', 'Ring', 'Little'];
 
@@ -492,8 +541,14 @@ function applyPose(vrm, pose) {
     set(b(`${side}LowerArm`), def.l, mirror);
     set(b(`${side}Hand`), def.h, mirror);
     // dedos ligeramente curvados (manos naturales, no planas)
-    for (const f of FINGERS) for (const seg of ['Proximal', 'Intermediate', 'Distal']) set(b(`${side}${f}${seg}`), [0, 0, 0.28], mirror);
+    for (const f of FINGERS) for (const seg of ['Proximal', 'Intermediate', 'Distal']) set(b(`${side}${f}${seg}`), [0, 0, P.body ? 0.5 : 0.28], mirror);
   }
+  // Piernas: el peso cae en la derecha y la rodilla izquierda se relaja.
+  const leg = P.body ? { lu: [-0.07, 0, 0.03], ll: [0.16, 0, 0], ru: [0, 0, -0.02], rl: [0, 0, 0] } : { lu: [0, 0, 0], ll: [0, 0, 0], ru: [0, 0, 0], rl: [0, 0, 0] };
+  set(b('leftUpperLeg'), leg.lu, false); set(b('leftLowerLeg'), leg.ll, false);
+  set(b('rightUpperLeg'), leg.ru, false); set(b('rightLowerLeg'), leg.rl, false);
+  vrm.userData = vrm.userData || {};
+  vrm.userData.natural = !!P.body;
   current.pose = pose;
 }
 
@@ -987,22 +1042,33 @@ function frameCamera() {
 // ------------------------------------------------------------------ animación y estados
 const clock = new THREE.Clock();
 let nextBlink = 1.5, blinkT = -1, talk = 0, talkTarget = 0, nextSyll = 0, nod = 0, dim = 0;
+// mirada viva: de vez en cuando aparta la vista y vuelve
+let nextGlance = 4, glanceEnd = 0, glance = { yaw: 0, pitch: 0 }, gazeYaw = 0, gazePitch = 0, emoAmt = 0;
 const ex = { happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0, blink: 0 };
 
 /** Expresión base (valores de las expresiones estándar de VRM). */
 const EXPRESSIONS = {
   neutral: {},
-  smile: { happy: 0.2 },
-  joy: { happy: 0.6 },
-  calm: { relaxed: 0.38 },
-  serious: { angry: 0.25 },
-  shy: { happy: 0.15, sad: 0.15 },
-  smug: { happy: 0.18, angry: 0.2 },
-  sad: { sad: 0.28 },
-  surprised: { surprised: 0.5 },
-  angry: { angry: 0.6 },
+  smile: { happy: 0.28 },
+  joy: { happy: 0.72 },
+  calm: { relaxed: 0.45 },
+  serious: { angry: 0.3 },
+  shy: { happy: 0.2, sad: 0.2 },
+  smug: { happy: 0.24, angry: 0.24 },
+  sad: { sad: 0.42 },
+  surprised: { surprised: 0.62 },
+  angry: { angry: 0.68 },
   sleepy: { blink: 0.5, relaxed: 0.15 },
 };
+
+/** Emoción del momento (de lo que acaba de decir el personaje): cara y gesto marcados. */
+const EMOTIONS = {
+  happy: { face: { happy: 0.75 }, head: { x: -0.03, z: 0.05 } },
+  sad: { face: { sad: 0.72, relaxed: 0.1 }, head: { x: 0.11, z: -0.04 }, gaze: { yaw: -6, pitch: -9 } },
+  surprised: { face: { surprised: 0.62 }, head: { x: -0.07, z: 0 } },
+  shy: { face: { happy: 0.38, sad: 0.24 }, head: { x: 0.1, z: 0.1 }, gaze: { yaw: 12, pitch: -7 } },
+};
+const EMOTION_HOLD = 9; // segundos con la emoción marcada antes de volver al gesto base
 
 function step(dt, t, silent = false) {
   const vrm = current.vrm;
@@ -1031,7 +1097,12 @@ function step(dt, t, silent = false) {
   em?.setValue('oh', speaking ? talk * 0.22 * (Math.sin(t * 7) * 0.5 + 0.5) : 0);
   // expresión: base elegida + estado
   const want = { ...{ happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0, blink: 0 }, ...base };
-  if (mood === 'happy') want.happy = Math.max(want.happy, 0.3);
+  // emoción del último mensaje: se impone un rato y luego se suaviza
+  const E = !silent && current.emotion && EMOTIONS[current.emotion] ? EMOTIONS[current.emotion] : null;
+  const emoOn = E && t - (current.emotionAt || 0) < EMOTION_HOLD ? 1 : 0;
+  emoAmt += (emoOn - emoAmt) * Math.min(1, dt * 2.5);
+  if (E) for (const k in E.face) want[k] = Math.max(want[k] * (1 - emoAmt), E.face[k] * emoAmt + want[k] * (1 - emoAmt));
+  if (mood === 'happy') want.happy = Math.max(want.happy, 0.45);
   if (speaking) want.happy = Math.max(want.happy, 0.1);
   if (mood === 'thinking') want.relaxed = Math.max(want.relaxed, 0.45);
   const lerp = Math.min(1, dt * 4);
@@ -1050,13 +1121,38 @@ function step(dt, t, silent = false) {
   nod += ((speaking ? 1 : 0) - nod) * Math.min(1, dt * 3);
   const th = current.think, at = current.attend;
   const tilt = (+look.headTilt || 0) * 0.3, turn = (+look.headTurn || 0) * 0.42;
-  b('spine').rotation.x = Math.sin(t * 1.5) * 0.012;
-  if (b('chest')) b('chest').rotation.x = Math.sin(t * 1.5 + 0.5) * 0.01;
-  b('neck').rotation.y = Math.sin(t * 0.5) * 0.04 + turn * 0.45;
+  const nat = vrm.userData?.natural ? 1 : 0;
+  const eh = E ? { x: (E.head.x || 0) * emoAmt, z: (E.head.z || 0) * emoAmt } : { x: 0, z: 0 };
+  // respiración (pecho) y micro-balanceo (cadera); en reposo natural, 3/4 suave y peso en una pierna
+  const breath = Math.sin(t * 1.55);
+  if (b('hips')) {
+    b('hips').rotation.y = nat * 0.3;
+    b('hips').rotation.z = nat * (0.035 + Math.sin(t * 0.42) * 0.012);
+  }
+  b('spine').rotation.x = breath * 0.012;
+  b('spine').rotation.z = nat * -0.045;
+  b('spine').rotation.y = nat * -0.06;
+  if (b('chest')) { b('chest').rotation.x = Math.sin(t * 1.55 + 0.5) * 0.016; b('chest').rotation.z = nat * -0.012; }
+  if (b('upperChest')) b('upperChest').rotation.x = breath * 0.008;
+  for (const [side, sgn] of [['left', 1], ['right', -1]]) { const sh = b(`${side}Shoulder`); if (sh) sh.rotation.z = sgn * (vrm.meta?.metaVersion === '0' ? 1 : -1) * breath * 0.012; }
+  // la cabeza compensa el giro del cuerpo: mira a cámara, con la cara en 3/4 leve
+  b('neck').rotation.y = Math.sin(t * 0.5) * 0.04 + turn * 0.45 - nat * 0.12;
   b('neck').rotation.z = tilt * 0.35;
-  b('head').rotation.z = tilt + th * 0.12 + at * -0.06 + Math.sin(t * 0.7) * 0.025;
-  b('head').rotation.x = th * -0.07 + at * (0.05 + Math.sin(t * 2.2) * 0.03) + nod * Math.sin(t * 6) * 0.05;
-  b('head').rotation.y = turn * 0.65 + th * 0.12 + Math.sin(t * 0.37) * 0.035;
+  // mirada: aparta la vista cada pocos segundos (no mientras escucha) y vuelve
+  if (!silent) {
+    if (t > nextGlance && mood !== 'listening') {
+      glance = { yaw: (Math.random() < 0.5 ? -1 : 1) * (7 + Math.random() * 8), pitch: -2 - Math.random() * 6 };
+      glanceEnd = t + 0.7 + Math.random() * 1.1; nextGlance = glanceEnd + 3.5 + Math.random() * 5;
+    }
+    const away = t < glanceEnd ? glance : { yaw: 0, pitch: 0 };
+    const gz = E?.gaze && emoAmt > 0.3 ? E.gaze : away;
+    gazeYaw += (gz.yaw - gazeYaw) * Math.min(1, dt * 6);
+    gazePitch += (gz.pitch - gazePitch) * Math.min(1, dt * 6);
+    if (vrm.lookAt) { vrm.lookAt.yaw = gazeYaw; vrm.lookAt.pitch = gazePitch; }
+  }
+  b('head').rotation.z = tilt + nat * 0.05 + th * 0.12 + at * -0.06 + eh.z + Math.sin(t * 0.7) * 0.025;
+  b('head').rotation.x = th * -0.07 + at * (0.05 + Math.sin(t * 2.2) * 0.03) + nod * Math.sin(t * 6) * 0.05 + eh.x;
+  b('head').rotation.y = turn * 0.65 - nat * 0.08 + th * 0.12 + gazeYaw * 0.006 + Math.sin(t * 0.37) * 0.035;
   if (current.pose === 'wave' && !silent) {
     const v0 = vrm.meta?.metaVersion === '0';
     const lower = b('rightLowerArm');
@@ -1072,9 +1168,32 @@ function step(dt, t, silent = false) {
   }
 }
 
+// Calidad automática: en móvil, si no llega a 45 fps se quitan viñeta y grano; por debajo
+// de 30 fps se baja la resolución interna. En escritorio no se toca nada.
+const MOBILE = matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad/i.test(navigator.userAgent);
+// ?fx=on desactiva el ajuste automático (solo para medir con los efectos siempre puestos).
+const FORCE_FX = new URLSearchParams(location.search).get('fx') === 'on';
+const perf = { frames: 0, fps: null, since: 0, checks: 0, lowfx: false, pixelRatio: renderer.getPixelRatio() };
+function governor(t) {
+  perf.frames++;
+  if (!current.vrm || perf.checks >= 3) return;
+  if (!perf.since) { perf.since = t; perf.frames = 0; return; }
+  if (t - perf.since < 3) return;
+  perf.fps = perf.frames / (t - perf.since);
+  perf.since = t; perf.frames = 0; perf.checks++;
+  if (!MOBILE || FORCE_FX) return;
+  if (perf.fps < 45 && !perf.lowfx) { perf.lowfx = true; document.body.classList.add('lowfx'); }
+  else if (perf.fps < 30 && renderer.getPixelRatio() > 1.25) {
+    renderer.setPixelRatio(Math.max(1.25, renderer.getPixelRatio() - 0.5));
+    perf.pixelRatio = renderer.getPixelRatio();
+    resize();
+  }
+}
+
 function frame() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
+  governor(t);
   step(dt, t);
   updateEffect(dt, t);
   dim += ((current.mood === 'offline' ? 1 : 0) - dim) * Math.min(1, dt * 3);
@@ -1082,6 +1201,25 @@ function frame() {
   renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(frame);
+
+// ------------------------------------------------------------------ acabado (viñeta y grano)
+const grainCanvas = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 160;
+  const g = c.getContext('2d'); const d = g.createImageData(160, 160);
+  for (let i = 0; i < d.data.length; i += 4) { const v = 110 + Math.random() * 145; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+  g.putImageData(d, 0, 0); return c;
+})();
+document.getElementById('grain').style.backgroundImage = `url(${grainCanvas.toDataURL('image/png')})`;
+/** Las capturas también llevan viñeta y grano (las capas del DOM no salen en el lienzo). */
+function paintFinish(out) {
+  const cls = document.body.classList;
+  if (cls.contains('nofx')) return;
+  const g = out.getContext('2d'); const W = out.width, H = out.height;
+  const v = g.createRadialGradient(W / 2, H * 0.42, Math.min(W, H) * 0.42, W / 2, H * 0.42, Math.max(W, H) * 0.78);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, cls.contains('light') ? 'rgba(60,40,70,0.12)' : 'rgba(24,14,34,0.30)');
+  g.fillStyle = v; g.fillRect(0, 0, W, H);
+  g.globalAlpha = 0.05; g.fillStyle = g.createPattern(grainCanvas, 'repeat'); g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+}
 
 // ------------------------------------------------------------------ mensajes
 const pick = (l, keys) => JSON.stringify(keys.map((k) => l?.[k] ?? null));
@@ -1093,7 +1231,7 @@ async function handle(msg) {
     const look = msg.look || {};
     if (msg.framing) current.framing = msg.framing;
     if (current.bg !== `${look.background}|${!!msg.transparent}`) { current.bg = `${look.background}|${!!msg.transparent}`; setBackdrop(look.background, !!msg.transparent); }
-    setLighting(look.lighting);
+    setLighting(look);
     setEffect(look.effect);
     const prev = current.look;
     current.look = look;
@@ -1116,6 +1254,8 @@ async function handle(msg) {
     }
   } else if (msg.type === 'state') {
     current.mood = msg.mood || 'idle';
+    const emoKey = `${msg.emotion || ''}|${msg.emotionId || ''}`;
+    if ('emotion' in msg && emoKey !== current.emotionKey) { current.emotionKey = emoKey; current.emotion = msg.emotion || null; current.emotionAt = clock.elapsedTime; }
   } else if (msg.type === 'snapshot') {
     const em = current.vrm?.expressionManager;
     if (em) { blinkT = -1; nextBlink = clock.elapsedTime + 2; em.setValue('blink', ex.blink); em.update(); }
@@ -1133,6 +1273,7 @@ async function handle(msg) {
       const s = Math.min(canvas.width, canvas.height);
       out.getContext('2d').drawImage(canvas, (canvas.width - s) / 2, (canvas.height - s) / 2, s, s, 0, 0, size, size);
     }
+    paintFinish(out);
     if (msg.framing) { current.framing = prevFraming; camera.aspect = prevAspect; camera.updateProjectionMatrix(); frameCamera(); }
     send({ type: 'snapshot', dataUrl: out.toDataURL('image/jpeg', msg.quality || 0.88) });
   }
@@ -1142,6 +1283,7 @@ window.addEventListener('message', onMessage);
 document.addEventListener('message', onMessage);
 window.__lovel = {
   handle,
+  perf: () => ({ ...perf, mobile: MOBILE }),
   morphs: () => { const out = {}; current.vrm?.scene.traverse((o) => { if (o.morphTargetInfluences && o.morphTargetDictionary) { const d = o.morphTargetDictionary; for (const k in d) { const v = o.morphTargetInfluences[d[k]]; if (v > 0.01) out[o.name + ':' + k] = +v.toFixed(2); } } }); return out; },
   debug: () => { const em = current.vrm?.expressionManager; return em ? Object.fromEntries(em.expressions.map((x) => [x.expressionName, +em.getValue(x.expressionName)?.toFixed?.(2)])) : null; },
 };

@@ -4,7 +4,7 @@ import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { MODEL_BASE_URL } from '@/lib/character/media';
 import { normalizeLook } from '@/lib/character/catalog';
-import type { Presence } from '@/lib/character/types';
+import type { Emotion, Presence } from '@/lib/character/types';
 import { AVATAR_STAGE_HTML } from '@/lib/avatarStageHtml';
 
 export interface VrmAvatarHandle {
@@ -16,6 +16,10 @@ interface Props {
   look: unknown;
   gender?: string;
   presence?: Presence;
+  /** Emoción del último mensaje: la cara la marca unos segundos. */
+  emotion?: Emotion | null;
+  /** Id del mensaje que la provoca: la misma emoción en un mensaje nuevo se vuelve a marcar. */
+  emotionId?: string | null;
   /** bust: busto · face: primer plano · portrait: medio cuerpo vertical. */
   framing?: 'bust' | 'face' | 'portrait';
   /** Fondo transparente (el contenedor pone el color). */
@@ -33,7 +37,7 @@ type StageMessage = { type: 'ready' | 'loaded' | 'error' | 'snapshot'; message?:
  * En móvil se dibuja en un WebView; en web, en un iframe.
  */
 function VrmAvatarBase(
-  { look, gender, presence = 'idle', framing = 'bust', transparent = false, style, onLoaded, onError }: Props,
+  { look, gender, presence = 'idle', emotion = null, emotionId = null, framing = 'bust', transparent = false, style, onLoaded, onError }: Props,
   ref: ForwardedRef<VrmAvatarHandle>,
 ) {
   const webRef = useRef<WebView>(null);
@@ -81,8 +85,8 @@ function VrmAvatarBase(
   }, [lookKey, framing, transparent, post]);
 
   useEffect(() => {
-    post({ type: 'state', mood: presence });
-  }, [presence, post]);
+    post({ type: 'state', mood: presence, emotion, emotionId });
+  }, [presence, emotion, emotionId, post]);
 
   useImperativeHandle(
     ref,

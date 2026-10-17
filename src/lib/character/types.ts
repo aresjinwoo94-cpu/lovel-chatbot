@@ -3,8 +3,8 @@
  * VTubers, hecho con VRoid) + peinado + colores + rostro + pose + accesorios + escena.
  */
 export type Expression = 'neutral' | 'smile' | 'joy' | 'calm' | 'serious' | 'shy' | 'smug' | 'sad' | 'surprised' | 'angry' | 'sleepy';
-export type Pose = 'relaxed' | 'formal' | 'confident' | 'shy' | 'hands_back' | 'wave';
-export type Lighting = 'vtuber' | 'studio' | 'soft' | 'warm' | 'cool' | 'sunset' | 'night' | 'dramatic';
+export type Pose = 'relaxed' | 'formal' | 'confident' | 'shy' | 'hands_back' | 'wave' | 'straight';
+export type Lighting = 'illustrated' | 'vtuber' | 'studio' | 'soft' | 'warm' | 'cool' | 'sunset' | 'night' | 'dramatic';
 export type Effect = 'none' | 'sparkles' | 'petals' | 'snow' | 'fireflies' | 'bubbles' | 'hearts';
 export type Outline = 'none' | 'normal' | 'bold';
 
@@ -72,3 +72,5 @@ export interface CharacterLook {
 
 /** Estado visual del personaje. */
 export type Presence = 'idle' | 'thinking' | 'listening' | 'speaking' | 'happy' | 'offline';
+/** Emoción marcada en la cara (la del último mensaje del personaje). */
+export type Emotion = 'happy' | 'sad' | 'surprised' | 'shy';
