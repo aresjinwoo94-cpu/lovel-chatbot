@@ -1,11 +1,14 @@
 import { describeLook, normalizeLook, presetById, RETIRED_MODELS } from './character/catalog';
 import { createAvatar, saveAvatarThumbnail } from './data';
 import type { CharacterDraft } from './draft';
-import { sceneText, scenarioById } from './roleplay';
+import { sceneFitsGender, sceneText, scenarioById } from './roleplay';
 
 /** Convierte el borrador del creador en un personaje guardado en la cuenta. */
 export async function createFromDraft(d: CharacterDraft) {
-  const scenario = scenarioById(d.scenarioId);
+  const picked = scenarioById(d.scenarioId);
+  // La escena propia de un personaje solo vale para ese personaje con su género (si hay texto propio, manda ese).
+  const fits = !picked?.character || (picked.character === d.presetId && sceneFitsGender(picked, d.gender));
+  const scenario = fits || !d.customScene.trim() ? picked : undefined;
   const name = d.name.trim();
   // Un borrador antiguo puede traer un cuerpo retirado: se migra y su captura no se usa.
   const look = normalizeLook(d.look, d.gender);

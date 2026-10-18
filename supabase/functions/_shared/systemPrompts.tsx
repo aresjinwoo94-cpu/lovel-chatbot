@@ -5,7 +5,7 @@
  * personalidad (rasgos elegidos), la escena (escenario narrativo) y las reglas
  * de estilo y de cuidado. Solo lo usa el backend.
  */
-import { genderize, PERSONAS, sceneText, scenarioById, traitById } from './roleplay.ts';
+import { genderize, PERSONAS, sceneFitsGender, sceneText, scenarioById, traitById } from './roleplay.ts';
 
 export interface PromptAvatar {
   name: string;
@@ -47,7 +47,7 @@ function sceneBlock(avatar: PromptAvatar): string {
   const s = scenarioById(avatar.scenario_id);
   if (s) {
     return `Quién eres para la persona: ${genderize(s.role.es, avatar.gender)}.
-Situación (así la ve la persona): ${sceneText(s.setup.es, avatar.name, avatar.gender)}`;
+Situación (así la ve la persona): ${sceneText(s.setup.es, avatar.name, avatar.gender)}${sceneFitsGender(s, avatar.gender) ? '' : '\nEsta escena se escribió para un personaje de otro género: adapta los detalles a tu género sin comentarlo.'}`;
   }
   return `La persona eligió esta situación con sus propias palabras:
 """

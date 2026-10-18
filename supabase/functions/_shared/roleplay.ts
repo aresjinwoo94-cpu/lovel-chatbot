@@ -553,14 +553,14 @@ export const CHARACTER_SCENARIOS: Scenario[] = [
   {
     id: 'hana-paint', character: 'hana', category: 'slice', emoji: '🎨',
     title: { es: 'Pintura en tu chaqueta', en: 'Paint on your jacket' },
-    setup: { es: 'Compartes un estudio de alquiler con {name}, una pintora con la que casi no has hablado. Al girarse con el pincel en la mano te acaba de dejar una mancha azul enorme en tu chaqueta favorita.', en: 'You share a rented studio with {name}, a painter you’ve barely talked to. Turning around with a brush in her hand, she just left a huge blue stain on your favorite jacket.' },
-    role: { es: 'tu compañera de estudio', en: 'your studio mate' },
+    setup: { es: 'Compartes un taller de alquiler con {name}, una pintora con la que casi no has hablado. Al girarse con el pincel en la mano te acaba de dejar una mancha azul enorme en tu chaqueta favorita.', en: 'You share a rented studio with {name}, a painter you’ve barely talked to. Turning around with a brush in her hand, she just left a huge blue stain on your favorite jacket.' },
+    role: { es: 'la pintora con la que compartes taller', en: 'the painter you share a studio with' },
     opening: 'Muerta de vergüenza: se tapa la boca, mira la mancha azul, se disculpa atropelladamente y ofrece dos soluciones (lavarla ella o pintarle algo bonito encima); termina preguntando cuál prefiere.',
   },
   {
     id: 'hana-park', character: 'hana', category: 'romance', emoji: '✏️',
     title: { es: 'Te estaba dibujando', en: 'She was drawing you' },
-    setup: { es: 'Lees en un banco del parque. {name}, una chica con un cuaderno sentada enfrente, lleva un rato mirándote; al levantarte se le cae el cuaderno y ves que te estaba dibujando a ti.', en: 'You’re reading on a park bench. {name}, a woman with a sketchbook sitting across from you, has been glancing at you for a while; when you get up she drops the sketchbook and you see she was drawing you.' },
+    setup: { es: 'Lees en un banco del parque. {name}, una mujer con un cuaderno sentada enfrente, lleva un rato mirándote; al levantarte se le cae el cuaderno y ves que te estaba dibujando a ti.', en: 'You’re reading on a park bench. {name}, a woman with a sketchbook sitting across from you, has been glancing at you for a while; when you get up she drops the sketchbook and you see she was drawing you.' },
     role: { es: 'alguien que acabas de conocer en el parque', en: 'someone you just met in the park' },
     opening: 'Roja de vergüenza: recoge el cuaderno, admite que le estaba dibujando porque la luz de la tarde le quedaba bonita, enseña el dibujo a medio hacer y pregunta si le importa que lo termine.',
   },
@@ -585,7 +585,7 @@ export const CHARACTER_SCENARIOS: Scenario[] = [
     title: { es: 'Récord batido', en: 'High score beaten' },
     setup: { es: 'Viernes por la noche en un bar de recreativos. Acabas de batir el récord de la máquina de baile, que llevaba meses a nombre de {name}, una habitual del bar, y ella te está esperando con los brazos cruzados.', en: 'Friday night at an arcade bar. You just beat the dance machine’s high score, which had belonged to {name}, a regular, for months, and she’s waiting for you with her arms crossed.' },
     role: { es: 'tu nueva rival', en: 'your new rival' },
-    opening: 'Picada pero divertida: señala la pantalla donde ya no está su nombre, reconoce que ha sido bueno y le reta a la revancha ahora mismo, preguntando si acepta o tiene miedo.',
+    opening: 'Picada pero divertida: señala la pantalla donde ya no está su nombre, reconoce que ha sido una buena partida y le reta a la revancha ahora mismo, preguntando si acepta o tiene miedo.',
   },
   {
     id: 'zoe-trivia', character: 'zoe', category: 'friendship', emoji: '❓',
@@ -675,6 +675,9 @@ export const scenarioById = (id: string | null | undefined) => {
 };
 
 /** Escenas propias de un personaje del catálogo. */
+/** ¿La escena encaja con el género del personaje? (las escenas propias están escritas para él) */
+export const sceneFitsGender = (s: Scenario, gender: Gender) => !s.character || PERSONAS[s.character]?.gender === gender;
+
 export const scenariosFor = (presetId: string | null | undefined) => (presetId ? CHARACTER_SCENARIOS.filter((s) => s.character === presetId) : []);
 
 /** Rellena {name} en el texto del escenario. */

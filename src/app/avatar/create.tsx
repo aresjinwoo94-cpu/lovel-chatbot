@@ -53,7 +53,7 @@ import { fetchAvatar, saveAvatarThumbnail, updateAvatar, uploadCustomVrm } from 
 import { showDialog } from '@/lib/dialog';
 import { type CharacterDraft, clearDraft, loadDraft, saveDraft } from '@/lib/draft';
 import { useI18n } from '@/lib/i18n';
-import { conflictsWith, genderize, MAX_TRAITS, type Scenario, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, scenarioById, SCENARIOS, scenariosFor, traitById, traitLabel, TRAITS } from '@/lib/roleplay';
+import { conflictsWith, genderize, MAX_TRAITS, type Scenario, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, sceneFitsGender, scenarioById, SCENARIOS, scenariosFor, traitById, traitLabel, TRAITS } from '@/lib/roleplay';
 import type { Gender } from '@/lib/types';
 import { useColors } from '@/lib/theme';
 
@@ -269,7 +269,9 @@ export default function CreateCharacter() {
   const reset = () => commit(original.current ?? presetById(presetId)?.look ?? (gender === 'male' ? DEFAULT_MALE : DEFAULT_FEMALE).look);
 
   const displayName = name.trim() || '…';
-  const scenario = scenarioById(scenarioId);
+  // Una escena propia de otro personaje (o de este con otro género) no cuenta como elegida.
+  const picked = scenarioById(scenarioId);
+  const scenario = picked && (!picked.character || (picked.character === presetRef && sceneFitsGender(picked, gender))) ? picked : undefined;
   const sceneOk = !!scenario || customScene.trim().length >= 20;
   const canHair = hairCompatible(look.model);
   const needsHair = modelById(look.model)?.needsHair;
@@ -766,6 +768,7 @@ export default function CreateCharacter() {
   const ownScenes = presetById(presetRef)?.gender === gender ? scenariosFor(presetRef) : [];
   const inCategory = (s: Scenario) => category === 'all' || s.category === category;
   const scenarios = SCENARIOS.filter(inCategory);
+  const ownInCategory = ownScenes.filter(inCategory);
   const sceneList = (list: Scenario[]) => (
     <View className="overflow-hidden rounded-xl border border-line bg-paper">
       {list.map((s, i) => {
@@ -792,19 +795,19 @@ export default function CreateCharacter() {
     <View>
       <Display className="text-[22px] leading-[28px]">{t('create.scenario.q')}</Display>
       <Muted className="mb-4 mt-1.5">{t('create.scenario.hint', { name: displayName })}</Muted>
-      {ownScenes.length ? (
-        <>
-          <Text className="mb-2 font-semibold text-[13px] text-ink">{t('create.scenario.own', { name: displayName })}</Text>
-          {sceneList(ownScenes)}
-          <Text className="mb-2 mt-6 font-semibold text-[13px] text-ink">{t('create.scenario.more')}</Text>
-        </>
-      ) : null}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 mb-3" contentContainerClassName="px-4">
         <Tag label={t('create.scenario.all')} selected={category === 'all'} onPress={() => setCategory('all')} />
         {SCENARIO_CATEGORIES.map((c) => (
           <Tag key={c.id} label={c.label[language]} selected={category === c.id} onPress={() => setCategory(c.id)} />
         ))}
       </ScrollView>
+      {ownInCategory.length ? (
+        <>
+          <Text className="mb-2 font-semibold text-[13px] text-ink">{t('create.scenario.own', { name: displayName })}</Text>
+          {sceneList(ownInCategory)}
+          <Text className="mb-2 mt-6 font-semibold text-[13px] text-ink">{t('create.scenario.more')}</Text>
+        </>
+      ) : null}
       {sceneList(scenarios)}
       <Text className="mb-2 mt-6 font-semibold text-[13px] text-ink">{t('create.scenario.custom')}</Text>
       <TextInput
