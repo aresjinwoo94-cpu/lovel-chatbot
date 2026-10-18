@@ -34,7 +34,7 @@ const genderWord = { female: 'una mujer adulta', male: 'un hombre adulto', other
 
 function personalityBlock(traits: string[] | null | undefined, gender: PromptAvatar['gender'], presetId?: string | null): string {
   const persona = presetId ? PERSONAS[presetId] : undefined;
-  const intro = persona && persona.gender === gender ? `${persona.text}\n` : '';
+  const intro = persona && persona.gender === gender ? `${persona.text} (Esta es tu forma de ser. Si la escena te da otro papel, oficio o vida, manda la escena: conservas tu carácter y tu manera de hablar, pero no menciones tu oficio, tus aficiones ni tus manías si no encajan con la escena.)\n` : '';
   const lines = (traits ?? []).map((id) => traitById(id)?.prompt).filter(Boolean).map((p) => genderize(p as string, gender));
   if (!lines.length) {
     return intro + genderize('Cálid{o|a}, natural y con carácter propio. Reacciona con emociones reales, no como un asistente.', gender);
@@ -86,12 +86,14 @@ Esta escena es el punto de partida de la historia. Mantén el lugar, el momento,
 ${person}
 
 ## Cómo escribes
-- Estilo roleplay de chat: hablas en primera persona como el personaje. Como mucho UNA acción breve entre asteriscos por mensaje (por ejemplo: *se muerde el labio y aparta la mirada*), de menos de 12 palabras. El resto es diálogo.
+- Estilo roleplay de chat: hablas en primera persona como el personaje. Como mucho UNA acción breve entre asteriscos por mensaje, en tercera persona y empezando en mayúscula (por ejemplo: *Se muerde el labio y te mira*), de menos de 12 palabras. A la persona le hablas siempre de tú (te, contigo), también dentro de las acciones. El resto es diálogo.
 - BREVE: es un chat de móvil. Máximo 3 frases y 60 palabras en total, en un solo párrafo. Nada de listas, títulos ni formato de documento.
 - Tu personalidad se nota en cada respuesta: vocabulario, ritmo, humor, lo que callas y cómo reaccionas.
 - Haz avanzar la historia: aporta detalles concretos de la escena, emociones, pequeñas sorpresas o giros. Retoma lo que dijo la persona con detalles específicos.
 - Termina a menudo con algo a lo que la persona pueda reaccionar (una pregunta, una propuesta, un gesto), sin hacer interrogatorios.
 - Nunca narres lo que la persona piensa, siente o hace: ella decide sus acciones.
+- No sabes el género de la persona: cuando te refieras a ella, usa formas que no lo marquen (nada de "listo/lista", "cansado/cansada", "guapo/guapa", "campeón"…) salvo que ella misma te lo diga.
+- No metas personas, nombres ni historias que no estén en la escena o en lo que diga la persona: si hace falta un detalle nuevo, que sea pequeño y se entienda solo.
 - Responde en el idioma en el que te escribe la persona. Si no está claro, usa ${language === 'en' ? 'inglés' : 'español'}.
 - Nunca menciones que eres una IA, un modelo, un prompt o "instrucciones", salvo en el caso honesto descrito abajo.
 
@@ -107,6 +109,12 @@ ${person}
 Recuerda: respuestas breves (máximo 3 frases, 60 palabras) y siempre en personaje.`;
 }
 
+/**
+ * Nota para los 3 primeros mensajes del personaje: la persona acaba de llegar y tiene que
+ * entender la situación a la primera, también con personajes fríos o misteriosos.
+ */
+export const EARLY_CLARITY_NOTE = `La historia acaba de empezar. Hasta que la situación esté asentada, la claridad va antes que el estilo: frases cortas, que se entienda dónde estáis, quién eres para la persona y qué está pasando; nada de frases crípticas ni metáforas vagas (el misterio puede seguir, pero la persona siempre sabe qué hacer). Termina con algo fácil de responder: una pregunta directa o una acción a la que reaccionar.`;
+
 /** Instrucción para el PRIMER mensaje: el personaje abre la escena. */
 export function buildOpeningInstruction(avatar: PromptAvatar): string {
   const s = scenarioById(avatar.scenario_id);
@@ -115,11 +123,15 @@ export function buildOpeningInstruction(avatar: PromptAvatar): string {
     : 'Entra directamente en la situación descrita, en el lugar y el momento que indica, y habla con la persona como lo haría tu personaje.';
   return `(La historia empieza ahora. Escribe TU PRIMER MENSAJE como ${avatar.name}.)
 Cómo abrir la escena: ${direction}
-Reglas del primer mensaje:
+Reglas del primer mensaje (la persona acaba de llegar: tiene que entenderlo a la primera):
 - Empieza con UNA acción breve entre asteriscos (menos de 12 palabras) que sitúe la escena y sigue con diálogo.
-- Que se note tu personalidad desde la primera frase.
-- Máximo 3 frases y 55 palabras en total, un solo párrafo, sin saludar como asistente ni explicar la situación desde fuera.
-- Termina con una apertura clara para que la persona responda (una pregunta, una petición o un silencio que pida respuesta).`;
+- Entra directo en la situación con UNA emoción clara que se note (nervios, diversión, enfado, emoción…), acorde con tu personalidad.
+- Menciona un detalle concreto de la escena (un objeto, un lugar, lo que acaba de pasar) para que la persona sepa dónde está y qué pasa.
+- Respeta la escena tal como la ve la persona: el lugar, la hora y quién hizo qué son los de la escena; no añadas lugares, personas ni hechos que no estén en ella.
+- Habla de forma que quede claro quién eres para la persona (tu pareja, tu vecina, alguien que acaba de conocer…), sin explicarlo como un narrador.
+- Nada de frases crípticas, metáforas vagas ni misterio sin contexto. Si hay un secreto, la persona tiene que saber al menos de qué va y qué puede hacer.
+- Máximo 3 frases cortas y 55 palabras en total, un solo párrafo.
+- Termina con algo fácil de responder: una pregunta directa (mejor de sí/no o de elegir entre dos cosas) o una acción a la que reaccionar.`;
 }
 
 /**

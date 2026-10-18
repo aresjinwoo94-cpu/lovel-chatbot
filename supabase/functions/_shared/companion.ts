@@ -43,6 +43,8 @@ export async function openScene(opts: { avatar: AvatarRow; profile: ProfileRow; 
     console.error('opening', e);
   }
   // Si la IA no responde, el personaje abre igualmente con una frase propia (nunca pantalla vacía).
+  // Un solo párrafo (a veces el modelo mete saltos de línea tras la acción).
+  if (text) text = text.replace(/\s*\n+\s*/g, ' ').trim();
   const content = text ?? FALLBACK_OPENING[opts.profile.language === 'en' ? 'en' : 'es'](opts.avatar.name);
   // Otra petición pudo abrir la escena mientras tanto.
   const { count: again } = await admin.from('messages').select('id', { count: 'exact', head: true }).eq('avatar_id', opts.avatar.id);

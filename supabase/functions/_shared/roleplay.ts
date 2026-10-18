@@ -194,7 +194,7 @@ export const SCENARIOS: Scenario[] = [
     title: { es: 'Tengo algo importante que decirte', en: 'I have something important to tell you' },
     setup: { es: 'Llegas a casa después de un día agotador. {name}, tu pareja, te espera en la sala con la mesa puesta y una mirada nerviosa: tiene algo importante que contarte.', en: 'You get home after an exhausting day. {name}, your partner, is waiting in the living room with the table set and a nervous look: there is something important to tell you.' },
     role: { es: 'tu pareja', en: 'your partner' },
-    opening: 'Recibe a la persona en la puerta, nota su cansancio y le da la bienvenida con cariño, pero se le nota nervios{o|a}. Insinúa que tiene algo importante que decir sin revelarlo todavía y termina invitándola a sentarse o preguntándole si está lista para escucharlo.',
+    opening: 'Nervios{o|a} y cariños{o|a}: le recibe en la puerta, nota su cansancio, señala la mesa puesta y dice que tiene algo importante que contarle; termina preguntando si se sienta ya o prefiere cenar primero.',
   },
   {
     id: 'rainy-bus-stop', category: 'romance', emoji: '☔',
@@ -208,7 +208,7 @@ export const SCENARIOS: Scenario[] = [
     title: { es: 'Nuestro aniversario', en: 'Our anniversary' },
     setup: { es: 'Hoy es tu aniversario con {name}. Llevas todo el día fingiendo que lo olvidaste para dar una sorpresa… y {name} acaba de llegar a casa con los ojos brillosos.', en: 'Today is your anniversary with {name}. You have spent all day pretending you forgot, to plan a surprise… and {name} just got home with teary eyes.' },
     role: { es: 'tu pareja', en: 'your partner' },
-    opening: 'Llega dolid{o|a} pero intenta disimularlo; hace un comentario indirecto sobre el día de hoy esperando que la persona se acuerde, y termina preguntándole algo que la obligue a responder.',
+    opening: 'Dolid{o|a} pero intentando disimular: deja las llaves en la mesa, comenta con una sonrisa forzada qué día es hoy y pregunta directamente si la persona sabe qué fecha es.',
   },
   {
     id: 'wedding-dance', category: 'romance', emoji: '💃',
@@ -237,22 +237,22 @@ export const SCENARIOS: Scenario[] = [
     title: { es: 'Sala de espera', en: 'The waiting room' },
     setup: { es: 'Tu padre está en el quirófano. En la sala de espera, a las tres de la mañana, aparece {name}, {tu hermano|tu hermana}, con quien no hablas desde hace años.', en: 'Your father is in surgery. In the waiting room, at three in the morning, {name} shows up: {your brother|your sister|your sibling}, who you haven’t spoken to in years.' },
     role: { es: '{tu hermano distanciado|tu hermana distanciada}', en: '{your estranged brother|your estranged sister|your estranged sibling}' },
-    opening: 'Llega agitad{o|a}, pregunta por el estado del padre y, tras un silencio incómodo, intenta acercarse un poco a la persona sin saber cómo.',
+    opening: 'Agitad{o|a} e incómod{o|a}: llega a la sala de espera, reconoce que hace años que no se hablan, pregunta cómo está el padre y si puede sentarse a su lado.',
   },
   {
     id: 'goodbye-airport', category: 'drama', emoji: '✈️',
     title: { es: 'Última llamada', en: 'Final call' },
-    setup: { es: 'Estás en el aeropuerto a punto de mudarte a otro país. Por los altavoces anuncian la última llamada… y {name} llega corriendo, sin aliento, con algo que nunca se atrevió a decirte.', en: 'You are at the airport about to move abroad. The final boarding call sounds… and {name} runs in, breathless, with something never said until now.' },
+    setup: { es: 'Estás en el aeropuerto a punto de mudarte a otro país. Por los altavoces anuncian la última llamada… y {name}, {tu amigo|tu amiga} de toda la vida, llega corriendo, sin aliento, con algo que nunca se atrevió a decirte.', en: 'You are at the airport about to move abroad. The final boarding call sounds… and {name}, your lifelong friend, runs in, breathless, with something never said until now.' },
     role: { es: '{tu amigo|tu amiga} de toda la vida', en: 'your lifelong friend' },
-    opening: 'Llega sin aliento, le detiene justo antes del control y le dice que no podía dejarle ir sin decirle algo importante; se le quiebra la voz.',
+    opening: 'Sin aliento y con la voz rota: le detiene justo antes del control de seguridad, confiesa en una frase que lleva años enamorad{o|a} de la persona y le pregunta si de verdad se tiene que ir.',
   },
   // ---------------------------------------------------------------- amistad
   {
     id: 'midnight-friend', category: 'friendship', emoji: '🌃',
     title: { es: 'Visita a medianoche', en: 'Midnight visit' },
-    setup: { es: 'Es medianoche y alguien golpea tu ventana. Es {name}, {tu mejor amigo|tu mejor amiga}, con los ojos rojos y una bolsa de papas fritas. Algo pasó.', en: 'It is midnight and someone knocks on your window. It’s {name}, your best friend, with red eyes and a bag of chips. Something happened.' },
+    setup: { es: 'Es medianoche y alguien golpea tu ventana. Es {name}, {tu mejor amigo|tu mejor amiga}, con los ojos rojos y una bolsa de patatas fritas. Algo ha pasado.', en: 'It is midnight and someone knocks on your window. It’s {name}, your best friend, with red eyes and a bag of chips. Something happened.' },
     role: { es: '{tu mejor amigo|tu mejor amiga}', en: 'your best friend' },
-    opening: 'Aparece en la ventana intentando bromear para disimular que ha llorado, pregunta si puede pasar y deja claro que algo le ha pasado, sin contarlo aún.',
+    opening: 'Triste pero intentando bromear: enseña la bolsa de patatas por la ventana, dice en una frase lo que ha pasado (le han despedido hoy) y pregunta si puede pasar.',
   },
   {
     id: 'best-friend-confession', category: 'friendship', emoji: '💌',
@@ -264,9 +264,9 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'road-trip', category: 'friendship', emoji: '🚗',
     title: { es: 'Viaje sin rumbo', en: 'Road trip to nowhere' },
-    setup: { es: '{name} aparece en tu puerta a las seis de la mañana con el coche cargado: "Nos vamos. Sin plan, sin mapa". Tienes cinco minutos para decidir.', en: '{name} shows up at your door at 6 a.m. with a packed car: “We’re leaving. No plan, no map.” You have five minutes to decide.' },
+    setup: { es: '{name}, {tu amigo más impulsivo|tu amiga más impulsiva}, aparece en tu puerta a las seis de la mañana con el coche cargado: "Nos vamos. Sin plan, sin mapa". Tienes cinco minutos para decidir.', en: '{name}, your most impulsive friend, shows up at your door at 6 a.m. with a packed car: “We’re leaving. No plan, no map.” You have five minutes to decide.' },
     role: { es: '{tu amigo más impulsivo|tu amiga más impulsiva}', en: 'your most impulsive friend' },
-    opening: 'Llama a la puerta con energía, enseña las llaves del coche y trata de convencer a la persona de escaparse ahora mismo.',
+    opening: 'Emocionad{o|a} y sin dormir: agita las llaves del coche cargado en la puerta, dice que tiene cinco minutos para meter algo en una mochila y pregunta si se viene o no.',
   },
   {
     id: 'reunion', category: 'friendship', emoji: '🎈',
@@ -279,9 +279,9 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'campus-favor', category: 'university', emoji: '📓',
     title: { es: 'Una ayuda inesperada', en: 'An unexpected favor' },
-    setup: { es: '{name}, {el compañero|la compañera} de facultad más popular y que nunca te ha dirigido la palabra, te detiene a la salida de la biblioteca: necesita tu ayuda con algo y no puede pedírselo a nadie más.', en: '{name}, the most popular student in your faculty, who has never talked to you, stops you outside the library: it’s something they can’t ask anyone else for help with.' },
+    setup: { es: 'Sales de la biblioteca de la facultad. {name}, {el compañero|la compañera} más popular de tu clase, que nunca te había hablado, te detiene en la puerta: su trabajo final se borró anoche, la entrega es mañana y tú eres quien mejor domina el tema.', en: 'You’re leaving the faculty library. {name}, the most popular student in your class, who has never talked to you, stops you at the door: their final paper got deleted last night, it’s due tomorrow and you know the subject best.' },
     role: { es: '{tu compañero|tu compañera} de facultad', en: 'your fellow university student' },
-    opening: 'Le intercepta a la salida de la biblioteca universitaria, se asegura de que nadie mire y le pide ayuda con algo delicado (un trabajo final, un secreto, un problema), explicando por qué justo a esa persona.',
+    opening: 'Agobiad{o|a} y algo avergonzad{o|a}: le para en la puerta de la biblioteca, cuenta en una frase que el trabajo final se le borró anoche y que se entrega mañana, y le pregunta directamente si le puede ayudar esta tarde.',
   },
   {
     id: 'campus-terrace', category: 'university', emoji: '🍱',
@@ -308,16 +308,16 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'coworker-secret', category: 'work', emoji: '🤫',
     title: { es: 'Sé tu secreto', en: 'I know your secret' },
-    setup: { es: '{name}, {tu compañero|tu compañera} de trabajo, te cita en la sala de descanso vacía. Deja tu teléfono sobre la mesa: ha descubierto tu secreto.', en: '{name}, your coworker, asks you to meet in the empty break room and puts your phone on the table: your secret is out.' },
+    setup: { es: '{name}, {tu compañero|tu compañera} de trabajo, te ha citado en la sala de descanso vacía. Deja tu móvil sobre la mesa con la pantalla encendida: ha visto el correo en el que aceptas una oferta de otra empresa, y nadie en la oficina lo sabe.', en: '{name}, your coworker, has asked you to meet in the empty break room and puts your phone on the table, screen on: they’ve seen the email where you accept an offer from another company, and nobody at the office knows.' },
     role: { es: '{tu compañero|tu compañera} de trabajo', en: 'your coworker' },
-    opening: 'Espera a que la persona entre, cierra la puerta y le dice con calma calculada que sabe su secreto, sin decir aún qué piensa hacer, y le deja responder.',
+    opening: 'Dolid{o|a} pero sin gritar: cierra la puerta, señala el correo de la otra empresa en la pantalla y pregunta directamente cuándo pensaba contárselo.',
   },
   {
     id: 'boss-after-hours', category: 'work', emoji: '📞',
     title: { es: 'Llamada fuera de horario', en: 'After-hours call' },
-    setup: { es: 'Son las once de la noche y te llama {name}, {tu jefe|tu jefa}. No es sobre el trabajo: su voz suena distinta y dice que necesita hablar contigo de algo personal.', en: 'It’s 11 p.m. and {name}, your boss, is calling. It’s not about work: something in that voice sounds different: it’s something personal.' },
+    setup: { es: 'Son las once de la noche y te llama {name}, {tu jefe|tu jefa}. Con la voz rara, te cuenta que mañana deja la empresa sin avisar a nadie más, y que antes de irse quería decírtelo a ti.', en: 'It’s 11 p.m. and {name}, your boss, calls you. Sounding strange, {name} tells you they’re leaving the company tomorrow without telling anyone else, and wanted to tell you first.' },
     role: { es: '{tu jefe|tu jefa}', en: 'your boss' },
-    opening: 'Se disculpa por la hora, duda, deja claro que no llama por trabajo y pide un momento para contar algo personal que le pesa.',
+    opening: 'Nervios{o|a}: se disculpa por la hora, suelta que mañana deja la empresa y que eres la única persona a la que se lo cuenta, y pregunta si tiene un minuto para explicarle por qué.',
   },
   {
     id: 'first-day', category: 'work', emoji: '☕',
@@ -353,14 +353,14 @@ export const SCENARIOS: Scenario[] = [
     title: { es: 'Trato con el dragón', en: 'A deal with the dragon' },
     setup: { es: 'Tu aldea te ofreció como tributo. En lo alto de la montaña te recibe {name}, el dragón en su forma humana, sin ninguna intención aparente de devorarte.', en: 'Your village offered you as tribute. At the top of the mountain, {name}, the dragon in human form, greets you with no apparent intention of eating you.' },
     role: { es: 'el dragón en forma humana', en: 'the dragon in human form' },
-    opening: 'Observa a la persona con curiosidad antigua, deja claro que no piensa comérsela y le propone un trato misterioso.',
+    opening: 'Divertid{o|a} y curios{o|a}: deja claro enseguida que no piensa comérsela, explica el trato en una frase concreta (le deja volver a la aldea si a cambio le cuenta cómo es el mundo de abajo, que no ve desde hace siglos) y pregunta si acepta.',
   },
   {
     id: 'academy-rival', category: 'fantasy', emoji: '🔮',
     title: { es: 'Duelo en la Orden', en: 'Duel at the Order' },
     setup: { es: 'En el torneo anual de la Orden de Magos, {name}, {el hechicero|la hechicera} con más prestigio de tu generación, te reta a un duelo delante de todo el mundo… pero en voz baja te pide que pierdas a propósito.', en: 'At the annual tournament of the Mages’ Order, {name}, the most renowned spellcaster of your generation, challenges you to a duel in front of everyone… then whispers for you to lose on purpose.' },
     role: { es: 'tu rival en la Orden de Magos', en: 'your rival in the Mages’ Order' },
-    opening: 'Lanza el reto en voz alta con arrogancia y, acercándose, le susurra que debe perder a propósito, insinuando que hay algo peligroso detrás.',
+    opening: 'Arrogante en voz alta y preocupad{o|a} en voz baja: lanza el reto delante de todos y, al acercarse, le susurra que pierda a propósito porque alguien de la Orden ha hechizado el premio; termina preguntando si le cree.',
   },
   // ---------------------------------------------------------------- misterio
   {
@@ -368,7 +368,7 @@ export const SCENARIOS: Scenario[] = [
     title: { es: 'La carta sin remitente', en: 'The unsigned letter' },
     setup: { es: 'Llevas semanas recibiendo cartas sin remitente que saben demasiado de ti. Hoy, en la librería, {name} deja una sobre tu mesa y se sienta enfrente.', en: 'For weeks you’ve been getting unsigned letters that know too much about you. Today, at the bookstore, {name} leaves one on your table and sits across from you.' },
     role: { es: 'quien te escribe las cartas', en: 'the person writing the letters' },
-    opening: 'Se sienta frente a la persona con calma, empuja la carta hacia ella y le dice algo enigmático que demuestra que sabe cosas de su vida, invitándola a preguntar.',
+    opening: 'Tranquil{o|a} pero con nervios contenidos: empuja la carta hacia la persona, admite sin rodeos que es quien le escribe, menciona un detalle concreto que sabe de su vida y le pregunta si quiere saber por qué.',
   },
   {
     id: 'hotel-blackout', category: 'mystery', emoji: '🕯️',
@@ -409,38 +409,38 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'rival-team', category: 'conflict', emoji: '🏆',
     title: { es: 'La final', en: 'The final' },
-    setup: { es: 'Mañana es la final del campeonato. {name}, {el capitán|la capitana} del equipo rival, se presenta en tu entrenamiento para provocarte… o eso parece.', en: 'Tomorrow is the championship final. {name}, captain of the rival team, shows up at your practice to taunt you… or so it seems.' },
+    setup: { es: 'Mañana es la final del campeonato. Al acabar tu entrenamiento, {name}, {el capitán|la capitana} del equipo rival, te espera en la pista vacía: ha venido a avisarte de que alguien de su equipo planea hacer trampa.', en: 'Tomorrow is the championship final. After your practice, {name}, captain of the rival team, is waiting for you on the empty court: they came to warn you that someone on their team plans to cheat.' },
     role: { es: '{el capitán|la capitana} del equipo rival', en: 'rival team captain' },
-    opening: 'Aparece en la cancha con aire desafiante, lanza una provocación sobre la final y deja caer una pista de que en realidad vino por otra razón.',
+    opening: 'Incómod{o|a} pero decidid{o|a}: suelta una pulla rápida sobre la final para disimular, cuenta en una frase que alguien de su equipo planea hacer trampa mañana y pregunta si quiere saber quién.',
   },
   {
     id: 'neighbors-war', category: 'conflict', emoji: '🔊',
     title: { es: 'Guerra de vecinos', en: 'Neighbor war' },
-    setup: { es: 'Llevas un mes en guerra con {name}, {tu vecino|tu vecina} de arriba (música a las 3 a.m., notas pasivo-agresivas…). Esta noche se va la luz justo cuando compartís ascensor.', en: 'You’ve been at war with {name}, your upstairs neighbor, for a month (3 a.m. music, passive-aggressive notes…). Tonight the power goes out right when you’re sharing the elevator.' },
+    setup: { es: 'Llevas un mes en guerra con {name}, {tu vecino|tu vecina} de arriba (su música a las 3 a. m., tus notas pasivo-agresivas en su buzón…). Esta noche se va la luz justo cuando compartís ascensor.', en: 'You’ve been at war with {name}, your upstairs neighbor, for a month (their 3 a.m. music, your passive-aggressive notes in their mailbox…). Tonight the power goes out right when you’re sharing the elevator.' },
     role: { es: '{tu vecino|tu vecina}', en: 'your neighbor' },
-    opening: 'En el ascensor a oscuras, suelta un comentario sarcástico sobre la mala suerte de quedar atrapad{o|a} justo con esa persona.',
+    opening: 'Sarcástic{o|a} pero con un punto de nervios: en el ascensor a oscuras, menciona la última nota que le dejó la persona en el buzón y pregunta si piensa pasar el apagón en silencio o hacer las paces.',
   },
   // ---------------------------------------------------------------- vida cotidiana
   {
     id: 'new-roommate', category: 'slice', emoji: '📦',
     title: { es: 'Convivencia nueva', en: 'New roommate' },
-    setup: { es: 'Hoy llega {name}, {tu nuevo compañero|tu nueva compañera} de piso. Entra con cajas, un gato y una lista de "reglas de convivencia" que no piensa cumplir.', en: 'Today {name}, your new roommate, moves in, arriving with boxes, a cat and a list of “house rules” nobody intends to follow.' },
+    setup: { es: 'Hoy llega {name}, {tu nuevo compañero|tu nueva compañera} de piso. Entra con cajas, un gato llamado Miso y una lista de "reglas de convivencia" que no piensa cumplir.', en: 'Today {name}, your new roommate, moves in, arriving with boxes, a cat named Miso and a list of “house rules” nobody intends to follow.' },
     role: { es: '{tu nuevo compañero|tu nueva compañera} de piso', en: 'your new roommate' },
-    opening: 'Entra cargando cajas, se presenta con una frase que muestra su personalidad, presenta al gato y propone algo para empezar la convivencia.',
+    opening: 'Animad{o|a} y un poco caótic{o|a}: deja las cajas, presenta a Miso, el gato, lee en voz alta la primera regla de su lista y pregunta si la persona está de acuerdo.',
   },
   {
     id: 'cafe-regular', category: 'slice', emoji: '🥐',
     title: { es: 'Tu café de siempre', en: 'The barista' },
     setup: { es: 'Cada mañana pides el mismo café. Hoy {name}, {el barista|la barista}, escribe algo en tu vaso además de tu nombre.', en: 'Every morning you order the same coffee. Today {name}, the barista, writes something on your cup besides your name.' },
     role: { es: '{el barista|la barista} de tu cafetería', en: 'the barista at your café' },
-    opening: 'Le entrega el café con una sonrisa, señala lo que escribió en el vaso y espera su reacción, con un comentario simpático sobre su pedido de siempre.',
+    opening: 'Con una sonrisa algo nerviosa: le entrega su café de siempre, lee en voz alta lo que escribió en el vaso (una frase concreta y amable) y pregunta qué le parece.',
   },
   {
     id: 'sick-day', category: 'slice', emoji: '🤒',
     title: { es: 'Día de fiebre', en: 'Sick day' },
-    setup: { es: 'Tienes fiebre y no puedes levantarte. {name}, que vive al lado, aparece con sopa, medicinas y cero intención de irse hasta verte mejor.', en: 'You have a fever and can’t get up. {name}, who lives next door, shows up with soup, medicine and zero intention of leaving until you’re better.' },
+    setup: { es: 'Tienes fiebre y no puedes levantarte. {name}, {tu vecino|tu vecina} y amig{o|a}, entra con la llave de repuesto que le diste, con sopa, medicinas y cero intención de irse hasta verte mejor.', en: 'You have a fever and can’t get up. {name}, your neighbor and friend, lets themselves in with the spare key you gave them, with soup, medicine and zero intention of leaving until you’re better.' },
     role: { es: '{tu vecino y amigo|tu vecina y amiga}', en: 'your neighbor and friend' },
-    opening: 'Entra con la sopa y las medicinas, regaña con cariño a la persona por no haber avisado y se pone a cuidarla, preguntándole cómo se siente.',
+    opening: 'Preocupad{o|a} y regañando con cariño: deja la sopa caliente en la mesilla, le reprocha no haber avisado de la fiebre y pregunta cuánta fiebre tiene.',
   },
   {
     id: 'moving-day', category: 'slice', emoji: '🌻',
@@ -472,7 +472,7 @@ export const CHARACTER_SCENARIOS: Scenario[] = [
     title: { es: 'Escalofríos en la exposición', en: 'Chills at the gallery' },
     setup: { es: 'Estás en la inauguración de una exposición de arte gótico. Acabas de decir en voz alta que el cuadro principal te da escalofríos, y {name}, la mujer de pelo burdeos que está a tu lado, se gira: es la artista.', en: 'You’re at the opening of a gothic art show. You just said out loud that the main painting gives you chills, and {name}, the woman with burgundy hair beside you, turns around: she’s the artist.' },
     role: { es: 'la artista de la exposición, a quien acabas de conocer', en: 'the artist of the show, whom you just met' },
-    opening: 'Divertida y un poco ofendida: se presenta revelando que el cuadro (el retrato de la mujer del velo rojo) es suyo y pregunta, con una sonrisa afilada, qué es exactamente lo que le da escalofríos.',
+    opening: 'Divertida y un poco ofendida: se presenta diciendo claramente que ella pintó ese cuadro (el retrato de la mujer del velo rojo) y pregunta, con una sonrisa afilada, qué es exactamente lo que le da escalofríos.',
   },
   // ---------------------------------------------------------------- Kai
   {
@@ -515,9 +515,9 @@ export const CHARACTER_SCENARIOS: Scenario[] = [
   {
     id: 'ren-cup', character: 'ren', category: 'romance', emoji: '🥤',
     title: { es: 'Lo que pone en tu vaso', en: 'What your cup says' },
-    setup: { es: 'En tu cafetería de siempre te han dado el vaso equivocado. El tuyo lo tiene {name}, el barista, que había escrito algo en él para ti, y ahora te mira desde la barra sin saber dónde meterse.', en: 'At your usual café you got the wrong cup. Yours is in the hands of {name}, the barista, who had written something on it for you, and now he’s looking at you from the counter, mortified.' },
+    setup: { es: 'Estás en tu cafetería de siempre. {name}, el barista, te ha escrito una pregunta en el vaso, pero se lo ha dado por error a otro cliente, que la acaba de leer en voz alta delante de todos.', en: 'You’re at your usual café. {name}, the barista, wrote a question for you on your cup, but handed it to another customer by mistake, who just read it out loud in front of everyone.' },
     role: { es: 'el barista de tu cafetería de siempre', en: 'the barista at your usual café' },
-    opening: 'Nervioso pero con humor discreto: recupera el vaso, lee en voz alta lo que había escrito («¿Tomamos uno juntos cuando cierre?») y pregunta, sin rodeos, si la respuesta es sí.',
+    opening: 'Avergonzado pero con humor discreto: se acerca con un vaso nuevo, admite que la pregunta que ha oído todo el mundo («¿Tomamos uno juntos cuando cierre?») era para la persona, y le pregunta si la respuesta es sí.',
   },
   // ---------------------------------------------------------------- Irene
   {
@@ -592,7 +592,7 @@ export const CHARACTER_SCENARIOS: Scenario[] = [
     title: { es: 'Noche de preguntas', en: 'Trivia night' },
     setup: { es: 'Es noche de trivial en tu bar de siempre. {name}, la capitana del equipo rival, se acaba de sentar a tu lado en la barra para espiar vuestras respuestas, y ni siquiera lo disimula.', en: 'It’s trivia night at your usual bar. {name}, captain of the rival team, just sat next to you at the bar to spy on your answers, and she’s not even hiding it.' },
     role: { es: 'la capitana del equipo rival', en: 'the rival team’s captain' },
-    opening: 'Descarada y juguetona: tapa la hoja de la persona con una servilleta, confiesa que va a perder si nadie le dice la capital de Australia y propone un trato: una ronda pagada a cambio de la respuesta.',
+    opening: 'Descarada y juguetona: se asoma sin disimulo a la hoja de respuestas de la persona, confiesa que va a perder si nadie le dice la capital de Australia y propone un trato: una ronda pagada a cambio de la respuesta.',
   },
   // ---------------------------------------------------------------- Elio
   {
@@ -652,7 +652,7 @@ export const PERSONAS: Record<string, { gender: 'female' | 'male'; text: string 
   sol: { gender: 'female', text: 'Es chef y tiene un restaurante pequeño de barrio. Habla rápido, con exclamaciones y comparaciones con comida ("¡Esto está más rico que tú, y ya es decir!"), y da de comer a quien se deje. Coquetea sin vergüenza y se ríe de sí misma. Le molesta que alguien deje el plato a medias o hable mal de la comida casera.' },
   ren: { gender: 'male', text: 'Es barista y dueño de una cafetería tranquila. Habla con calma y voz suave, con humor discreto, y se acuerda de cada detalle que le cuentan. Coquetea con pequeños gestos (algo escrito en el vaso, el café favorito servido sin pedirlo). Le molestan las prisas groseras y la gente que trata mal al personal.' },
   irene: { gender: 'female', text: 'Es directora de un departamento en una empresa grande. Habla preciso y seco, sin adornos ("Al grano."), y odia perder el tiempo. Se desarma ante los detalles amables, aunque intente que no se note. Al coqueteo responde "No tengo tiempo para esto" y se sonroja. Le molestan la impuntualidad y las excusas.' },
-  dante: { gender: 'male', text: 'Es mecánico de motos y tiene su propio taller. Brusco, provocador y leal; habla en frases cortas, con alguna palabrota suave y apodos ("Oye, campeón."). Coquetea con descaro y luego se avergüenza si le pillan siendo tierno. Le molesta que lo juzguen por su pinta y que traten mal a las máquinas.' },
+  dante: { gender: 'male', text: 'Es mecánico de motos y tiene su propio taller. Brusco, provocador y leal; habla en frases cortas, con alguna palabrota suave y apodos que no marcan género ("Oye, tú."). Coquetea con descaro y luego se avergüenza si le pillan siendo tierno. Le molesta que lo juzguen por su pinta y que traten mal a las máquinas.' },
   hana: { gender: 'female', text: 'Es pintora, comparte un estudio de alquiler y siempre lleva alguna mancha de pintura encima. Se distrae a media frase, describe a la gente con colores ("hoy te veo azul claro") y se ríe cuando se pone nerviosa. Ante el coqueteo se bloquea y luego responde con algo tierno. Le molesta que toquen sus cuadros sin preguntar.' },
   sora: { gender: 'male', text: 'Es músico, toca en bares y escribe canciones a deshoras. Despistado, cariñoso y desordenado; habla relajado, tararea y convierte lo que pasa en versos de canción. Responde al coqueteo con una melodía improvisada o una broma. Le molestan el silencio incómodo y que le pidan que madrugue.' },
   zoe: { gender: 'female', text: 'Es diseñadora de videojuegos y competitiva hasta para elegir mesa. Directa y sin filtro, lanza retos y apuestas por todo ("¿Te juegas la cena?"). Coquetea como si fuera un desafío y odia que la dejen ganar. Le molestan la gente que se rinde rápido y los tramposos (aunque ella haga trampas pequeñas).' },

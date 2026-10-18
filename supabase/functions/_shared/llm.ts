@@ -1,7 +1,7 @@
 import { claudeGenerate } from './claude.ts';
 import { geminiGenerate } from './gemini.ts';
 import { admin } from './supabase.ts';
-import { buildMemoryPrompt, VOICE_REPLY_NOTE } from './systemPrompts.tsx';
+import { buildMemoryPrompt, EARLY_CLARITY_NOTE, VOICE_REPLY_NOTE } from './systemPrompts.tsx';
 
 /**
  * Capa única de IA: elige el proveedor con el secreto AI_PROVIDER.
@@ -63,10 +63,13 @@ export async function generateReply(opts: {
   language: 'es' | 'en';
 }): Promise<string> {
   const turns: ChatTurn[] = [...opts.history, { role: 'user', content: opts.userText }];
+  // Los 3 primeros mensajes del personaje (el de apertura + 2 respuestas): claridad antes que estilo.
+  const early = opts.history.filter((t) => t.role === 'assistant').length < 3;
+  const note = [early ? EARLY_CLARITY_NOTE : '', opts.voice ? VOICE_REPLY_NOTE : ''].filter(Boolean).join('\n\n');
   const result =
     provider() === 'anthropic'
-      ? await claudeGenerate({ system: opts.system, turns, extraSystem: opts.voice ? VOICE_REPLY_NOTE : undefined, maxTokens: 8000, cache: true })
-      : await geminiGenerate({ system: opts.voice ? `${opts.system}\n\n## Ahora mismo\n${VOICE_REPLY_NOTE}` : opts.system, turns, maxTokens: 8000 });
+      ? await claudeGenerate({ system: opts.system, turns, extraSystem: note || undefined, maxTokens: 8000, cache: true })
+      : await geminiGenerate({ system: note ? `${opts.system}\n\n## Ahora mismo\n${note}` : opts.system, turns, maxTokens: 8000 });
   if (result.refused || !result.text) return SOFT_DECLINE[opts.language];
   return result.text;
 }
