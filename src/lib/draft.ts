@@ -15,6 +15,8 @@ export interface CharacterDraft {
   look: CharacterLook;
   traits: string[];
   scenarioId: string | null;
+  /** Personaje del catálogo del que parte el borrador (para su forma de ser y sus escenas). */
+  presetId?: string | null;
   customScene: string;
   /** Foto de perfil capturada del 3D al terminar (JPEG en data URL). */
   snapshot?: string | null;

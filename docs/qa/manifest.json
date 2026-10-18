@@ -1,42 +1,22 @@
 {
   "characters": {
-    "aiko": {
-      "look": "a89dec64b794",
-      "status": "approved",
-      "checkedAt": "2026-10-18"
-    },
     "kai": {
-      "look": "b8d5d0fc01e7",
+      "look": "2bb2e312dc15",
       "status": "approved",
       "checkedAt": "2026-10-18"
     },
     "nyx": {
-      "look": "b78e2b42a8b1",
-      "status": "approved",
-      "checkedAt": "2026-10-18"
-    },
-    "mei": {
-      "look": "bf8e33dcc425",
+      "look": "e08be8626235",
       "status": "approved",
       "checkedAt": "2026-10-18"
     },
     "ren": {
-      "look": "460720bdfe00",
-      "status": "approved",
-      "checkedAt": "2026-10-18"
-    },
-    "luna": {
-      "look": "76a78080af8b",
+      "look": "9f60c0a90a92",
       "status": "approved",
       "checkedAt": "2026-10-18"
     },
     "dante": {
       "look": "14f344112663",
-      "status": "approved",
-      "checkedAt": "2026-10-18"
-    },
-    "victoria": {
-      "look": "0fc155a46989",
       "status": "approved",
       "checkedAt": "2026-10-18"
     },
@@ -46,17 +26,37 @@
       "checkedAt": "2026-10-18"
     },
     "vita": {
-      "look": "112097796991",
+      "look": "4f603eb84d79",
       "status": "approved",
       "checkedAt": "2026-10-18"
     },
     "hana": {
-      "look": "672f3b9d70e4",
+      "look": "3f49718d30b3",
       "status": "approved",
       "checkedAt": "2026-10-18"
     },
     "sora": {
-      "look": "01bde071b1c6",
+      "look": "4a97767b9786",
+      "status": "approved",
+      "checkedAt": "2026-10-18"
+    },
+    "sol": {
+      "look": "d1594ed5bffc",
+      "status": "approved",
+      "checkedAt": "2026-10-18"
+    },
+    "irene": {
+      "look": "d03c81c99447",
+      "status": "approved",
+      "checkedAt": "2026-10-18"
+    },
+    "elio": {
+      "look": "f050de158b22",
+      "status": "approved",
+      "checkedAt": "2026-10-18"
+    },
+    "vera": {
+      "look": "d4f93ded0cd1",
       "status": "approved",
       "checkedAt": "2026-10-18"
     }

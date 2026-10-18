@@ -38,6 +38,7 @@ export interface AvatarRow {
   memory: string | null;
   traits: string[] | null;
   scenario_id: string | null;
+  preset_id: string | null;
 }
 
 /** Valida el JWT de Supabase que envía la app y devuelve el usuario. */

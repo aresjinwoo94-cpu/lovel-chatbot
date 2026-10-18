@@ -53,7 +53,7 @@ import { fetchAvatar, saveAvatarThumbnail, updateAvatar, uploadCustomVrm } from 
 import { showDialog } from '@/lib/dialog';
 import { type CharacterDraft, clearDraft, loadDraft, saveDraft } from '@/lib/draft';
 import { useI18n } from '@/lib/i18n';
-import { conflictsWith, genderize, MAX_TRAITS, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, scenarioById, SCENARIOS, traitById, traitLabel, TRAITS } from '@/lib/roleplay';
+import { conflictsWith, genderize, MAX_TRAITS, type Scenario, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, scenarioById, SCENARIOS, scenariosFor, traitById, traitLabel, TRAITS } from '@/lib/roleplay';
 import type { Gender } from '@/lib/types';
 import { useColors } from '@/lib/theme';
 
@@ -173,6 +173,8 @@ export default function CreateCharacter() {
   const [traits, setTraits] = useState<string[]>([]);
   const [scenarioId, setScenarioId] = useState<string | null>(null);
   const [customScene, setCustomScene] = useState('');
+  /** Personaje del catálogo del que parte (su forma de ser y sus escenas propias). */
+  const [presetRef, setPresetRef] = useState<string | null>(null);
   const [category, setCategory] = useState<ScenarioCategory | 'all'>('all');
   const [stageReady, setStageReady] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -213,6 +215,7 @@ export default function CreateCharacter() {
         setAge(preset.age);
         setLook(preset.look);
         setTraits(preset.traits);
+        setPresetRef(preset.id);
       } else {
         const d = await loadDraft();
         if (d && (d.look as { v?: number })?.v === 3) {
@@ -223,6 +226,7 @@ export default function CreateCharacter() {
           setTraits(d.traits);
           setScenarioId(d.scenarioId);
           setCustomScene(d.customScene);
+          setPresetRef(d.presetId ?? null);
           setStep(Math.min(d.step, 3));
         }
       }
@@ -231,8 +235,8 @@ export default function CreateCharacter() {
   }, [presetId, editId, t]);
 
   const draft = useMemo<Omit<CharacterDraft, 'savedAt'>>(
-    () => ({ name, gender, age, look, traits, scenarioId, customScene, step, ready: false }),
-    [name, gender, age, look, traits, scenarioId, customScene, step],
+    () => ({ name, gender, age, look, traits, scenarioId, customScene, presetId: presetRef, step, ready: false }),
+    [name, gender, age, look, traits, scenarioId, customScene, presetRef, step],
   );
 
   useEffect(() => {
@@ -758,37 +762,50 @@ export default function CreateCharacter() {
     </View>
   );
 
-  const scenarios = SCENARIOS.filter((s) => category === 'all' || s.category === category);
+  // Escenas propias del personaje del catálogo (si sigue siendo ese personaje: mismo género).
+  const ownScenes = presetById(presetRef)?.gender === gender ? scenariosFor(presetRef) : [];
+  const inCategory = (s: Scenario) => category === 'all' || s.category === category;
+  const scenarios = SCENARIOS.filter(inCategory);
+  const sceneList = (list: Scenario[]) => (
+    <View className="overflow-hidden rounded-xl border border-line bg-paper">
+      {list.map((s, i) => {
+        const selected = scenarioId === s.id;
+        return (
+          <Pressable
+            key={s.id}
+            onPress={() => setScenarioId(selected ? null : s.id)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            className={`flex-row px-4 py-3.5 ${i < list.length - 1 ? 'border-b border-line' : ''} ${selected ? 'bg-subtle' : 'active:bg-subtle'}`}
+          >
+            <View className="mr-3 flex-1">
+              <Text className="font-semibold text-[13px] text-ink">{genderize(s.title[language], gender)}</Text>
+              <Text className="mt-1 text-[13px] leading-[19px] text-muted">{sceneText(s.setup[language], displayName, gender)}</Text>
+            </View>
+            <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={18} color={selected ? colors.ink : colors.line} />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
   const scenarioStep = (
     <View>
       <Display className="text-[22px] leading-[28px]">{t('create.scenario.q')}</Display>
       <Muted className="mb-4 mt-1.5">{t('create.scenario.hint', { name: displayName })}</Muted>
+      {ownScenes.length ? (
+        <>
+          <Text className="mb-2 font-semibold text-[13px] text-ink">{t('create.scenario.own', { name: displayName })}</Text>
+          {sceneList(ownScenes)}
+          <Text className="mb-2 mt-6 font-semibold text-[13px] text-ink">{t('create.scenario.more')}</Text>
+        </>
+      ) : null}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 mb-3" contentContainerClassName="px-4">
         <Tag label={t('create.scenario.all')} selected={category === 'all'} onPress={() => setCategory('all')} />
         {SCENARIO_CATEGORIES.map((c) => (
           <Tag key={c.id} label={c.label[language]} selected={category === c.id} onPress={() => setCategory(c.id)} />
         ))}
       </ScrollView>
-      <View className="overflow-hidden rounded-xl border border-line bg-paper">
-        {scenarios.map((s, i) => {
-          const selected = scenarioId === s.id;
-          return (
-            <Pressable
-              key={s.id}
-              onPress={() => setScenarioId(selected ? null : s.id)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              className={`flex-row px-4 py-3.5 ${i < scenarios.length - 1 ? 'border-b border-line' : ''} ${selected ? 'bg-subtle' : 'active:bg-subtle'}`}
-            >
-              <View className="mr-3 flex-1">
-                <Text className="font-semibold text-[13px] text-ink">{genderize(s.title[language], gender)}</Text>
-                <Text className="mt-1 text-[13px] leading-[19px] text-muted">{sceneText(s.setup[language], displayName, gender)}</Text>
-              </View>
-              <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={18} color={selected ? colors.ink : colors.line} />
-            </Pressable>
-          );
-        })}
-      </View>
+      {sceneList(scenarios)}
       <Text className="mb-2 mt-6 font-semibold text-[13px] text-ink">{t('create.scenario.custom')}</Text>
       <TextInput
         value={customScene}

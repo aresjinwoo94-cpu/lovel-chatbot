@@ -15,7 +15,7 @@ import { faceImage, presetPortrait } from '@/lib/character/media';
 import { createFromDraft } from '@/lib/createCharacter';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
-import { genderize, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, SCENARIOS } from '@/lib/roleplay';
+import { genderize, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, SCENARIOS, scenariosFor } from '@/lib/roleplay';
 import type { Gender } from '@/lib/types';
 import { useColors } from '@/lib/theme';
 
@@ -103,7 +103,8 @@ export default function Welcome() {
   const [creating, setCreating] = useState<CharacterPreset | null>(null);
   /** Personaje elegido en cuanto se sabe género y edad (así las escenas ya llevan su nombre). */
   const [chosen, setChosen] = useState<CharacterPreset | null>(null);
-  const scenarios = useMemo(() => SCENARIOS.filter((s) => s.category === category), [category]);
+  // Primero las escenas pensadas para el personaje elegido, después las generales.
+  const scenarios = useMemo(() => [...scenariosFor(chosen?.id), ...SCENARIOS].filter((s) => s.category === category), [category, chosen]);
   /** Género del personaje para escribir las escenas sin "o/a". */
   const sceneGender: Gender = chosen?.gender ?? (who === 'male' ? 'male' : 'female');
 
@@ -120,7 +121,7 @@ export default function Welcome() {
     if (!who || !ageId || !category) return;
     const age = AGES.find((a) => a.id === ageId)!.age;
     const preset = chosen ?? choosePreset(who, age);
-    const scenario = SCENARIOS.find((s) => s.id === scenarioId) ?? pick(scenarios);
+    const scenario = scenarios.find((s) => s.id === scenarioId) ?? pick(scenarios);
     setCreating(preset);
     try {
       if (!session) await startGuest();
@@ -131,6 +132,7 @@ export default function Welcome() {
         look: preset.look,
         traits: preset.traits,
         scenarioId: scenario.id,
+        presetId: preset.id,
         customScene: '',
         step: 3,
         ready: true,
@@ -171,7 +173,7 @@ export default function Welcome() {
         <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-10">
           <View className="w-full self-center" style={{ maxWidth: 440 }}>
             <Animated.View entering={FadeInDown.duration(400)} className="mb-8 flex-row justify-center">
-              {['nyx', 'kai', 'aiko'].map((id, i) => (
+              {['nyx', 'kai', 'sol'].map((id, i) => (
                 <View
                   key={id}
                   className="overflow-hidden rounded-2xl border-2 border-paper bg-subtle"

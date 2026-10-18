@@ -10,33 +10,33 @@ export const MODEL_BASE_URL = `${SUPABASE_URL}/storage/v1/object/public/vrm-mode
 
 /** Retratos generados con scripts/render-characters.mjs a partir del 3D real. */
 const PRESET_PORTRAITS: Record<string, ImageSourcePropType> = {
-  aiko: require('@/assets/characters/presets/aiko.jpg'),
-  kai: require('@/assets/characters/presets/kai.jpg'),
-  mei: require('@/assets/characters/presets/mei.jpg'),
-  ren: require('@/assets/characters/presets/ren.jpg'),
   nyx: require('@/assets/characters/presets/nyx.jpg'),
-  luna: require('@/assets/characters/presets/luna.jpg'),
+  kai: require('@/assets/characters/presets/kai.jpg'),
+  sol: require('@/assets/characters/presets/sol.jpg'),
+  ren: require('@/assets/characters/presets/ren.jpg'),
+  irene: require('@/assets/characters/presets/irene.jpg'),
   dante: require('@/assets/characters/presets/dante.jpg'),
-  victoria: require('@/assets/characters/presets/victoria.jpg'),
-  zoe: require('@/assets/characters/presets/zoe.jpg'),
-  vita: require('@/assets/characters/presets/vita.jpg'),
   hana: require('@/assets/characters/presets/hana.jpg'),
   sora: require('@/assets/characters/presets/sora.jpg'),
+  zoe: require('@/assets/characters/presets/zoe.jpg'),
+  elio: require('@/assets/characters/presets/elio.jpg'),
+  vera: require('@/assets/characters/presets/vera.jpg'),
+  vita: require('@/assets/characters/presets/vita.jpg'),
 };
 
 const PRESET_FACES: Record<string, ImageSourcePropType> = {
-  aiko: require('@/assets/characters/faces/aiko.jpg'),
-  kai: require('@/assets/characters/faces/kai.jpg'),
-  mei: require('@/assets/characters/faces/mei.jpg'),
-  ren: require('@/assets/characters/faces/ren.jpg'),
   nyx: require('@/assets/characters/faces/nyx.jpg'),
-  luna: require('@/assets/characters/faces/luna.jpg'),
+  kai: require('@/assets/characters/faces/kai.jpg'),
+  sol: require('@/assets/characters/faces/sol.jpg'),
+  ren: require('@/assets/characters/faces/ren.jpg'),
+  irene: require('@/assets/characters/faces/irene.jpg'),
   dante: require('@/assets/characters/faces/dante.jpg'),
-  victoria: require('@/assets/characters/faces/victoria.jpg'),
-  zoe: require('@/assets/characters/faces/zoe.jpg'),
-  vita: require('@/assets/characters/faces/vita.jpg'),
   hana: require('@/assets/characters/faces/hana.jpg'),
   sora: require('@/assets/characters/faces/sora.jpg'),
+  zoe: require('@/assets/characters/faces/zoe.jpg'),
+  elio: require('@/assets/characters/faces/elio.jpg'),
+  vera: require('@/assets/characters/faces/vera.jpg'),
+  vita: require('@/assets/characters/faces/vita.jpg'),
 };
 
 const MODEL_PORTRAITS: Record<string, ImageSourcePropType> = {
@@ -56,7 +56,7 @@ export const presetPortrait = (id: string) => PRESET_PORTRAITS[id];
 export const modelPortrait = (id: string) => MODEL_PORTRAITS[id];
 
 /** Peinados de cuerpos retirados: se muestran con un personaje adulto que lo lleva. */
-const HAIR_ONLY_PORTRAITS: Record<string, ImageSourcePropType> = { shino: PRESET_PORTRAITS.mei };
+const HAIR_ONLY_PORTRAITS: Record<string, ImageSourcePropType> = { shino: PRESET_PORTRAITS.irene };
 export const hairPortrait = (id: string) => MODEL_PORTRAITS[id] ?? HAIR_ONLY_PORTRAITS[id];
 
 /** Si el aspecto coincide exactamente con un personaje listo, su retrato. */
@@ -73,5 +73,5 @@ export function faceImage(opts: { imageUrl?: string | null; look: CharacterLook 
   if (opts.imageUrl) return { uri: opts.imageUrl };
   const preset = presetFor(opts.look);
   if (preset) return PRESET_FACES[preset.id];
-  return MODEL_PORTRAITS[opts.look.model] ?? PRESET_FACES.aiko;
+  return MODEL_PORTRAITS[opts.look.model] ?? PRESET_FACES.nyx;
 }

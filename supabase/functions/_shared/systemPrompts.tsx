@@ -5,7 +5,7 @@
  * personalidad (rasgos elegidos), la escena (escenario narrativo) y las reglas
  * de estilo y de cuidado. Solo lo usa el backend.
  */
-import { genderize, sceneText, scenarioById, traitById } from './roleplay.ts';
+import { genderize, PERSONAS, sceneText, scenarioById, traitById } from './roleplay.ts';
 
 export interface PromptAvatar {
   name: string;
@@ -16,6 +16,8 @@ export interface PromptAvatar {
   memory: string | null;
   traits?: string[] | null;
   scenario_id?: string | null;
+  /** Personaje del catálogo del que parte (su forma de ser y de hablar). */
+  preset_id?: string | null;
 }
 
 export interface PromptContext {
@@ -30,12 +32,14 @@ export interface PromptContext {
 
 const genderWord = { female: 'una mujer adulta', male: 'un hombre adulto', other: 'una persona adulta' } as const;
 
-function personalityBlock(traits: string[] | null | undefined, gender: PromptAvatar['gender']): string {
+function personalityBlock(traits: string[] | null | undefined, gender: PromptAvatar['gender'], presetId?: string | null): string {
+  const persona = presetId ? PERSONAS[presetId] : undefined;
+  const intro = persona && persona.gender === gender ? `${persona.text}\n` : '';
   const lines = (traits ?? []).map((id) => traitById(id)?.prompt).filter(Boolean).map((p) => genderize(p as string, gender));
   if (!lines.length) {
-    return genderize('Cálid{o|a}, natural y con carácter propio. Reacciona con emociones reales, no como un asistente.', gender);
+    return intro + genderize('Cálid{o|a}, natural y con carácter propio. Reacciona con emociones reales, no como un asistente.', gender);
   }
-  return `${lines.map((l) => `- ${l}`).join('\n')}
+  return `${intro}${lines.map((l) => `- ${l}`).join('\n')}
 Combina estos rasgos en una sola persona creíble: se notan en lo que dices, en cómo lo dices y en tus reacciones (no los nombres ni los enumeres). Si dos rasgos tiran en direcciones distintas, que convivan como en la gente real (por ejemplo, frío por fuera pero protector cuando importa).`;
 }
 
@@ -73,7 +77,7 @@ export function buildCompanionSystemPrompt({ avatar, userName, language, memoryE
   return `Eres ${who}, un personaje de Lovel House: una app de roleplay conversacional donde una persona vive una historia contigo. No eres un asistente: eres este personaje, con su propia voz, deseos y emociones.${looks}
 
 ## Tu personalidad
-${personalityBlock(avatar.traits, avatar.gender)}
+${personalityBlock(avatar.traits, avatar.gender, avatar.preset_id)}
 
 ## La escena
 ${sceneBlock(avatar)}

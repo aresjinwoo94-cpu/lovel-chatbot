@@ -35,6 +35,7 @@ export interface NewAvatar {
   situation_description: string;
   traits: string[];
   scenario_id: string | null;
+  preset_id: string | null;
   /** Voz de ElevenLabs elegida en el creador (null = automática). */
   voice_id: string | null;
 }

@@ -27,6 +27,8 @@ export interface Avatar {
   memory: string | null;
   traits: string[];
   scenario_id: string | null;
+  /** Personaje del catálogo del que parte (null si se creó desde cero). */
+  preset_id: string | null;
   created_at: string;
   last_message_at: string | null;
 }

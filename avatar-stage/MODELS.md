@@ -55,3 +55,41 @@ de juegos comerciales.
 ```bash
 node scripts/build-stage.mjs
 ```
+
+## Añadir al catálogo un modelo propio hecho en VRoid Studio
+
+Para sumar un personaje con un modelo hecho por ti (no confundir con "Importar .vrm" de la
+app, que solo lo usa la persona que lo sube y no pasa por QA):
+
+1. **Exportar desde VRoid Studio** (Exportar → Exportar como VRM):
+   - Formato **VRM 0.0** si quieres que su peinado pueda prestarse a otros cuerpos y que admita
+     peinados de otros (los VRM 1.0 funcionan, pero sin intercambio de pelo).
+   - Reducción de polígonos y "Atlas de texturas" a 2048 px como máximo: el archivo debería
+     quedar por debajo de ~10 MB (el móvil lo descarga entero).
+   - En los metadatos de licencia: uso comercial permitido y modificación permitida. Si el
+     modelo usa piezas de terceros (ropa, pelo de Booth…), comprueba que su licencia también lo
+     permite y apúntalo en la tabla de arriba.
+   - No renombres los materiales: el escenario reconoce cada parte por los nombres que pone
+     VRoid (`HAIR` → pelo, `EYEIRIS` → iris, `FACE_00_SKIN` → cara, `TOPS` / `BOTTOMS` /
+     `SHOES` → prendas recoloreables; ver `category()` en `stage.html`).
+2. **Subirlo** a Supabase Storage, bucket público `vrm-models`, con el nombre `<id>.vrm`
+   (id corto en minúsculas, p. ej. `aurora.vrm`). El escenario lo carga de
+   `<bucket>/<id>.vrm`.
+3. **Registrarlo** en `src/lib/character/catalog.ts`:
+   - en `MODELS`: `{ id: 'aurora', gender: 'female', label: { es: '…', en: '…' }, hairDonor: true }`
+     (`vrm1: true` si es VRM 1.0; `alwaysPlain: true` si su ropa no admite recolorear prendas);
+   - si su peinado se ofrece en "Peinado", añádelo también a `HAIRSTYLES`;
+   - si es un personaje listo, su entrada en `PRESETS` (nombre, edad adulta, frase, rasgos y
+     `makeLook({ model: 'aurora', … })`), su forma de ser en `PERSONAS` y sus escenas en
+     `CHARACTER_SCENARIOS` (`supabase/functions/_shared/roleplay.ts`).
+   - Si al probarlo el pelo prestado no encaja (cejas que asoman, huecos), añade el cruce a
+     `BODY_HAIR_CONFLICTS` / `HAIR_ACCESSORY_CONFLICTS`; si el modelo sonríe con los dientes,
+     dale un tope en `MODEL_FACE_CAP` (`stage.html`).
+4. **Pasar la QA** (obligatorio, ver `docs/qa/CHECKLIST.md`): `npm run qa:characters` con
+   `ONLY=<id>`, revisión de la hoja por un subagente, `"status": "approved"` en
+   `docs/qa/manifest.json` y `npm run qa:check` en verde.
+5. **Generar los retratos**: `node scripts/render-characters.mjs` (mismas variables de
+   entorno que la QA) y añadir las imágenes nuevas a `src/lib/character/media.ts`
+   (`MODEL_PORTRAITS`, y `PRESET_PORTRAITS` / `PRESET_FACES` si es un personaje listo).
+6. Si cambiaste las Edge Functions (personas o escenas), despliega `start-chat`, `chat` y
+   `voice-chat`.
