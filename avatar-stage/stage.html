@@ -715,6 +715,9 @@ function headMetrics(vrm) {
     if (mats.some((m) => /FACE_00_SKIN|^FACE$/i.test(m.name || ''))) faceBox.expandByObject(o);
   });
   const front = Math.max(faceBox.isEmpty() ? 0 : faceBox.max.z, eyes.z + eyeDist * 1.15);
+  // Plano de las lentes: poco delante de los ojos, como unas gafas reales. Más lejos, en 3/4
+  // la montura se ve desplazada respecto a los ojos y sobresale de la cara.
+  const lens = eyes.z + eyeDist * 0.3;
   const crown = faceBox.isEmpty() ? hp.y + eyeDist * 2.6 : Math.max(faceBox.max.y, eyes.y + eyeDist * 1.6);
   const halfW = faceBox.isEmpty() ? eyeDist * 1.4 : (faceBox.max.x - faceBox.min.x) / 2;
   // Volumen real del pelo por encima de los ojos (para que nada quede escondido dentro).
@@ -729,7 +732,7 @@ function headMetrics(vrm) {
   });
   const hairTop = hairBox.isEmpty() ? crown + eyeDist * 0.3 : Math.max(crown, hairBox.max.y);
   const hairHalfW = hairBox.isEmpty() ? halfW * 1.2 : Math.max(halfW, (hairBox.max.x - hairBox.min.x) / 2);
-  return { head, eyes, eyeDist, front, crown: hairTop - eyeDist * 0.25, halfW, hairTop, hairHalfW };
+  return { head, eyes, eyeDist, front, lens, crown: hairTop - eyeDist * 0.25, halfW, hairTop, hairHalfW };
 }
 
 /** Las piezas se construyen en coordenadas del mundo mirando a +Z y luego se cuelgan del hueso. */
@@ -795,7 +798,20 @@ function overHair(obj) {
   });
 }
 
+// Los accesorios se miden y se colocan con el cuerpo en reposo (mirando al frente): con la
+// pose relajada el cuerpo está girado 3/4 y la cabeza no mira a +z, y las cajas de la cara
+// (alineadas con los ejes del mundo) quedarían descentradas, con las gafas torcidas.
 function buildAccessories(look) {
+  const rigs = [current.vrm, current.hairVrm].filter(Boolean);
+  const saved = rigs.map((v) => v.humanoid.getNormalizedPose());
+  for (const v of rigs) { v.humanoid.resetNormalizedPose(); v.humanoid.update(); }
+  try { buildAccessoriesAtRest(look); } finally {
+    rigs.forEach((v, i) => { v.humanoid.setNormalizedPose(saved[i]); v.humanoid.update(); });
+    scene.updateMatrixWorld(true);
+  }
+}
+
+function buildAccessoriesAtRest(look) {
   for (const g of current.accessories) g.parent?.remove(g);
   current.accessories = [];
   current.wings = null;
@@ -804,7 +820,7 @@ function buildAccessories(look) {
   const ids = look.accessories || [];
   if (!vrm || !ids.length) return;
   scene.updateMatrixWorld(true);
-  const { head, eyes, eyeDist: e, front, crown, halfW, hairTop, hairHalfW } = headMetrics(vrm);
+  const { head, eyes, eyeDist: e, front, lens, crown, halfW, hairTop, hairHalfW } = headMetrics(vrm);
   let extraTop = 0;
   const top = (y) => { extraTop = Math.max(extraTop, y - hairTop); };
   const has = (id) => ids.includes(id);
@@ -816,7 +832,7 @@ function buildAccessories(look) {
   // --- ojos
   if (has('glasses_round') || has('glasses_square') || has('sunglasses')) {
     const gl = new THREE.Group();
-    const r = e * 0.46;
+    const r = e * 0.42;
     const round = has('glasses_round');
     const sun = has('sunglasses');
     const frame = mat(sun ? '#141218' : '#2b2733', 0.6, 0.3);
@@ -829,36 +845,36 @@ function buildAccessories(look) {
       return sh;
     };
     for (const sx of [-1, 1]) {
-      let ring, lens;
+      let ring, glass;
       if (round) {
         ring = new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.09, 10, 40), frame);
-        lens = new THREE.Mesh(new THREE.CircleGeometry(r * 0.96, 32), null);
+        glass = new THREE.Mesh(new THREE.CircleGeometry(r * 0.96, 32), null);
       } else {
         const w = r * 2.15, h = r * 1.55, t = r * 0.16;
         const outer = rrect(w, h, r * 0.42);
         outer.holes.push(rrect(w - t * 2, h - t * 2, r * 0.3));
         ring = new THREE.Mesh(new THREE.ExtrudeGeometry(outer, { depth: r * 0.06, bevelEnabled: false, curveSegments: 6 }), frame);
-        lens = new THREE.Mesh(new THREE.ShapeGeometry(rrect(w - t * 2, h - t * 2, r * 0.3), 6), null);
+        glass = new THREE.Mesh(new THREE.ShapeGeometry(rrect(w - t * 2, h - t * 2, r * 0.3), 6), null);
       }
-      lens.material = new THREE.MeshStandardMaterial({ color: sun ? 0x1a1820 : 0xffffff, transparent: true, opacity: sun ? 0.86 : 0.12, roughness: 0.05, metalness: sun ? 0.4 : 0 });
+      glass.material = new THREE.MeshStandardMaterial({ color: sun ? 0x1a1820 : 0xffffff, transparent: true, opacity: sun ? 0.86 : 0.12, roughness: 0.05, metalness: sun ? 0.4 : 0 });
       ring.position.set(sx * e * 0.5, 0, 0);
-      lens.position.copy(ring.position);
-      gl.add(ring, lens);
+      glass.position.copy(ring.position);
+      gl.add(ring, glass);
     }
     const bridge = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.06, r * 0.06, e * 0.2, 8), frame);
     bridge.rotation.z = Math.PI / 2; gl.add(bridge);
     overHair(gl);
     // pegadas al plano de la cara: si flotan delante, al inclinar la cabeza se deslizan sobre los ojos
-    put(gl, W(0, eyes.y + 0.003, front + e * 0.08));
+    put(gl, W(0, eyes.y + 0.003, lens));
   }
   if (has('monocle')) {
     const gold = mat('#D4AF37', 0.85, 0.25);
     const r = e * 0.5;
-    const m1 = put(new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.08, 10, 40), gold), W(-e * 0.5, eyes.y, front + e * 0.08));
+    const m1 = put(new THREE.Mesh(new THREE.TorusGeometry(r, r * 0.08, 10, 40), gold), W(-e * 0.5, eyes.y, lens));
     const lens = put(new THREE.Mesh(new THREE.CircleGeometry(r * 0.95, 32), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12 })), m1.position.clone());
     overHair(m1); overHair(lens);
     const chain = new THREE.Mesh(new THREE.CylinderGeometry(e * 0.012, e * 0.012, e * 1.6, 6), gold);
-    put(chain, W(-e * 0.9, eyes.y - e * 0.95, front + e * 0.15), [0, 0, 0.35]);
+    put(chain, W(-e * 0.9, eyes.y - e * 0.95, lens + e * 0.07), [0, 0, 0.35]);
   }
   if (has('eyepatch')) {
     const dark = mat('#1d1a22', 0.1, 0.7);
@@ -1166,7 +1182,7 @@ const EMOTIONS = {
   happy: { face: { relaxed: 0.6, happy: 0.3 }, head: { x: -0.04, z: 0.05 } },
   sad: { face: { sad: 0.45 }, head: { x: 0.11, z: -0.04 }, gaze: { yaw: -18, pitch: 34 } },
   surprised: { face: { surprised: 0.38 }, head: { x: -0.07, z: 0 } },
-  shy: { face: { relaxed: 0.35, sad: 0.2 }, head: { x: 0.1, z: 0.1 }, gaze: { yaw: 42, pitch: 24 } },
+  shy: { face: { relaxed: 0.35, sad: 0.2 }, head: { x: 0.1, z: 0.1 }, gaze: { yaw: 26, pitch: 22 } },
   angry: { face: { angry: 0.5 }, head: { x: 0.03, z: 0 } },
 };
 

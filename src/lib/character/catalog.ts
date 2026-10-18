@@ -466,7 +466,7 @@ export const PRESETS: CharacterPreset[] = [
     id: 'victoria', name: 'Victoria', gender: 'female', age: 26,
     tagline: { es: 'Dramática, orgullosa y encantadora', en: 'Dramatic, proud and charming' },
     traits: ['dramatic', 'proud', 'romantic'],
-    look: makeLook({ model: 'victoria', hair: 'shino', hairColor: '#EEE4CF', eyeColor: '#8B5BD6', outfitColor: '#5B3F8C', expression: 'smile', lipColor: '#D9708A', background: 'aurora', voice: v('Xb7hH8MSUJpSbSDYk0k2', 1, 0.5) }),
+    look: makeLook({ model: 'shibu', hairColor: '#D9AE6A', eyeColor: '#8B5BD6', outfitColor: '#5B3F8C', expression: 'smile', lipColor: '#D9708A', background: 'aurora', voice: v('Xb7hH8MSUJpSbSDYk0k2', 1, 0.5) }),
   },
   {
     id: 'zoe', name: 'Zoe', gender: 'female', age: 24,
