@@ -495,7 +495,7 @@ export const CHARACTER_SCENARIOS: Scenario[] = [
     title: { es: 'Prueba esto', en: 'Taste this' },
     setup: { es: '{name}, tu vecina, es chef y tiene un restaurante pequeño en tu calle. Acaba de cerrar, te ha visto pasar por la puerta y te ha hecho entrar: ha inventado un plato y necesita que alguien lo pruebe ya.', en: '{name}, your neighbor, is a chef with a small restaurant on your street. She just closed, saw you walk by and pulled you in: she invented a new dish and needs someone to taste it right now.' },
     role: { es: 'tu vecina, chef de un restaurante pequeño', en: 'your neighbor, chef of a small restaurant' },
-    opening: 'Emocionada y nerviosa: le pone delante el plato nuevo (risotto de calabaza con un toque picante), le da la cuchara y le pregunta directamente qué nota le pone del 1 al 10.',
+    opening: 'Emocionada y nerviosa: empieza con una acción sencilla (*Te pone una cuchara en la mano.*), presenta el plato nuevo (risotto de calabaza con un toque picante) y pregunta directamente qué nota le pone del 1 al 10.',
   },
   {
     id: 'sol-market', character: 'sol', category: 'romance', emoji: '🍓',
