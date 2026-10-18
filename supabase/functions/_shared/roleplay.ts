@@ -237,7 +237,7 @@ export const SCENARIOS: Scenario[] = [
     title: { es: 'Sala de espera', en: 'The waiting room' },
     setup: { es: 'Tu padre está en el quirófano. En la sala de espera, a las tres de la mañana, aparece {name}, {tu hermano|tu hermana}, con quien no hablas desde hace años.', en: 'Your father is in surgery. In the waiting room, at three in the morning, {name} shows up: {your brother|your sister|your sibling}, who you haven’t spoken to in years.' },
     role: { es: '{tu hermano distanciado|tu hermana distanciada}', en: '{your estranged brother|your estranged sister|your estranged sibling}' },
-    opening: 'Agitad{o|a} e incómod{o|a}: llega a la sala de espera, reconoce que hace años que no se hablan, pregunta cómo está el padre y si puede sentarse a su lado.',
+    opening: 'Agitad{o|a} e incómod{o|a}: llega a la sala de espera, reconoce que hace años que no se hablan, pregunta si los médicos han dicho algo mientras el padre sigue en el quirófano y si puede sentarse a su lado.',
   },
   {
     id: 'goodbye-airport', category: 'drama', emoji: '✈️',
@@ -324,7 +324,7 @@ export const SCENARIOS: Scenario[] = [
     title: { es: 'Primer día', en: 'First day' },
     setup: { es: 'Es tu primer día en una empresa nueva. {name}, quien te han asignado como {mentor|mentora}, te recibe con un café… y resulta ser {tu antiguo compañero|tu antigua compañera} de universidad.', en: 'It’s your first day at a new company. {name}, your assigned mentor, greets you with coffee… and turns out to be your old college classmate.' },
     role: { es: '{tu mentor|tu mentora} en el trabajo', en: 'your work mentor' },
-    opening: 'Se acerca con dos cafés, se sorprende al reconocer a la persona, recuerda algo de la universidad y le da la bienvenida con curiosidad por lo que ha sido de su vida.',
+    opening: 'Sorprendid{o|a} y content{o|a}: le da un café, le reconoce como su antiguo compañero de clase en la universidad (fueron compañeros, no {su mentor|su mentora}), cuenta que ahora le toca ser {su mentor|su mentora} aquí y pregunta qué ha sido de su vida.',
   },
   {
     id: 'overtime-office', category: 'work', emoji: '🌆',
@@ -366,9 +366,9 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'stranger-letter', category: 'mystery', emoji: '✉️',
     title: { es: 'La carta sin remitente', en: 'The unsigned letter' },
-    setup: { es: 'Llevas semanas recibiendo cartas sin remitente que saben demasiado de ti. Hoy, en la librería, {name} deja una sobre tu mesa y se sienta enfrente.', en: 'For weeks you’ve been getting unsigned letters that know too much about you. Today, at the bookstore, {name} leaves one on your table and sits across from you.' },
+    setup: { es: 'Llevas semanas recibiendo cartas sin remitente que saben demasiado de ti. Hoy, en la librería, {name}, alguien a quien solo conoces de vista, deja una sobre tu mesa y se sienta enfrente.', en: 'For weeks you’ve been getting unsigned letters that know too much about you. Today, at the bookstore, {name} leaves one on your table and sits across from you.' },
     role: { es: 'quien te escribe las cartas', en: 'the person writing the letters' },
-    opening: 'Tranquil{o|a} pero con nervios contenidos: empuja la carta hacia la persona, admite sin rodeos que es quien le escribe, menciona un detalle concreto que sabe de su vida y le pregunta si quiere saber por qué.',
+    opening: 'Tranquil{o|a} pero con nervios contenidos: ya está sentad{o|a} enfrente; empuja la carta hacia la persona, admite sin rodeos que es quien le escribe (no se conocían, solo de vista), menciona un detalle concreto que sabe de su vida y le pregunta si quiere saber por qué.',
   },
   {
     id: 'hotel-blackout', category: 'mystery', emoji: '🕯️',
@@ -397,7 +397,7 @@ export const SCENARIOS: Scenario[] = [
     title: { es: '{Mi enemigo|Mi enemiga} me ama', en: 'My enemy loves me' },
     setup: { es: '{name} ha sido {tu enemigo declarado|tu enemiga declarada} desde siempre. Hoy te acorrala después de otra discusión y, con la voz temblando de rabia, te confiesa que está {enamorado|enamorada} de ti.', en: '{name} has always been your sworn enemy. Today, after another fight, you get cornered and, voice shaking with anger, {name} confesses to being in love with you.' },
     role: { es: '{tu enemigo|tu enemiga} de siempre', en: 'your long-time enemy' },
-    opening: 'Aún enfadad{o|a} por la discusión, le corta el paso y, entre reproches, se le escapa la confesión de que está enamorad{o|a}, furios{o|a} consigo mism{o|a} por sentirlo.',
+    opening: 'Aún enfadad{o|a} por la discusión: le corta el paso y, entre reproches, se le escapa la confesión de que está enamorad{o|a}, furios{o|a} consigo mism{o|a} por sentirlo (sin las palabras «maldito», «maldita» ni nada que suene a hechizo: es una escena realista); termina preguntando qué piensa hacer ahora.',
   },
   {
     id: 'betrayal-partner', category: 'conflict', emoji: '🗝️',

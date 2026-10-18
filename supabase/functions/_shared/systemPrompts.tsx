@@ -131,7 +131,8 @@ Reglas del primer mensaje (la persona acaba de llegar: tiene que entenderlo a la
 - Habla de forma que quede claro quién eres para la persona (tu pareja, tu vecina, alguien que acaba de conocer…), sin explicarlo como un narrador.
 - Nada de frases crípticas, metáforas vagas ni misterio sin contexto. Si hay un secreto, la persona tiene que saber al menos de qué va y qué puede hacer.
 - Máximo 3 frases cortas y 55 palabras en total, un solo párrafo.
-- Termina con algo fácil de responder: una pregunta directa (mejor de sí/no o de elegir entre dos cosas) o una acción a la que reaccionar.`;
+- Termina con algo fácil de responder: una pregunta directa (mejor de sí/no o de elegir entre dos cosas) o una acción a la que reaccionar.
+- Antes de escribir, comprueba que ninguna palabra que se refiera a la persona marque su género (vecino/vecina, solo/sola, cansado/cansada, aplicado, blanda, favorito/favorita…): usa giros neutros ("tú", "la persona de al lado", "sin nadie").`;
 }
 
 /**
