@@ -1138,7 +1138,16 @@ function frameCamera() {
   const portrait = innerHeight > innerWidth * 1.15;
   // Hueco extra arriba si hay orejas, cuernos, diadema…
   const x = Math.min(0.2, current.extraTop || 0);
-  if (current.framing === 'face') {
+  if (current.framing === 'avatar') {
+    // Foto de perfil pequeña (burbujas, listas): cabeza y un poco de hombros, centrada en los ojos.
+    // Si el pelo o las orejas suben mucho (orejas de gato, aletas), se aleja para no cortarlos.
+    const { eyes, hairTop } = headMetrics(vrm);
+    const cy = eyes.y - 0.03 + x * 0.4;
+    const half = Math.max(0.17, hairTop + x - cy + 0.02);
+    const dist = half / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    camera.position.set(0, cy + 0.025, dist);
+    camera.lookAt(new THREE.Vector3(0, cy, 0));
+  } else if (current.framing === 'face') {
     camera.position.set(0, p.y + 0.03 + x * 0.9, 1.35 + x * 3.2);
     camera.lookAt(new THREE.Vector3(0, p.y + 0.02 + x * 0.9, 0));
   } else if (current.framing === 'portrait' || portrait) {

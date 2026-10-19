@@ -144,7 +144,8 @@ export async function saveAvatarThumbnail(avatarId: string, dataUrl: string): Pr
   const userId = userData.user?.id;
   const b64 = dataUrl.split(',')[1];
   if (!userId || !b64) return null;
-  const path = `${userId}/${avatarId}-${Date.now()}.jpg`;
+  // "-face": encuadre de foto de perfil (solo la cara); las capturas antiguas, sin él, iban hasta el pecho.
+  const path = `${userId}/${avatarId}-${Date.now()}-face.jpg`;
   const { error } = await supabase.storage.from('avatar-portraits').upload(path, base64ToBytes(b64), {
     contentType: 'image/jpeg',
     upsert: true,

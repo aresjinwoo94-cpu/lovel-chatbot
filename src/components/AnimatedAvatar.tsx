@@ -55,6 +55,10 @@ export function AnimatedAvatar({ avatar, source, presence = 'idle', size = 40, s
     source ??
     (avatar ? faceImage({ imageUrl: avatar.avatar_image_url, look: normalizeLook(avatar.appearance, avatar.gender) }) : undefined);
 
+  // Capturas antiguas (antes del encuadre de solo cara, sin "-face" en el nombre): se acerca a la cara.
+  const url = source ? null : avatar?.avatar_image_url;
+  const oldShot = !!url && /^https?:/.test(url) && !/-face\.jpg/.test(url);
+
   const scale = useSharedValue(1);
   const wave1 = useSharedValue(0);
   const wave2 = useSharedValue(0);
@@ -120,7 +124,15 @@ export function AnimatedAvatar({ avatar, source, presence = 'idle', size = 40, s
         </Svg>
       </Animated.View>
       <Animated.View style={[{ position: 'absolute', left: pad, top: pad, width: inner, height: inner, borderRadius: inner / 2, overflow: 'hidden', backgroundColor: colors.subtle }, imgStyle]}>
-        {img ? <Image source={img} style={{ width: inner, height: inner, opacity: offline ? 0.5 : 1 }} contentFit="cover" contentPosition="top" transition={150} /> : null}
+        {img ? (
+          <Image
+            source={img}
+            style={{ width: inner, height: inner, opacity: offline ? 0.5 : 1, transform: oldShot ? [{ translateY: inner * 0.19 }, { scale: 1.6 }] : undefined }}
+            contentFit="cover"
+            contentPosition="top"
+            transition={150}
+          />
+        ) : null}
       </Animated.View>
       {status ? (
         <View

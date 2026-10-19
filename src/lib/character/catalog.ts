@@ -24,7 +24,6 @@ export interface BaseModel {
 }
 
 export const MODELS: BaseModel[] = [
-  { id: 'bibi', gender: 'female', label: { es: 'Campestre', en: 'Countryside' }, hairDonor: true },
   { id: 'noir', gender: 'female', label: { es: 'Gótica élfica', en: 'Gothic elf' }, hairDonor: true },
   { id: 'victoria', gender: 'female', label: { es: 'Princesa', en: 'Princess' }, hairDonor: true },
   { id: 'vita', gender: 'female', label: { es: 'Ciencia ficción', en: 'Sci-fi' }, hairDonor: true },
@@ -46,6 +45,8 @@ export const modelById = (id: string | null | undefined) => MODELS.find((m) => m
  * La misma tabla se aplica en la base de datos (supabase/migrations/0006_adults_only.sql).
  */
 export const RETIRED_MODELS: Record<string, { model: string; hair: string | null }> = {
+  // cara y ropa aniñadas (QA de WP-6/WP-8): se queda solo su peinado
+  bibi: { model: 'shibu', hair: 'bibi' },
   shino: { model: 'mei', hair: 'shino' },
   base_f: { model: 'mei', hair: null },
   base_m: { model: 'fumiriya', hair: null },

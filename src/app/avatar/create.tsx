@@ -340,7 +340,7 @@ export default function CreateCharacter() {
     setSaving(true);
     stopPreview();
     try {
-      const snapshot = await stage.current?.snapshot({ framing: 'face', size: 384 }).catch(() => null);
+      const snapshot = await stage.current?.snapshot({ framing: 'avatar', size: 384 }).catch(() => null);
       await updateAvatar(editId, {
         name: name.trim(),
         gender,
@@ -362,8 +362,8 @@ export default function CreateCharacter() {
   const start = async () => {
     setSaving(true);
     stopPreview();
-    // Foto de perfil desde el 3D (primer plano, ojos abiertos).
-    const snapshot = await stage.current?.snapshot({ framing: 'face', size: 384 }).catch(() => null);
+    // Foto de perfil desde el 3D (solo la cara, ojos abiertos).
+    const snapshot = await stage.current?.snapshot({ framing: 'avatar', size: 384 }).catch(() => null);
     const final: Omit<CharacterDraft, 'savedAt'> = { ...draft, snapshot: snapshot ?? null, ready: true };
     if (!session) {
       await saveDraft(final);
@@ -382,7 +382,7 @@ export default function CreateCharacter() {
           { text: t('pro.cta'), onPress: () => router.push('/pro') },
           { text: t('pro.notNow'), style: 'cancel' },
         ]);
-      } else showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
+      } else showDialog(t('common.error'), e instanceof Error ? e.message : ((e as { message?: string })?.message ?? String(e)));
     } finally {
       setSaving(false);
     }

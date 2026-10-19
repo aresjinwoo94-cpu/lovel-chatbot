@@ -52,26 +52,44 @@ const MODEL_PORTRAITS: Record<string, ImageSourcePropType> = {
   hair_m: require('@/assets/characters/models/hair_m.jpg'),
 };
 
+/** Fotos de perfil (solo la cara) de los modelos base, para personajes sin captura propia. */
+const MODEL_FACES: Record<string, ImageSourcePropType> = {
+  noir: require('@/assets/characters/model-faces/noir.jpg'),
+  victoria: require('@/assets/characters/model-faces/victoria.jpg'),
+  vita: require('@/assets/characters/model-faces/vita.jpg'),
+  hair_f: require('@/assets/characters/model-faces/hair_f.jpg'),
+  shibu: require('@/assets/characters/model-faces/shibu.jpg'),
+  mei: require('@/assets/characters/model-faces/mei.jpg'),
+  aria: require('@/assets/characters/model-faces/aria.jpg'),
+  fumiriya: require('@/assets/characters/model-faces/fumiriya.jpg'),
+  hair_m: require('@/assets/characters/model-faces/hair_m.jpg'),
+};
+
 export const presetPortrait = (id: string) => PRESET_PORTRAITS[id];
 export const modelPortrait = (id: string) => MODEL_PORTRAITS[id];
 
 /** Peinados de cuerpos retirados: se muestran con un personaje adulto que lo lleva. */
-const HAIR_ONLY_PORTRAITS: Record<string, ImageSourcePropType> = { shino: PRESET_PORTRAITS.irene };
+const HAIR_ONLY_PORTRAITS: Record<string, ImageSourcePropType> = { shino: require('@/assets/characters/models/shino.jpg') };
 export const hairPortrait = (id: string) => MODEL_PORTRAITS[id] ?? HAIR_ONLY_PORTRAITS[id];
 
 /** Si el aspecto coincide exactamente con un personaje listo, su retrato. */
+// Comparación sin depender del orden de las claves (la base de datos guarda el JSON reordenado).
+const canonical = (v: unknown): string =>
+  v && typeof v === 'object' && !Array.isArray(v)
+    ? `{${Object.keys(v as Record<string, unknown>).sort().map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(',')}}`
+    : Array.isArray(v) ? `[${v.map(canonical).join(',')}]` : JSON.stringify(v ?? null);
+const PRESET_KEYS = new Map(PRESETS.map((p) => [canonical(p.look), p]));
 function presetFor(look: CharacterLook) {
-  const key = JSON.stringify(look);
-  return PRESETS.find((p) => JSON.stringify(p.look) === key);
+  return PRESET_KEYS.get(canonical(look));
 }
 
 /**
  * Foto de perfil de un personaje (cuadrada, primer plano):
- * la captura guardada al crearlo, o el retrato del personaje listo / del modelo base.
+ * la captura guardada al crearlo o personalizarlo, o el retrato de cara del personaje listo / del modelo base.
  */
 export function faceImage(opts: { imageUrl?: string | null; look: CharacterLook }): ImageSourcePropType {
   if (opts.imageUrl) return { uri: opts.imageUrl };
   const preset = presetFor(opts.look);
   if (preset) return PRESET_FACES[preset.id];
-  return MODEL_PORTRAITS[opts.look.model] ?? PRESET_FACES.nyx;
+  return MODEL_FACES[opts.look.model] ?? PRESET_FACES.nyx;
 }

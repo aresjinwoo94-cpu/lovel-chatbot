@@ -8,8 +8,8 @@ import type { Emotion, Presence } from '@/lib/character/types';
 import { AVATAR_STAGE_HTML } from '@/lib/avatarStageHtml';
 
 export interface VrmAvatarHandle {
-  /** Captura el personaje como JPEG (data URL). `framing: 'face'` = foto de perfil cuadrada. */
-  snapshot: (opts?: { framing?: 'face' | 'bust' | 'portrait'; size?: number }) => Promise<string>;
+  /** Captura el personaje como JPEG (data URL). `framing: 'avatar'` = foto de perfil cuadrada (solo la cara). */
+  snapshot: (opts?: { framing?: 'avatar' | 'face' | 'bust' | 'portrait'; size?: number }) => Promise<string>;
 }
 
 interface Props {

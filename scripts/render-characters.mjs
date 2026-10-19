@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 
 const require = createRequire(import.meta.url);
 require('sucrase/register');
-const { PRESETS, MODELS, makeLook } = require('../src/lib/character/catalog.ts');
+const { PRESETS, MODELS, HAIRSTYLES, RETIRED_MODELS, makeLook } = require('../src/lib/character/catalog.ts');
 const STAGE = process.env.STAGE_URL;
 const BASE = process.env.MODELS_URL;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
@@ -32,14 +32,21 @@ async function render(look, framing, w, h, file, square) {
   console.log('✓', file);
 }
 
-for (const d of ['presets', 'faces', 'models']) mkdirSync(`assets/characters/${d}`, { recursive: true });
+for (const d of ['presets', 'faces', 'models', 'model-faces']) mkdirSync(`assets/characters/${d}`, { recursive: true });
 const only = process.env.ONLY?.split(',');
 for (const p of PRESETS.filter((x) => !only || only.includes(x.id))) {
   await render(p.look, 'portrait', 300, 375, `assets/characters/presets/${p.id}.jpg`, false);
-  await render(p.look, 'face', 128, 128, `assets/characters/faces/${p.id}.jpg`, true);
+  // foto de perfil de los avatares pequeños: solo la cara (encuadre 'avatar')
+  await render(p.look, 'avatar', 128, 128, `assets/characters/faces/${p.id}.jpg`, true);
 }
 for (const m of MODELS.filter((x) => !only || only.includes(x.id))) {
   const look = makeLook({ model: m.id, background: 'cream' });
   await render(look, 'portrait', 200, 250, `assets/characters/models/${m.id}.jpg`, false);
+  await render(look, 'avatar', 128, 128, `assets/characters/model-faces/${m.id}.jpg`, true);
+}
+// Peinados cuyo cuerpo ya no se ofrece (shino, bibi): miniatura del peinado sobre un cuerpo adulto.
+for (const h of HAIRSTYLES.filter((x) => !MODELS.some((m) => m.id === x.id) && (!only || only.includes(x.id)))) {
+  const look = makeLook({ model: RETIRED_MODELS[h.id]?.model ?? 'mei', hair: h.id, background: 'cream' });
+  await render(look, 'portrait', 200, 250, `assets/characters/models/${h.id}.jpg`, false);
 }
 await browser.close();

@@ -12,7 +12,7 @@ import { Button, IconButton, Muted } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { type CharacterPreset, PRESETS } from '@/lib/character/catalog';
 import { faceImage, presetPortrait } from '@/lib/character/media';
-import { createFromDraft } from '@/lib/createCharacter';
+import { createFromDraft, isAvatarLimit } from '@/lib/createCharacter';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { genderize, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, SCENARIOS, scenariosFor } from '@/lib/roleplay';
@@ -142,7 +142,13 @@ export default function Welcome() {
       router.replace({ pathname: '/chat/[avatarId]', params: { avatarId: avatar.id, intro: '1' } });
     } catch (e) {
       setCreating(null);
-      showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
+      // Mismo aviso que en el creador cuando ya tiene el máximo de personajes del plan gratuito.
+      if (isAvatarLimit(e)) {
+        showDialog(t('create.limitReached'), undefined, [
+          { text: t('pro.cta'), onPress: () => router.push('/pro') },
+          { text: t('pro.notNow'), style: 'cancel' },
+        ]);
+      } else showDialog(t('common.error'), e instanceof Error ? e.message : ((e as { message?: string })?.message ?? String(e)));
     }
   };
 
