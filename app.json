@@ -12,7 +12,8 @@
       "supportsTablet": false,
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Lovel House usa el micrófono para que puedas enviarle notas de voz a tu avatar.",
-        "NSPhotoLibraryUsageDescription": "Lovel House usa tus fotos solo para inspirar la apariencia de tu avatar."
+        "NSPhotoLibraryUsageDescription": "Lovel House usa tus fotos solo para inspirar la apariencia de tu avatar.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
