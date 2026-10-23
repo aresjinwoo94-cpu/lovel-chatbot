@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import Animated, { FadeIn, SlideInDown } from 'react-native-reanimated';
 
@@ -11,6 +11,7 @@ import { isBillingDisabled, startProCheckout } from '@/lib/billing';
 import { useI18n } from '@/lib/i18n';
 import { Text } from '@/components/Themed';
 import { showDialog } from '@/lib/dialog';
+import { track } from '@/lib/analytics';
 
 interface Props {
   visible: boolean;
@@ -30,6 +31,9 @@ export function PaywallModal({ visible, avatar, onClose, onUpgraded, reason }: P
   const { refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const features = [t('pro.f1'), t('pro.f2'), t('pro.f3'), t('pro.f4')];
+  useEffect(() => {
+    if (visible) track('paywall_shown', { reason: reason ?? null });
+  }, [visible, reason]);
 
   const upgrade = async () => {
     setLoading(true);

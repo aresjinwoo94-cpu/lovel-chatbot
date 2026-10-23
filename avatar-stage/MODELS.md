@@ -72,9 +72,16 @@ app, que solo lo usa la persona que lo sube y no pasa por QA):
    - No renombres los materiales: el escenario reconoce cada parte por los nombres que pone
      VRoid (`HAIR` → pelo, `EYEIRIS` → iris, `FACE_00_SKIN` → cara, `TOPS` / `BOTTOMS` /
      `SHOES` → prendas recoloreables; ver `category()` en `stage.html`).
-2. **Subirlo** a Supabase Storage, bucket público `vrm-models`, con el nombre `<id>.vrm`
-   (id corto en minúsculas, p. ej. `aurora.vrm`). El escenario lo carga de
-   `<bucket>/<id>.vrm`.
+2. **Optimizarlo y subirlo** a Supabase Storage, bucket público `vrm-models`:
+   - `npm i --no-save sharp && node scripts/optimize-vrm.cjs aurora.vrm out/aurora.vrm`
+     re-codifica las texturas (JPEG si no tienen transparencia, PNG con paleta si la tienen;
+     sin tocar la geometría ni las extensiones VRM). Suele ahorrar un 20–30 %.
+   - Si su peinado se va a prestar a otros cuerpos: `node scripts/make-hair-vrm.cjs
+     out/aurora.vrm out/aurora.hair.vrm` (solo esqueleto, física, pelo y cara sin expresiones;
+     ~2 MB en vez de ~5). El escenario carga `<bucket>/<id>.hair.vrm` para los peinados prestados.
+   - Sube `<id>.vrm` (y `<id>.hair.vrm`) con la cabecera `cache-control: max-age=604800`
+     (id corto en minúsculas, p. ej. `aurora.vrm`). Antes de reemplazar un modelo, guarda una
+     copia en `_backup-<fecha>/` del mismo bucket.
 3. **Registrarlo** en `src/lib/character/catalog.ts`:
    - en `MODELS`: `{ id: 'aurora', gender: 'female', label: { es: '…', en: '…' }, hairDonor: true }`
      (`vrm1: true` si es VRM 1.0; `alwaysPlain: true` si su ropa no admite recolorear prendas);

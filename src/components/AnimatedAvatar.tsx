@@ -92,6 +92,7 @@ export function AnimatedAvatar({ avatar, source, presence = 'idle', size = 40, s
     }
   }, [presence, scale, wave1, wave2, spin, ring]);
 
+  // borde fino: separa la foto del fondo aunque tenga colores parecidos (p. ej. ropa oscura en modo oscuro)
   const imgStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const w1 = useAnimatedStyle(() => ({ opacity: (1 - wave1.value) * 0.45 * (wave1.value > 0 ? 1 : 0), transform: [{ scale: 1 + wave1.value * 0.42 }] }));
   const w2 = useAnimatedStyle(() => ({ opacity: (1 - wave2.value) * 0.45 * (wave2.value > 0 ? 1 : 0), transform: [{ scale: 1 + wave2.value * 0.42 }] }));
@@ -123,7 +124,7 @@ export function AnimatedAvatar({ avatar, source, presence = 'idle', size = 40, s
           <Circle cx={size / 2} cy={size / 2} r={r} stroke={colors.primary} strokeWidth={2} fill="none" strokeDasharray={`${c * 0.28} ${c}`} strokeLinecap="round" />
         </Svg>
       </Animated.View>
-      <Animated.View style={[{ position: 'absolute', left: pad, top: pad, width: inner, height: inner, borderRadius: inner / 2, overflow: 'hidden', backgroundColor: colors.subtle }, imgStyle]}>
+      <Animated.View style={[{ position: 'absolute', left: pad, top: pad, width: inner, height: inner, borderRadius: inner / 2, overflow: 'hidden', backgroundColor: colors.subtle, borderWidth: 1, borderColor: colors.line }, imgStyle]}>
         {img ? (
           <Image
             source={img}

@@ -12,7 +12,7 @@ import {
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { useFonts } from 'expo-font';
 import { ObserveRoot } from 'expo-observe';
-import { DarkTheme, DefaultTheme, type Href, router, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, type Href, router, Stack, ThemeProvider as NavThemeProvider, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
@@ -21,6 +21,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppCrashFallback } from '@/components/AppCrashFallback';
 import { AgeGateProvider, useAgeGate } from '@/lib/ageGate';
+import { startAnalytics, trackScreen } from '@/lib/analytics';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { DialogHost } from '@/lib/dialog';
 import { I18nProvider } from '@/lib/i18n';
@@ -45,6 +46,12 @@ function RootNavigator() {
     return { ...base, colors: { ...base.colors, background: colors.cream, card: colors.paper, text: colors.ink, border: colors.line, primary: colors.primary } };
   }, [scheme, colors]);
   const adult = age === 'adult';
+
+  // Analítica del panel privado: pantalla por patrón de ruta (sin ids: /chat/[avatarId]).
+  const segments = useSegments();
+  const route = `/${segments.filter((x) => !x.startsWith('(')).join('/')}`;
+  useEffect(() => startAnalytics(), []);
+  useEffect(() => trackScreen(route), [route]);
 
   // Quien llegó por un enlace (p. ej. restablecer contraseña o un chat) sigue ahí tras la puerta.
   useEffect(() => {
@@ -89,6 +96,8 @@ function RootNavigator() {
             <Stack.Screen name="start" options={{ animation: 'fade' }} />
             <Stack.Screen name="chat/[avatarId]" />
             <Stack.Screen name="pro" options={{ presentation: 'modal' }} />
+            {/* Panel privado del responsable (la función admin-stats comprueba la cuenta). */}
+            <Stack.Screen name="admin" />
           </Stack.Protected>
         </Stack.Protected>
         <Stack.Screen name="terms" />

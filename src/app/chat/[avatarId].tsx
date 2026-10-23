@@ -30,6 +30,7 @@ import { genderize, sceneText as fillScene, scenarioById } from '@/lib/roleplay'
 import type { Avatar, ChatResponse, Message, QuotaState, VoiceChatResponse } from '@/lib/types';
 import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
+import { track } from '@/lib/analytics';
 
 /** Cuánto "habla" el personaje tras un mensaje de texto (aprox. velocidad de lectura en voz alta). */
 const speakMs = (text: string) => Math.max(1400, Math.min(6000, 900 + text.length * 32));
@@ -273,6 +274,7 @@ export default function ChatScreen() {
     setTyping(true);
     try {
       const res = await callFunction<ChatResponse>('chat', { avatarId, text: body });
+      track('message_sent');
       setMessages((prev) => [res.avatarMessage, res.userMessage, ...prev.filter((m) => m.id !== temp.id)]);
       setOffline(false);
       speakText(res.avatarMessage);
@@ -302,6 +304,7 @@ export default function ChatScreen() {
     try {
       const { base64, mimeType } = await readRecording(uri);
       const res = await callFunction<VoiceChatResponse>('voice-chat', { avatarId, audioBase64: base64, mimeType, durationMs });
+      track('voice_sent');
       const audio: Record<string, string> = { [res.userMessage.id]: uri };
       if (res.replyAudioBase64) {
         audio[res.avatarMessage.id] = await base64ToPlayableUri(res.replyAudioBase64, res.avatarMessage.id);

@@ -9,6 +9,10 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/supabaseConfig';
 import { supabase } from './supabase';
 import { resetThreads } from './threads';
 import type { Profile } from './types';
+import { track } from './analytics';
+
+/** Cuentas nuevas ya contadas en la analítica (una vez por usuario y arranque). */
+const counted = new Set<string>();
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -92,7 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.session) await loadProfile(data.session.user.id);
       setLoading(false);
     });
+    let prevAnonymous = false;
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      // Cuenta nueva (también un invitado que guarda su historia o entra con Google por primera vez).
+      const u = next?.user;
+      if (u && !u.is_anonymous && (prevAnonymous || Date.now() - new Date(u.created_at).getTime() < 5 * 60 * 1000) && !counted.has(u.id)) {
+        counted.add(u.id);
+        track('account_created');
+      }
+      prevAnonymous = !!u?.is_anonymous;
       setSession(next);
       // Importante: no consultar Supabase dentro de este callback (bloquea el cliente).
       // Lo diferimos al siguiente ciclo, como recomienda supabase-js.

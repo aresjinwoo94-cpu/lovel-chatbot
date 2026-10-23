@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import { AGE_KEY as KEY } from './ageStore';
 import { useAuth } from './auth';
 import { supabase } from './supabase';
+import { track } from './analytics';
 
 /**
  * Puerta 18+. Lovel House es solo para personas adultas.
@@ -91,6 +92,7 @@ export function AgeGateProvider({ children }: { children: ReactNode }) {
     resume.current = resumeHref(launch);
     await AsyncStorage.setItem(KEY, 'adult').catch(() => undefined);
     setStored('adult');
+    track('age_confirmed');
   }, []);
   const takeResume = useCallback(() => {
     const href = resume.current;

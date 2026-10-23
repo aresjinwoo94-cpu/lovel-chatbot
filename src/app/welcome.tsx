@@ -19,6 +19,7 @@ import { genderize, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, SCENA
 import type { Gender } from '@/lib/types';
 import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
+import { track } from '@/lib/analytics';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 type Who = 'female' | 'male' | 'any';
@@ -196,7 +197,10 @@ export default function Welcome() {
               <Muted className="mt-3 text-center text-[15px] leading-[22px]">{t('welcome.body')}</Muted>
             </Animated.View>
             <Animated.View entering={FadeInDown.delay(240).duration(400)} className="mt-8">
-              <Button title={t('welcome.start')} size="lg" onPress={() => setStep(1)} />
+              <Button title={t('welcome.start')} size="lg" onPress={() => {
+                  track('welcome_started');
+                  setStep(1);
+                }} />
               <Text className="mt-3 text-center text-[12px] text-muted">{t('welcome.noAccount')}</Text>
             </Animated.View>
           </View>

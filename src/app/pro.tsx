@@ -12,6 +12,7 @@ import { useI18n } from '@/lib/i18n';
 import { Text } from '@/components/Themed';
 import { showDialog } from '@/lib/dialog';
 import { useColors } from '@/lib/theme';
+import { track } from '@/lib/analytics';
 
 /**
  * Página del plan Pro (también es la URL de retorno de Stripe Checkout en web:
@@ -25,6 +26,9 @@ export default function ProScreen() {
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(status === 'success');
   const features = [t('pro.f1'), t('pro.f2'), t('pro.f3'), t('pro.f4')];
+  useEffect(() => {
+    track('pro_viewed');
+  }, []);
 
   // Retorno desde Stripe en web: esperamos a que el webhook active Pro.
   useEffect(() => {

@@ -645,7 +645,9 @@ function settle() {
 
 async function load(look, base) {
   const modelUrl = /^https?:/.test(look.model) ? look.model : \`\${base}/\${look.model}.vrm\`;
-  const hairUrl = look.hair && look.hair !== look.model ? (/^https?:/.test(look.hair) ? look.hair : \`\${base}/\${look.hair}.vrm\`) : null;
+  // Peinado prestado: versión "solo pelo" del donante (esqueleto, física, pelo y cara sin
+  // expresiones; ~2 MB en lugar de ~5), generada al publicar los modelos (avatar-stage/MODELS.md).
+  const hairUrl = look.hair && look.hair !== look.model ? (/^https?:/.test(look.hair) ? look.hair : \`\${base}/\${look.hair}.hair.vrm\`) : null;
   if (current.modelUrl === modelUrl && current.hairUrl === hairUrl) return false;
   document.getElementById('loading').style.display = 'flex';
   const [vrm, hairVrm] = await Promise.all([fetchVrm(modelUrl), hairUrl ? fetchVrm(hairUrl) : null]);

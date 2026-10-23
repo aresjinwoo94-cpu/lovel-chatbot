@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 import { ApiError, callFunction } from './api';
 import { supabase } from './supabase';
+import { track } from './analytics';
 
 /** Límites del plan gratuito (idénticos a supabase/functions/_shared/quota.ts). */
 export const FREE_TEXT_LIMIT = 25;
@@ -21,6 +22,7 @@ const returnUrl = () => (Platform.OS === 'web' ? `${window.location.origin}/pro`
 export const isBillingDisabled = (e: unknown) => e instanceof ApiError && (e.code === 'BILLING_DISABLED' || /STRIPE_SECRET_KEY/.test(e.message));
 
 export async function startProCheckout(): Promise<boolean> {
+  track('checkout_started');
   const { url } = await callFunction<{ url: string }>('create-checkout', { returnUrl: returnUrl() });
   if (Platform.OS === 'web') {
     window.location.href = url;
@@ -39,7 +41,10 @@ export async function waitForPro(timeoutMs = 15000): Promise<boolean> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const { data } = await supabase.from('profiles').select('is_pro').eq('id', userId).single();
-    if (data?.is_pro) return true;
+    if (data?.is_pro) {
+      track('checkout_completed');
+      return true;
+    }
     await new Promise((r) => setTimeout(r, 1500));
   }
   return false;

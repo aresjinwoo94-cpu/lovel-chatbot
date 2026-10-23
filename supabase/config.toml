@@ -25,3 +25,7 @@ verify_jwt = false
 # Muestras de voz del creador: se usa sin cuenta (solo voces del catálogo, con caché).
 [functions.voice-preview]
 verify_jwt = false
+
+# Analítica: llega también sin sesión (visitas antes de la puerta 18+) y con sendBeacon al salir.
+[functions.track]
+verify_jwt = false

@@ -13,12 +13,13 @@ import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { type ThemePref, useTheme } from '@/lib/theme';
 import type { Language } from '@/lib/types';
+import { isAdminEmail } from '@/lib/admin';
 
 /** Configuración simple: idioma, privacidad, contraseña y borrado de datos. */
 export default function SettingsScreen() {
   const { pref: themePref, setPref: setThemePref } = useTheme();
   const { t, language, setLanguage } = useI18n();
-  const { profile, refreshProfile, signOut } = useAuth();
+  const { profile, refreshProfile, signOut, session } = useAuth();
   const params = useLocalSearchParams<{ password?: string }>();
   const [storeVoice, setStoreVoice] = useState(profile?.store_voice ?? true);
   const [showPassword, setShowPassword] = useState(params.password === '1');
@@ -100,6 +101,15 @@ export default function SettingsScreen() {
             ]}
           />
         </View>
+
+        {isAdminEmail(session?.user.email) ? (
+          <>
+            <SectionLabel>Administración</SectionLabel>
+            <Card>
+              <ListRow icon="stats-chart-outline" label="Panel privado" onPress={() => router.push('/admin')} last />
+            </Card>
+          </>
+        ) : null}
 
         <SectionLabel>{t('settings.privacy')}</SectionLabel>
         <Card>

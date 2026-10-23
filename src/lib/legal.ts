@@ -46,10 +46,10 @@ const docs: Record<'terms' | 'privacy', Record<Language, LegalDoc>> = {
   privacy: {
     es: {
       title: 'Política de privacidad',
-      updated: 'Última actualización: 17 de octubre de 2026',
+      updated: 'Última actualización: 23 de octubre de 2026',
       sections: [
         { h: 'Solo mayores de 18', p: ['Lovel House es solo para personas mayores de 18 años. Si vemos que una cuenta es de un menor, la borramos con sus datos.'] },
-        { h: 'Qué guardamos', p: ['Tu correo, el nombre con el que quieres que te llamen, tu idioma, tu confirmación de edad, tus personajes y tus conversaciones. Tus notas de voz solo si lo permites en Ajustes.'] },
+        { h: 'Qué guardamos', p: ['Tu correo, el nombre con el que quieres que te llamen, tu idioma, tu confirmación de edad, tus personajes y tus conversaciones. Tus notas de voz solo si lo permites en Ajustes.', 'Además, estadísticas de uso para mejorar la app: qué pantallas visitas, cuánto tiempo y el país aproximado (según la zona horaria de tu dispositivo). No guardamos tu IP ni tu ubicación.'] },
         { h: 'Para qué', p: ['Para que los personajes respondan, recuerden vuestra historia y hablen con voz, y para gestionar tu plan. No vendemos tus datos ni los usamos para publicidad.'] },
         { h: 'Con quién', p: ['Solo con los proveedores que hacen funcionar la app (servidores, inteligencia artificial, voz y pagos). Tus conversaciones son privadas.'] },
         { h: 'Tus derechos', p: ['Desde Ajustes puedes exportar o borrar tus conversaciones y eliminar tu cuenta con todos tus datos.'] },
@@ -57,10 +57,10 @@ const docs: Record<'terms' | 'privacy', Record<Language, LegalDoc>> = {
     },
     en: {
       title: 'Privacy policy',
-      updated: 'Last updated: October 17, 2026',
+      updated: 'Last updated: October 23, 2026',
       sections: [
         { h: 'Adults 18+ only', p: ['Lovel House is only for people aged 18 and over. If we find an account belongs to a minor, we delete it with its data.'] },
-        { h: 'What we store', p: ['Your email, the name you want to be called, your language, your age confirmation, your characters and your conversations. Your voice notes only if you allow it in Settings.'] },
+        { h: 'What we store', p: ['Your email, the name you want to be called, your language, your age confirmation, your characters and your conversations. Your voice notes only if you allow it in Settings.', 'We also keep usage statistics to improve the app: which screens you visit, for how long, and your approximate country (from your device’s time zone). We don’t store your IP address or your location.'] },
         { h: 'Why', p: ['So characters can reply, remember your story and speak, and to manage your plan. We don’t sell your data or use it for ads.'] },
         { h: 'Who with', p: ['Only the providers that run the app (servers, AI, voice and payments). Your conversations are private.'] },
         { h: 'Your rights', p: ['From Settings you can export or delete your conversations and delete your account with all your data.'] },
