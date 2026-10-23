@@ -29,6 +29,7 @@ import { detectEmotion } from '@/lib/emotion';
 import { genderize, sceneText as fillScene, scenarioById } from '@/lib/roleplay';
 import type { Avatar, ChatResponse, Message, QuotaState, VoiceChatResponse } from '@/lib/types';
 import { useColors } from '@/lib/theme';
+import { useMarkInteractive } from '@/lib/observe';
 
 /** Cuánto "habla" el personaje tras un mensaje de texto (aprox. velocidad de lectura en voz alta). */
 const speakMs = (text: string) => Math.max(1400, Math.min(6000, 900 + text.length * 32));
@@ -53,6 +54,7 @@ export default function ChatScreen() {
   // momento en que se abrió el chat: solo los mensajes nuevos marcan emoción en la cara
   const [openedAt] = useState(() => Date.now() - 10_000);
   const [loading, setLoading] = useState(true);
+  useMarkInteractive(!loading);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 

@@ -14,6 +14,7 @@ import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { useThreads } from '@/lib/threads';
 import { useColors } from '@/lib/theme';
+import { useMarkInteractive } from '@/lib/observe';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -55,6 +56,7 @@ export default function HomeScreen() {
   const { t } = useI18n();
   const { profile, session } = useAuth();
   const { threads, loaded, failed, refresh } = useThreads();
+  useMarkInteractive(loaded);
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
   const wide = width >= 900;

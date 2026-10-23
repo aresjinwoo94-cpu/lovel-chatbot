@@ -1,5 +1,7 @@
 import '@/global.css';
 import '@/lib/nativewindInterop';
+// EAS Observe: se configura antes de que se monte ninguna pantalla.
+import '@/lib/observe';
 
 import {
   PlusJakartaSans_400Regular,
@@ -9,6 +11,7 @@ import {
   PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { useFonts } from 'expo-font';
+import { ObserveRoot } from 'expo-observe';
 import { DarkTheme, DefaultTheme, type Href, router, Stack, ThemeProvider as NavThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -16,6 +19,7 @@ import { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AppCrashFallback } from '@/components/AppCrashFallback';
 import { AgeGateProvider, useAgeGate } from '@/lib/ageGate';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { DialogHost } from '@/lib/dialog';
@@ -96,20 +100,27 @@ function RootNavigator() {
   );
 }
 
+/**
+ * ObserveRoot (EAS Observe) mide el tiempo hasta el primer render y, con su pantalla de error,
+ * registra los fallos de render con la pila de componentes. Cada pantalla de entrada marca cuándo
+ * está lista con useMarkInteractive() (src/lib/observe.ts).
+ */
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-        <I18nProvider>
-          <AuthProvider>
-            <AgeGateProvider>
-              <RootNavigator />
-            </AgeGateProvider>
-          </AuthProvider>
-        </I18nProvider>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ObserveRoot errorBoundaryFallback={(p) => <AppCrashFallback {...p} />}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <ThemeProvider>
+            <I18nProvider>
+              <AuthProvider>
+                <AgeGateProvider>
+                  <RootNavigator />
+                </AgeGateProvider>
+              </AuthProvider>
+            </I18nProvider>
+          </ThemeProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ObserveRoot>
   );
 }

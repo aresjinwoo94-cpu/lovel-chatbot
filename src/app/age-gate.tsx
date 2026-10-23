@@ -10,6 +10,7 @@ import { Button, Muted } from '@/components/ui';
 import { useAgeGate } from '@/lib/ageGate';
 import { useI18n } from '@/lib/i18n';
 import { useColors } from '@/lib/theme';
+import { useMarkInteractive } from '@/lib/observe';
 
 function LegalLinks() {
   const { t } = useI18n();
@@ -31,6 +32,7 @@ function LegalLinks() {
  * Mientras no se confirme, el resto de la app no está disponible (ver _layout.tsx).
  */
 export default function AgeGate() {
+  useMarkInteractive();
   const colors = useColors();
   const { t } = useI18n();
   const { status, confirmAdult, declareMinor } = useAgeGate();

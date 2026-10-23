@@ -18,6 +18,7 @@ import { useI18n } from '@/lib/i18n';
 import { genderize, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, SCENARIOS, scenariosFor } from '@/lib/roleplay';
 import type { Gender } from '@/lib/types';
 import { useColors } from '@/lib/theme';
+import { useMarkInteractive } from '@/lib/observe';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 type Who = 'female' | 'male' | 'any';
@@ -92,6 +93,7 @@ function Faces({ gender }: { gender: Who }) {
  * lleva directo al chat: el personaje te escribe primero. Allí puedes personalizarlo.
  */
 export default function Welcome() {
+  useMarkInteractive();
   const colors = useColors();
   const { t, language } = useI18n();
   const { session, startGuest } = useAuth();

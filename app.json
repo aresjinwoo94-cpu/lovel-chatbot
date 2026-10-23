@@ -64,7 +64,8 @@
       ],
       "expo-sharing",
       "expo-localization",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

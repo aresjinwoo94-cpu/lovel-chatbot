@@ -56,6 +56,7 @@ import { useI18n } from '@/lib/i18n';
 import { conflictsWith, genderize, MAX_TRAITS, type Scenario, SCENARIO_CATEGORIES, type ScenarioCategory, sceneText, sceneFitsGender, scenarioById, SCENARIOS, scenariosFor, traitById, traitLabel, TRAITS } from '@/lib/roleplay';
 import type { Gender } from '@/lib/types';
 import { useColors } from '@/lib/theme';
+import { useMarkInteractive } from '@/lib/observe';
 
 type Tab = 'model' | 'hair' | 'face' | 'outfit' | 'accessories' | 'pose' | 'scene' | 'voice' | 'identity';
 type View3D = 'face' | 'bust' | 'portrait';
@@ -163,6 +164,7 @@ export default function CreateCharacter() {
   const contentW = panelW - railW - 40;
 
   const [loaded, setLoaded] = useState(false);
+  useMarkInteractive(loaded);
   const [step, setStep] = useState(0);
   const [tab, setTab] = useState<Tab>('model');
   const [view, setView] = useState<View3D>(wide ? 'portrait' : 'bust');

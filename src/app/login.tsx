@@ -13,6 +13,7 @@ import { showDialog } from '@/lib/dialog';
 import { type CharacterDraft, loadDraft } from '@/lib/draft';
 import { useI18n } from '@/lib/i18n';
 import { useColors } from '@/lib/theme';
+import { useMarkInteractive } from '@/lib/observe';
 
 /**
  * Registro / Login: Google o correo + contraseña.
@@ -20,6 +21,7 @@ import { useColors } from '@/lib/theme';
  * personaje esperándote y, al entrar, la historia empieza sola.
  */
 export default function LoginScreen() {
+  useMarkInteractive();
   const colors = useColors();
   const { t } = useI18n();
   const { signInWithGoogle, signInWithEmail, signUpWithEmail, sendPasswordReset, isGuest } = useAuth();

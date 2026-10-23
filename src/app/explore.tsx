@@ -16,6 +16,7 @@ import { presetPortrait } from '@/lib/character/media';
 import { useI18n } from '@/lib/i18n';
 import { traitById, traitLabel } from '@/lib/roleplay';
 import { useColors } from '@/lib/theme';
+import { useMarkInteractive } from '@/lib/observe';
 
 type Filter = 'all' | 'female' | 'male';
 
@@ -25,6 +26,7 @@ type Filter = 'all' | 'female' | 'male';
  * Sin cuenta: la cuenta solo se pide al empezar la historia.
  */
 export default function ExploreScreen() {
+  useMarkInteractive();
   const colors = useColors();
   const { t, language } = useI18n();
   const { session } = useAuth();

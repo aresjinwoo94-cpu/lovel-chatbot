@@ -1,0 +1,18 @@
+{
+  "cli": {
+    "version": ">= 22.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true,
+      "uploadSourceMaps": true
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
