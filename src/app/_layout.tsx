@@ -27,6 +27,7 @@ import { startAnalytics, trackScreen } from '@/lib/analytics';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { DialogHost } from '@/lib/dialog';
 import { I18nProvider } from '@/lib/i18n';
+import { perfPhase } from '@/lib/perfMeter';
 import { ThemeProvider, useTheme } from '@/lib/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -71,7 +72,10 @@ function RootNavigator() {
   const ready = !loading && age !== 'loading' && themeLoaded && (fontsLoaded || !!fontError || Platform.OS === 'web');
 
   useEffect(() => {
-    if (ready) SplashScreen.hideAsync();
+    if (ready) {
+      perfPhase('app lista');
+      SplashScreen.hideAsync();
+    }
   }, [ready]);
 
   if (!ready) return null;

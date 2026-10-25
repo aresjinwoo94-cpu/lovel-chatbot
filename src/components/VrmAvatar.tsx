@@ -55,6 +55,7 @@ function VrmAvatarBase(
   // modelo (cuerpo + pelo) que ya se ve en 3D: si cambia de personaje, vuelve el retrato hasta que cargue
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const modelKeyRef = useRef('');
+  const presenceRef = useRef<string>(presence);
 
   const post = useCallback((msg: object) => {
     if (!ready.current) {
@@ -86,7 +87,7 @@ function VrmAvatarBase(
         setLoadedFor(modelKeyRef.current);
         onError?.(msg.message ?? 'Error');
       }
-      else if (msg.type === 'fps' && msg.fps) perfFps(msg.fps);
+      else if (msg.type === 'fps' && msg.fps) perfFps(msg.fps, presenceRef.current);
       else if (msg.type === 'snapshot' && msg.dataUrl) {
         pendingSnapshot.current?.(msg.dataUrl);
         pendingSnapshot.current = null;
@@ -107,6 +108,7 @@ function VrmAvatarBase(
   }, [lookKey, framing, transparent, post]);
 
   useEffect(() => {
+    presenceRef.current = presence;
     post({ type: 'state', mood: presence, emotion, emotionId });
   }, [presence, emotion, emotionId, post]);
 

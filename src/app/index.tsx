@@ -1,10 +1,11 @@
-import { Redirect, router } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '@/lib/auth';
 import { loadDraft } from '@/lib/draft';
 import { supabase } from '@/lib/supabase';
+import { perfPhase } from '@/lib/perfMeter';
 import { cachedThreads } from '@/lib/threads';
 import { useColors } from '@/lib/theme';
 
@@ -25,7 +26,6 @@ export default function Index() {
     let alive = true;
     (async () => {
       if (!session) return setTarget('/welcome');
-      if (!isGuest) router.prefetch('/(tabs)'); // baja el código de Inicio mientras se decide
       const draft = await loadDraft();
       if (draft?.ready) return alive && setTarget('/start');
       // con la lista guardada de la última vez no hace falta preguntar al servidor
@@ -52,5 +52,6 @@ export default function Index() {
       </View>
     );
   }
+  perfPhase('ruta decidida');
   return <Redirect href={target} />;
 }

@@ -4,7 +4,9 @@
  * Se usa durante el cuestionario (personaje elegido) y al abrir la app (último chat).
  * En Android/iOS el escenario vive en un WebView con su propia caché: allí no aplica.
  */
-import { Platform } from 'react-native';
+import { Asset } from 'expo-asset';
+import { Image } from 'expo-image';
+import { type ImageSourcePropType, Platform } from 'react-native';
 
 import { isCustomModel } from './catalog';
 import { MODEL_BASE_URL } from './media';
@@ -56,4 +58,21 @@ export function prefetchLook(look: Pick<CharacterLook, 'model' | 'hair'> | null 
       urls.forEach((u) => done.delete(u));
     }
   }, 600);
+}
+
+const postersDone = new Set<string>();
+
+/**
+ * Retratos que se ven al abrir el chat (antes de que aparezca el 3D): se bajan desde Inicio
+ * para que el chat los pinte al instante (presupuesto ≤ 300 ms). ~85 KB cada uno.
+ */
+export function prefetchPosters(sources: ImageSourcePropType[]) {
+  const urls = sources
+    .map((s) => (typeof s === 'number' ? Asset.fromModule(s).uri : !Array.isArray(s) && s && typeof s === 'object' ? s.uri : undefined))
+    .filter((u): u is string => !!u && !postersDone.has(u));
+  if (!urls.length) return;
+  urls.forEach((u) => postersDone.add(u));
+  setTimeout(() => {
+    Image.prefetch(urls).catch(() => urls.forEach((u) => postersDone.delete(u)));
+  }, 300);
 }

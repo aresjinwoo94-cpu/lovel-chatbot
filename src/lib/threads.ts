@@ -33,7 +33,7 @@ async function saveThreads(threads: AvatarThread[]) {
  * Lista de historias compartida por la barra lateral y el inicio: una sola
  * consulta y todos los componentes se actualizan a la vez.
  */
-type State = { threads: AvatarThread[]; loaded: boolean; failed: boolean };
+type State = { threads: AvatarThread[]; loaded: boolean; failed: boolean; fromCache?: boolean };
 let state: State = { threads: [], loaded: false, failed: false };
 const listeners = new Set<() => void>();
 const set = (s: Partial<State>) => {
@@ -46,11 +46,11 @@ export function refreshThreads(): Promise<void> {
   // mientras llega la lista del servidor, la copia local (solo si aún no hay nada pintado)
   if (!state.loaded && !inflight)
     cachedThreads().then((threads) => {
-      if (threads?.length && !state.loaded) set({ threads, loaded: true, failed: false });
+      if (threads?.length && !state.loaded) set({ threads, loaded: true, failed: false, fromCache: true });
     });
   inflight ??= fetchAvatarThreads()
     .then((threads) => {
-      set({ threads, loaded: true, failed: false });
+      set({ threads, loaded: true, failed: false, fromCache: false });
       saveThreads(threads);
     })
     .catch(() => set({ loaded: true, failed: !state.threads.length }))

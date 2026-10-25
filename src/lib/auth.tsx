@@ -11,6 +11,7 @@ import { supabase } from './supabase';
 import { resetThreads } from './threads';
 import type { Profile } from './types';
 import { track } from './analytics';
+import { perfPhase } from './perfMeter';
 
 /** Cuentas nuevas ya contadas en la analítica (una vez por usuario y arranque). */
 const counted = new Set<string>();
@@ -97,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
+      perfPhase('sesión');
       setSession(data.session);
       if (data.session) {
         // con el perfil guardado de la última vez se arranca ya y se actualiza en segundo plano
@@ -107,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           loadProfile(data.session.user.id);
         } else await loadProfile(data.session.user.id);
       }
+      perfPhase('perfil');
       setLoading(false);
     });
     let prevAnonymous = false;

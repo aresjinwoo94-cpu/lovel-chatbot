@@ -62,15 +62,47 @@ export function perfEnd(name: string, key: PerfKey = name as PerfKey) {
   record(key, now() - t0);
 }
 
-/** Momentos medidos desde que arrancó la app (en web, desde que se pidió la página). */
+/**
+ * Fases del arranque hasta Inicio (ms desde que se pidió la página), para saber en qué se va
+ * el tiempo: código ejecutándose, sesión leída, app lista, ruta decidida, Inicio pintado.
+ */
+const phases: [string, number][] = [];
 let homeDone = false;
-export function perfHomeReady() {
+export function perfPhase(name: string) {
+  if (homeDone || phases.some(([n]) => n === name)) return;
+  phases.push([name, Math.round(now())]);
+}
+perfPhase('código');
+
+/** Momentos medidos desde que arrancó la app (en web, desde que se pidió la página). */
+export function perfHomeReady(fromCache: boolean) {
   if (homeDone) return;
+  perfPhase(fromCache ? 'inicio (copia local)' : 'inicio (servidor)');
   homeDone = true;
   record('home', now());
 }
 
-export function perfFps(fps: number) {
+/** Qué se bajó de la red al abrir (solo web): si el código vino de la caché o no. */
+function networkSummary() {
+  if (Platform.OS !== 'web' || typeof performance === 'undefined' || !performance.getEntriesByType) return '';
+  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  const res = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+  const js = res.filter((r) => /_expo\/static\/js/.test(r.name) && r.startTime < (phases.at(-1)?.[1] ?? Infinity));
+  const kb = (n: number) => Math.round(n / 1024);
+  const sb = res.filter((r) => /supabase\.co/.test(r.name) && r.startTime < (phases.at(-1)?.[1] ?? Infinity));
+  return [
+    nav ? `página: html ${Math.round(nav.responseEnd)} ms, dom ${Math.round(nav.domContentLoadedEventEnd)} ms` : '',
+    `código: ${js.length} archivos, ${kb(js.reduce((a, r) => a + (r.transferSize || 0), 0))} KB bajados, el último terminó a ${Math.round(Math.max(0, ...js.map((r) => r.responseEnd)))} ms`,
+    `servidor antes de Inicio: ${sb.length} peticiones (${sb.map((r) => `${new URL(r.name).pathname.split('/').slice(-1)[0]} ${Math.round(r.duration)} ms`).join(', ')})`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+const fpsCtx: string[] = [];
+export function perfFps(fps: number, context?: string) {
+  fpsCtx.push(`${Math.round(fps)}${context ? ` ${context}` : ''}`);
+  if (fpsCtx.length > 12) fpsCtx.shift();
   record('fps', fps);
 }
 
@@ -109,7 +141,15 @@ export function perfReport() {
     return `${PERF_LABELS[k]}: ${v.length ? v.join(', ') : '—'} (presupuesto ${PERF_BUDGET[k]})`;
   });
   const ua = Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.userAgent : `${Platform.OS} ${String(Platform.Version)}`;
-  return [`Lovel House · ${ua}`, ...lines].join('\n');
+  return [
+    `Lovel House · ${ua}`,
+    ...lines,
+    `Fases de Inicio: ${phases.map(([n, t]) => `${n} ${t}`).join(' · ') || '—'}`,
+    networkSummary(),
+    `fps por estado: ${fpsCtx.join(', ') || '—'}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 // arranque: ?perf=1 / ?perf=0 en la web, o lo que se guardó
@@ -125,3 +165,6 @@ export function perfReport() {
     })
     .catch(() => {});
 })();
+
+// para leerlo desde la consola o las pruebas automáticas
+if (Platform.OS === 'web' && typeof window !== 'undefined') (window as unknown as { __lovelPerfReport?: () => string }).__lovelPerfReport = perfReport;

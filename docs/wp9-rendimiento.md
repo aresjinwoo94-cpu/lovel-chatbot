@@ -20,13 +20,13 @@ Script: `perf.mjs`, en el scratchpad de la sesión. Crea un usuario temporal y l
 
 | Momento (presupuesto) | Antes (producción) | Después | ¿Cumple? |
 |---|---|---|---|
-| Primera visita → puerta 18+ usable | 4,0 s | 3,4–3,6 s | — (sin presupuesto propio) |
-| Abrir app con sesión → Inicio usable (≤ 2 s) | 1,6 s (S22 Ultra real: 3,45 s) | 1,7 s visita habitual (perfil y lista guardados en el teléfono) | Sí en emulación; falta confirmar en el teléfono |
-| Chat desde Inicio: retrato visible (≤ 300 ms) | 0,73 s | 0,60 s desde el clic; 0,20–0,27 s si ya se abrió | Sí al volver; la 1.ª vez depende de la red |
-| 3D primera vez (≤ 2,5 s) | 11,9 s | 6,3 s (por software) | Hay que medirlo en el teléfono (ver fases) |
+| Primera visita → puerta 18+ usable | 4,0 s | 2,8 s | — (sin presupuesto propio) |
+| Abrir app con sesión → Inicio usable (≤ 2 s) | 1,6 s (S22 Ultra real: 3,45 s y 5,4 s) | 1,1 s | Sí en emulación; falta confirmar en el teléfono |
+| Chat desde Inicio: retrato visible (≤ 300 ms) | 0,73 s (S22 Ultra real: 0,6 s) | 0,22–0,35 s; 0,08 s si ya se abrió | Sí en emulación; falta confirmar en el teléfono |
+| 3D primera vez (≤ 2,5 s) | 11,9 s | 5,3 s por software; **S22 Ultra real: 1,39 s** | **Sí** en el teléfono |
 | 3D ya cargado antes (≤ 800 ms) | 6,0 s | 0,27–0,37 s | **Sí** |
-| Enviar → "escribiendo" (≤ 200 ms) | ~0,58 s | 0,28–0,32 s desde el toque (CPU 4×) | Casi: en el teléfono debería bajar |
-| Animación (≥ 45 fps) | — | No medible por software | Hay que medirlo en el teléfono (el medidor da los fps) |
+| Enviar → "escribiendo" (≤ 200 ms) | ~0,58 s | 0,24–0,34 s desde el toque (CPU 4×); **S22 Ultra real: 15 ms** | **Sí** en el teléfono |
+| Animación (≥ 45 fps) | — | **S22 Ultra real: 58–60 fps, con dos caídas a 13** | Casi: se investigan las caídas |
 
 Fases del 3D la primera vez, sin GPU:
 
@@ -71,12 +71,13 @@ Con GPU, el primer fotograma suele bajar a cientos de milisegundos.
 
 **Inicio sin esperas en cadena** (tras la primera medición en un S22 Ultra: 3,45 s)
 - El perfil y la lista de historias se guardan en el teléfono. Al abrir, Inicio se pinta con ellos y se actualiza cuando responde el servidor.
-- La pantalla de entrada ya no pregunta al servidor si hay historias cuando ya lo sabe, y precarga el código de Inicio mientras decide.
+- La pantalla de entrada ya no pregunta al servidor si hay historias cuando ya lo sabe.
+- Se quitaron las rutas asíncronas en web: partían el código en trozos que se bajaban uno tras otro (entrada → Inicio → chat). Medido con y sin ellas: primera visita 3,5 → 2,8 s, Inicio 1,7 → 1,1 s, retrato del chat 0,55 → 0,35 s.
+- Inicio precarga los retratos de las primeras historias, que el chat enseña antes del 3D.
 - En la web las fuentes ya no bloquean el primer pintado.
 
 **JS inicial más ligero**
 - La web pasó de 852 KB a 668 KB y las fuentes de 205 KB a 164 KB:
-  - Rutas asíncronas en web.
   - Lottie de 2,4 MB sustituido por tres puntos animados.
   - Iconos importados uno a uno.
   - Una fuente menos.

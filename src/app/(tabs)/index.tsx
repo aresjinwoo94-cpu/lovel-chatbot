@@ -17,7 +17,8 @@ import { useThreads } from '@/lib/threads';
 import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
 import { normalizeLook } from '@/lib/character/catalog';
-import { prefetchLook } from '@/lib/character/prefetch';
+import { stagePoster } from '@/lib/character/media';
+import { prefetchLook, prefetchPosters } from '@/lib/character/prefetch';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -58,10 +59,15 @@ export default function HomeScreen() {
   const colors = useColors();
   const { t } = useI18n();
   const { profile } = useAuth();
-  const { threads, loaded, failed, refresh } = useThreads();
+  const { threads, loaded, failed, fromCache, refresh } = useThreads();
   // El último chat suele ser el siguiente: su 3D se deja listo en la caché.
   const lastLook = threads[0] ? normalizeLook(threads[0].appearance, threads[0].gender) : null;
   useEffect(() => prefetchLook(lastLook), [lastLook?.model, lastLook?.hair]); // eslint-disable-line react-hooks/exhaustive-deps
+  // retratos de las primeras historias: el chat los pinta sin esperar a la red
+  const posterKey = threads.slice(0, 4).map((a) => a.id + (a.avatar_image_url ?? '')).join('|');
+  useEffect(() => {
+    prefetchPosters(threads.slice(0, 4).map((a) => stagePoster({ imageUrl: a.avatar_image_url, look: normalizeLook(a.appearance, a.gender) })));
+  }, [posterKey]); // eslint-disable-line react-hooks/exhaustive-deps
   useMarkInteractive(loaded);
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
@@ -100,8 +106,8 @@ export default function HomeScreen() {
     router.push({ pathname: '/chat/[avatarId]', params: { avatarId: a.id } });
   };
   useEffect(() => {
-    if (loaded) perfHomeReady();
-  }, [loaded]);
+    if (loaded) perfHomeReady(!!fromCache);
+  }, [loaded]); // eslint-disable-line react-hooks/exhaustive-deps
   const confirmDelete = (a: AvatarThread) =>
     showDialog(t('chats.deleteConfirm', { name: a.name }), undefined, [
       { text: t('common.cancel'), style: 'cancel' },
