@@ -21,7 +21,7 @@ Script: `perf.mjs`, en el scratchpad de la sesión. Crea un usuario temporal y l
 | Momento (presupuesto) | Antes (producción) | Después | ¿Cumple? |
 |---|---|---|---|
 | Primera visita → puerta 18+ usable | 4,0 s | 3,4–3,6 s | — (sin presupuesto propio) |
-| Abrir app con sesión → Inicio usable (≤ 2 s) | 1,6 s | 1,9–2,4 s | En el límite: hay que medirlo en el teléfono |
+| Abrir app con sesión → Inicio usable (≤ 2 s) | 1,6 s (S22 Ultra real: 3,45 s) | 1,7 s visita habitual (perfil y lista guardados en el teléfono) | Sí en emulación; falta confirmar en el teléfono |
 | Chat desde Inicio: retrato visible (≤ 300 ms) | 0,73 s | 0,60 s desde el clic; 0,20–0,27 s si ya se abrió | Sí al volver; la 1.ª vez depende de la red |
 | 3D primera vez (≤ 2,5 s) | 11,9 s | 6,3 s (por software) | Hay que medirlo en el teléfono (ver fases) |
 | 3D ya cargado antes (≤ 800 ms) | 6,0 s | 0,27–0,37 s | **Sí** |
@@ -68,6 +68,11 @@ Con GPU, el primer fotograma suele bajar a cientos de milisegundos.
 **three.js solo cuando hace falta**
 - Arrancar la app ya no carga three.js: llega con el primer chat (255 KB comprimido, antes 2,3 MB).
 - La versión minificada ocupa unos 600 KB menos.
+
+**Inicio sin esperas en cadena** (tras la primera medición en un S22 Ultra: 3,45 s)
+- El perfil y la lista de historias se guardan en el teléfono. Al abrir, Inicio se pinta con ellos y se actualiza cuando responde el servidor.
+- La pantalla de entrada ya no pregunta al servidor si hay historias cuando ya lo sabe, y precarga el código de Inicio mientras decide.
+- En la web las fuentes ya no bloquean el primer pintado.
 
 **JS inicial más ligero**
 - La web pasó de 852 KB a 668 KB y las fuentes de 205 KB a 164 KB:

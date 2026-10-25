@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -79,21 +80,33 @@ export async function completeAuthFromUrl(url: string) {
   }
 }
 
+const PROFILE_KEY = 'lovel.profile.v1';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+    if (error) return null; // sin red: se queda el perfil guardado
     setProfile((data as Profile) ?? null);
+    if (data) AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(data)).catch(() => {});
     return (data as Profile) ?? null;
   }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
-      if (data.session) await loadProfile(data.session.user.id);
+      if (data.session) {
+        // con el perfil guardado de la última vez se arranca ya y se actualiza en segundo plano
+        const saved = await AsyncStorage.getItem(PROFILE_KEY).catch(() => null);
+        const cached = saved ? (JSON.parse(saved) as Profile) : null;
+        if (cached?.id === data.session.user.id) {
+          setProfile(cached);
+          loadProfile(data.session.user.id);
+        } else await loadProfile(data.session.user.id);
+      }
       setLoading(false);
     });
     let prevAnonymous = false;
@@ -197,6 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async (scope: 'global' | 'local' = 'global') => {
     await supabase.auth.signOut({ scope });
     resetThreads();
+    AsyncStorage.removeItem(PROFILE_KEY).catch(() => {});
   }, []);
 
   const value = useMemo(

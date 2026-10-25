@@ -33,7 +33,7 @@ import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
 import { track } from '@/lib/analytics';
 import { stagePoster } from '@/lib/character/media';
-import { perfStart } from '@/lib/perfMeter';
+import { perfStart, perfStartIfIdle } from '@/lib/perfMeter';
 
 /** Cuánto "habla" el personaje tras un mensaje de texto (aprox. velocidad de lectura en voz alta). */
 const speakMs = (text: string) => Math.max(1400, Math.min(6000, 900 + text.length * 32));
@@ -65,6 +65,11 @@ export default function ChatScreen() {
 
   const [text, setText] = useState('');
   const [typing, setTyping] = useState(false);
+  // medidor: si se llegó sin tocar una historia (enlace, bienvenida, "Continuar"), cuenta desde aquí
+  useEffect(() => {
+    perfStartIfIdle('portrait');
+    perfStartIfIdle('stage');
+  }, [avatarId]);
   const [opening, setOpening] = useState(false);
   const [openingFailed, setOpeningFailed] = useState(false);
   const [listening, setListening] = useState(false);

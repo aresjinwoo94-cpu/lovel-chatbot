@@ -16,6 +16,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppCrashFallback } from '@/components/AppCrashFallback';
@@ -66,7 +67,8 @@ function RootNavigator() {
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
   });
-  const ready = !loading && age !== 'loading' && themeLoaded && (fontsLoaded || !!fontError);
+  // en web las fuentes no bloquean: el texto sale con la del sistema y cambia al llegar (≈ 0,2 s)
+  const ready = !loading && age !== 'loading' && themeLoaded && (fontsLoaded || !!fontError || Platform.OS === 'web');
 
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();

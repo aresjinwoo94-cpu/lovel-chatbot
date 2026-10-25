@@ -49,6 +49,11 @@ export function perfStart(name: string) {
   starts[name] = now();
 }
 
+/** Igual que perfStart, pero sin pisar uno ya empezado (entradas sin toque: enlace, bienvenida). */
+export function perfStartIfIdle(name: string) {
+  if (starts[name] == null) starts[name] = now();
+}
+
 /** Termina un momento empezado con perfStart. Solo cuenta una vez por inicio. */
 export function perfEnd(name: string, key: PerfKey = name as PerfKey) {
   const t0 = starts[name];

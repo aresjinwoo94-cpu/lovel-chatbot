@@ -1,10 +1,11 @@
-import { Redirect } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '@/lib/auth';
 import { loadDraft } from '@/lib/draft';
 import { supabase } from '@/lib/supabase';
+import { cachedThreads } from '@/lib/threads';
 import { useColors } from '@/lib/theme';
 
 type Target = '/welcome' | '/start' | '/(tabs)' | { pathname: '/chat/[avatarId]'; params: { avatarId: string } };
@@ -24,10 +25,16 @@ export default function Index() {
     let alive = true;
     (async () => {
       if (!session) return setTarget('/welcome');
+      if (!isGuest) router.prefetch('/(tabs)'); // baja el código de Inicio mientras se decide
       const draft = await loadDraft();
       if (draft?.ready) return alive && setTarget('/start');
-      const { data } = await supabase.from('avatars').select('id').order('last_message_at', { ascending: false, nullsFirst: false }).limit(1);
-      const first = data?.[0]?.id as string | undefined;
+      // con la lista guardada de la última vez no hace falta preguntar al servidor
+      const cached = await cachedThreads(session.user.id);
+      let first = cached?.[0]?.id;
+      if (!first) {
+        const { data } = await supabase.from('avatars').select('id').order('last_message_at', { ascending: false, nullsFirst: false }).limit(1);
+        first = data?.[0]?.id as string | undefined;
+      }
       if (!alive) return;
       if (!first) setTarget('/welcome');
       else if (isGuest) setTarget({ pathname: '/chat/[avatarId]', params: { avatarId: first } });

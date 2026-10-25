@@ -1,7 +1,33 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { type AvatarThread, fetchAvatarThreads } from './data';
+import { supabase } from './supabase';
 import type { Avatar } from './types';
+
+/**
+ * Copia local de la lista (por usuario): al abrir la app, Inicio se pinta al instante con ella
+ * y se actualiza cuando responde el servidor (WP-9: Inicio usable ≤ 2 s).
+ */
+const CACHE_KEY = 'lovel.threads.v1';
+async function currentUserId() {
+  return (await supabase.auth.getSession()).data.session?.user.id ?? null;
+}
+export async function cachedThreads(userId?: string | null): Promise<AvatarThread[] | null> {
+  try {
+    const uid = userId ?? (await currentUserId());
+    const raw = await AsyncStorage.getItem(CACHE_KEY);
+    if (!uid || !raw) return null;
+    const saved = JSON.parse(raw) as { uid: string; threads: AvatarThread[] };
+    return saved.uid === uid ? saved.threads : null;
+  } catch {
+    return null;
+  }
+}
+async function saveThreads(threads: AvatarThread[]) {
+  const uid = await currentUserId();
+  if (uid) AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ uid, threads })).catch(() => {});
+}
 
 /**
  * Lista de historias compartida por la barra lateral y el inicio: una sola
@@ -17,9 +43,17 @@ const set = (s: Partial<State>) => {
 
 let inflight: Promise<void> | null = null;
 export function refreshThreads(): Promise<void> {
+  // mientras llega la lista del servidor, la copia local (solo si aún no hay nada pintado)
+  if (!state.loaded && !inflight)
+    cachedThreads().then((threads) => {
+      if (threads?.length && !state.loaded) set({ threads, loaded: true, failed: false });
+    });
   inflight ??= fetchAvatarThreads()
-    .then((threads) => set({ threads, loaded: true, failed: false }))
-    .catch(() => set({ loaded: true, failed: true }))
+    .then((threads) => {
+      set({ threads, loaded: true, failed: false });
+      saveThreads(threads);
+    })
+    .catch(() => set({ loaded: true, failed: !state.threads.length }))
     .finally(() => {
       inflight = null;
     });
@@ -39,6 +73,7 @@ export function peekAvatar(id: string | null | undefined): Avatar | null {
 
 /** Al cerrar sesión. */
 export function resetThreads() {
+  AsyncStorage.removeItem(CACHE_KEY).catch(() => {});
   set({ threads: [], loaded: false, failed: false });
 }
 
