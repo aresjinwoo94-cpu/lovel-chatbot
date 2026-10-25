@@ -31,6 +31,8 @@ export interface AgeRange {
   accessoriesDenied: string[];
   /** Ropa lisa obligatoria (estilo más cuidado). */
   plainOutfit: boolean;
+  /** Rubor máximo (el rubor fuerte aniña) y maquillaje adulto discreto si no se eligió otro. */
+  makeup: { blushMax: number; lip: string | null; eyeshadow: string | null };
   /** Voces adecuadas (ids de VOICES); la primera es la automática. */
   voices: { female: string[]; male: string[] };
   /** Cómo habla (va al prompt del personaje). */
@@ -72,6 +74,7 @@ export const AGE_RANGES: AgeRange[] = [
     hairDenied: [],
     accessoriesDenied: [],
     plainOutfit: false,
+    makeup: { blushMax: 1, lip: null, eyeshadow: null },
     voices: { female: [V.sarah, V.laura, V.jessica, V.lily], male: [V.liam, V.chris, V.will, V.eric] },
     speech: 'Hablas como alguien de entre 18 y 22 años: fresco y espontáneo, con expresiones actuales, pero sin sonar infantil.',
   },
@@ -82,11 +85,12 @@ export const AGE_RANGES: AgeRange[] = [
     label: { es: '23–27 años', en: '23–27' },
     short: '23–27',
     typical: 25,
-    face: { lid: 0.05, iris: 0.97, head: 1, contour: 0 },
+    face: { lid: 0.07, iris: 0.97, head: 1, contour: 0 },
     bodiesDenied: [],
     hairDenied: [],
     accessoriesDenied: [],
     plainOutfit: false,
+    makeup: { blushMax: 0.5, lip: null, eyeshadow: null },
     voices: { female: [V.sarah, V.jessica, V.alice, V.laura, V.lily], male: [V.liam, V.will, V.eric, V.chris, V.callum] },
     speech: 'Hablas como alguien de entre 23 y 27 años: natural y seguro, cercano, con algo de humor.',
   },
@@ -97,12 +101,13 @@ export const AGE_RANGES: AgeRange[] = [
     label: { es: '28–34 años', en: '28–34' },
     short: '28–34',
     typical: 31,
-    face: { lid: 0.17, iris: 0.86, head: 0.96, contour: 0.55 },
+    face: { lid: 0.2, iris: 0.9, head: 0.96, contour: 0.55 },
     // "Gatita": ropa y orejas de estilo juvenil
     bodiesDenied: ['hair_f'],
     hairDenied: ['hair_f', 'bibi'],
     accessoriesDenied: CUTE,
     plainOutfit: true,
+    makeup: { blushMax: 0.2, lip: '#B0646C', eyeshadow: '#B79A9A' },
     voices: { female: [V.alice, V.lily, V.matilda, V.jessica], male: [V.eric, V.callum, V.brian, V.george, V.will] },
     speech: 'Hablas como alguien de entre 28 y 34 años: con aplomo y las cosas claras, menos jerga, una calidez más asentada.',
   },
@@ -110,16 +115,17 @@ export const AGE_RANGES: AgeRange[] = [
     id: '35+',
     min: 35,
     max: 99,
-    label: { es: '35 o más', en: '35+' },
+    label: { es: '35 años o más', en: '35+' },
     short: '35+',
     typical: 38,
-    face: { lid: 0.3, iris: 0.76, head: 0.93, contour: 1 },
+    face: { lid: 0.36, iris: 0.86, head: 0.93, contour: 1 },
     // solo ropa de persona adulta y cuidada: fuera la princesa con volantes, la gatita, la ciencia
     // ficción, la sudadera urbana y la camiseta básica
     bodiesDenied: ['hair_f', 'victoria', 'vita', 'hair_m', 'mei'],
     hairDenied: ['hair_f', 'bibi', 'vita'],
     accessoriesDenied: [...CUTE, 'fox_ears', 'flower_crown', 'fairy_wings', 'flower'],
     plainOutfit: true,
+    makeup: { blushMax: 0.1, lip: '#A0525E', eyeshadow: '#A88A8C' },
     voices: { female: [V.matilda, V.alice, V.lily], male: [V.brian, V.george, V.daniel, V.callum] },
     speech: 'Hablas como alguien de 35 años o más: maduro y sereno, con experiencia de vida; vocabulario cuidado y nada de jerga juvenil.',
   },
@@ -148,6 +154,9 @@ export const voiceAllowedForAge = (id: string | null, age: number, gender: strin
  */
 const ORIGINAL_HAIR: Record<string, string> = { hair_m: '#2B2A3A', hair_f: '#2B2A3A', vita: '#3A4A6A', victoria: '#D9AE6A' };
 
+/** Peinados largos (si hay que cambiarlos, mejor por otro largo). */
+const LONG_HAIR = new Set(['victoria', 'hair_f', 'mei', 'shino', 'noir']);
+
 /** Cuerpo adulto de repuesto si el elegido no encaja con la edad. */
 const BODY_FALLBACK: Record<string, string> = { female: 'shibu', male: 'fumiriya' };
 
@@ -163,11 +172,25 @@ export function applyAge(look: CharacterLook, age: number, gender: string = 'fem
     const keepHair = out.hair ?? out.model;
     if (!out.hairColor && ORIGINAL_HAIR[keepHair]) out.hairColor = ORIGINAL_HAIR[keepHair];
     out.model = BODY_FALLBACK[gender] ?? 'mei';
-    out.hair = keepHair !== out.model && !r.hairDenied.includes(keepHair) && hairAllowed(out.model, keepHair) ? keepHair : null;
+    if (keepHair !== out.model && !r.hairDenied.includes(keepHair) && hairAllowed(out.model, keepHair)) out.hair = keepHair;
+    else {
+      // un peinado parecido que encaje en el cuerpo nuevo (melena larga antes que un bob)
+      const similar = (LONG_HAIR.has(keepHair) ? ['mei', 'shino'] : []).find((h) => h !== out.model && !r.hairDenied.includes(h) && hairAllowed(out.model, h));
+      out.hair = similar ?? null;
+    }
   }
   if (out.hair && r.hairDenied.includes(out.hair)) out.hair = null;
   if (out.accessories.some((a) => r.accessoriesDenied.includes(a))) out.accessories = out.accessories.filter((a) => !r.accessoriesDenied.includes(a));
   if (r.plainOutfit) out.plainOutfit = true;
+  if (out.blush > r.makeup.blushMax) out.blush = r.makeup.blushMax;
+  // maquillaje discreto de persona adulta (solo en cuerpos femeninos y si no se eligió otro)
+  // (el automático de otro rango se cambia por el de este; si se baja la edad, se quita)
+  const autoLip = AGE_RANGES.map((x) => x.makeup.lip).filter(Boolean);
+  const autoShadow = AGE_RANGES.map((x) => x.makeup.eyeshadow).filter(Boolean);
+  if (gender === 'female') {
+    if (!out.lipColor || autoLip.includes(out.lipColor)) out.lipColor = r.makeup.lip;
+    if (!out.eyeshadow || autoShadow.includes(out.eyeshadow)) out.eyeshadow = r.makeup.eyeshadow;
+  }
   if (out.voice?.id && !voiceAllowedForAge(out.voice.id, age, gender)) out.voice = { ...out.voice, id: null };
   return out;
 }

@@ -2,7 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 
 import { SUPABASE_URL } from '@/constants/supabaseConfig';
 
-import { ageRange } from './ageRanges';
+import { ageRange, applyAge } from './ageRanges';
 import { PRESETS } from './catalog';
 import type { CharacterLook } from './types';
 
@@ -85,7 +85,8 @@ const canonical = (v: unknown): string =>
 // La edad no cuenta para reconocer el aspecto, pero el retrato solo vale si el rango de edad
 // es el mismo que el del personaje listo (WP-10: el rostro y la ropa cambian con la edad).
 const withoutAge = ({ age: _age, ...rest }: CharacterLook) => rest;
-const PRESET_KEYS = new Map(PRESETS.map((p) => [canonical(withoutAge(p.look)), p]));
+// el personaje listo tal y como se ve con su edad (maquillaje, rubor…)
+const PRESET_KEYS = new Map(PRESETS.map((p) => [canonical(withoutAge(applyAge(p.look, p.age, p.gender))), p]));
 function presetFor(look: CharacterLook) {
   const p = PRESET_KEYS.get(canonical(withoutAge(look)));
   return p && (look.age == null || ageRange(look.age).id === ageRange(p.age).id) ? p : undefined;

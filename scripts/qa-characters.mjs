@@ -23,8 +23,8 @@ const require = createRequire(import.meta.url);
 require('sucrase/register');
 const { PRESETS } = require('../src/lib/character/catalog.ts');
 const { applyAge } = require('../src/lib/character/ageRanges.ts');
-/** El aspecto que se ve: el del catálogo con su edad (el escenario ajusta el rostro a ella). */
-const shownLook = (p) => ({ ...p.look, age: p.age });
+/** El aspecto que se ve en la app: el del catálogo con su edad aplicada (rostro, maquillaje…). */
+const shownLook = (p) => applyAge(p.look, p.age, p.gender);
 
 const OUT = 'docs/qa';
 const MANIFEST = `${OUT}/manifest.json`;

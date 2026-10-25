@@ -319,6 +319,7 @@ const rgba = (hex, a) => { const [r, g, b] = rgb(hex); return `rgba(${r},${g},${
  */
 // Bocas dibujadas con forma propia (labios a dos tonos): no se retocan.
 const MOUTH_KEEP = new Set(['bibi', 'vita']);
+const MALE_BODIES = new Set(['hair_m', 'fumiriya']);
 
 /**
  * Boca en reposo cerrada y natural (WP-10). Las texturas de cara de VRoid traen un punto de
@@ -423,7 +424,7 @@ function paintFace(look) {
   const blush = Math.max(0, Math.min(1, +look.blush || 0));
   const marks = Array.isArray(look.marks) ? look.marks : [];
   const mouth = !MOUTH_KEEP.has(look.model);
-  if (!mouth && !ageFace(look).contour && !blush && !look.lipColor && !look.eyeshadow && !marks.length) return null;
+  if (!mouth && !ageFace(look).contour && !ageFace(look).stubble && !blush && !look.lipColor && !look.eyeshadow && !marks.length) return null;
   return (g, W, H) => {
     const X = (x) => x * W, Y = (y) => y * H;
     if (mouth) cleanMouth(g, W, H);
@@ -437,6 +438,11 @@ function paintFace(look) {
     // edad: sombra muy suave bajo los pómulos y hacia la mandíbula (cara más definida)
     const contour = ageFace(look).contour;
     if (contour) for (const cx of [0.25, 0.75]) soft(cx, 0.72, 0.075, 0.11, '#B88270', 0.3 * contour, 'multiply');
+    // hombres de 35+: sombra de barba muy leve en barbilla y mandíbula
+    if (ageFace(look).stubble && MALE_BODIES.has(look.model)) {
+      soft(0.5, 0.81, 0.1, 0.045, '#8C8496', 0.32, 'multiply');
+      for (const cx of [0.36, 0.64]) soft(cx, 0.76, 0.06, 0.06, '#8C8496', 0.22, 'multiply');
+    }
     if (look.eyeshadow) for (const cx of [0.352, 0.662]) soft(cx, 0.527, 0.09, 0.045, look.eyeshadow, 0.85, 'multiply');
     if (blush) for (const cx of [0.315, 0.688]) soft(cx, 0.655, 0.075, 0.045, '#F07C98', 0.5 * blush);
     if (look.lipColor) {
@@ -588,7 +594,7 @@ function applyFinish(look) {
 function applyColors(look) {
   const targets = [current.vrm?.scene, current.hairVrm?.scene].filter(Boolean);
   const facePaint = paintFace(look);
-  const faceKey = JSON.stringify(['boca1', look.model, ageFace(look).contour, look.blush, look.lipColor, look.eyeshadow, look.marks]);
+  const faceKey = JSON.stringify(['boca1', look.model, ageFace(look).contour, ageFace(look).stubble, look.blush, look.lipColor, look.eyeshadow, look.marks]);
   for (const root of targets) {
     const own = root === current.vrm.scene;
     eachMaterial(root, (m) => {
@@ -817,10 +823,10 @@ async function load(look, base) {
  * pequeños (el iris grande es lo que más aniña una cara anime).
  */
 const AGE_FACE = {
-  '18-22': { lid: 0, natural: 0, head: 1.02, contour: 0, iris: 1 },
-  '23-27': { lid: 0.05, natural: 0.15, head: 1, contour: 0, iris: 0.97 },
-  '28-34': { lid: 0.17, natural: 0.55, head: 0.96, contour: 0.55, iris: 0.86 },
-  '35+': { lid: 0.3, natural: 1, head: 0.93, contour: 1, iris: 0.76 },
+  '18-22': { lid: 0, natural: 0, head: 1.02, contour: 0, iris: 1, stubble: 0 },
+  '23-27': { lid: 0.07, natural: 0.15, head: 1, contour: 0, iris: 0.97, stubble: 0 },
+  '28-34': { lid: 0.2, natural: 0.55, head: 0.96, contour: 0.55, iris: 0.9, stubble: 0 },
+  '35+': { lid: 0.36, natural: 1, head: 0.93, contour: 1, iris: 0.86, stubble: 1 },
 };
 function ageFace(look) {
   const a = +look.age;
@@ -1372,6 +1378,27 @@ const vis = { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0 };
 let syllable = 'aa';
 const EMOTION_HOLD = 9; // segundos con la emoción marcada antes de volver al gesto base
 
+/**
+ * Boca cerrada en reposo (WP-10): los gestos base (sonrisa, serio, pícaro) separan un poco los
+ * labios y por la rendija asomaban los dientes como una raya blanca. En reposo el interior de la
+ * boca (dientes y lengua) toma el tono de la sombra entre los labios, así la rendija se lee como
+ * una sola línea; al hablar recupera su color.
+ */
+const MOUTH_SHADOW = new THREE.Color(0.32, 0.17, 0.17);
+function setMouthInterior(vrm, open) {
+  if (!vrm.userData.mouthMats) {
+    vrm.userData.mouthMats = [];
+    eachMaterial(vrm.scene, (m) => {
+      if (!/FACEMOUTH/i.test(m.name || '') || !m.color) return;
+      vrm.userData.mouthMats.push([m, m.color.clone(), m.shadeColorFactor?.clone()]);
+    });
+  }
+  for (const [m, c0, s0] of vrm.userData.mouthMats) {
+    m.color.copy(MOUTH_SHADOW).lerp(c0, open);
+    if (s0 && m.shadeColorFactor) m.shadeColorFactor.copy(MOUTH_SHADOW).lerp(s0, open);
+  }
+}
+
 /** "Fcl_EYE_Natural" de VRoid (ojos menos redondos): no está en ninguna expresión VRM. */
 function setNaturalEyes(vrm, w) {
   if (vrm.userData.naturalEyes === undefined) {
@@ -1462,6 +1489,9 @@ function step(dt, t, silent = false) {
   const AF = ageFace(look);
   em?.setValue('blink', Math.max(ex.blink, blinkAnim, AF.lid * (1 - ex.happy * 2) * (1 - ex.surprised * 2)));
   setNaturalEyes(vrm, AF.natural);
+  // abierta según lo que hable (vocales) o la emoción que abra la boca (sorpresa, alegría fuerte)
+  const opening = Math.max(...VISEMES.map((v) => vis[v])) * 2.5 + ex.surprised * 2 + Math.max(0, ex.happy - 0.25) * 3;
+  setMouthInterior(vrm, Math.min(1, opening));
   // cabeza, respiración y pose
   const think = ex.relaxed > 0.3 && mood === 'thinking' ? 1 : 0;
   current.think = (current.think || 0) + (think - (current.think || 0)) * Math.min(1, dt * 3);

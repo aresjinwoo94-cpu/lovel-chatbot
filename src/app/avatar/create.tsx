@@ -47,7 +47,7 @@ import {
   toggleAccessory,
   VOICES,
 } from '@/lib/character/catalog';
-import { accessoryAllowedForAge, ageRange, applyAge, bodyAllowedForAge, hairAllowedForAge, voiceAllowedForAge } from '@/lib/character/ageRanges';
+import { accessoryAllowedForAge, AGE_RANGES, ageRange, applyAge, bodyAllowedForAge, hairAllowedForAge, voiceAllowedForAge } from '@/lib/character/ageRanges';
 import { hairPortrait, modelPortrait, stagePoster } from '@/lib/character/media';
 import type { CharacterLook, Outline } from '@/lib/character/types';
 import { createFromDraft, isAvatarLimit } from '@/lib/createCharacter';
@@ -680,7 +680,10 @@ export default function CreateCharacter() {
           />
         </Group>
         <Group title={t('create.age')} hint={t('create.ageHint', { range: ageRange(age).label[language] })}>
-          <Slider label={t('create.age')} value={age} min={18} max={60} step={1} onChange={(v) => changeAge(Math.round(v))} format={(v) => t('create.age.years', { n: Math.round(v) })} left="18" right="60" />
+          {/* los 4 rangos (como en el cuestionario) y la edad exacta dentro del rango */}
+          <Chips options={AGE_RANGES.map((r) => ({ id: r.id, label: r.short }))} value={ageRange(age).id} onChange={(id) => changeAge(AGE_RANGES.find((r) => r.id === id)!.typical)} />
+          <View className="h-3" />
+          <Slider label={t('create.age.exact')} value={age} min={18} max={60} step={1} onChange={(v) => changeAge(Math.round(v))} format={(v) => t('create.age.years', { n: Math.round(v) })} left="18" right="60" />
         </Group>
       </>
     ),
