@@ -2,6 +2,7 @@ import type { ImageSourcePropType } from 'react-native';
 
 import { SUPABASE_URL } from '@/constants/supabaseConfig';
 
+import { ageRange } from './ageRanges';
 import { PRESETS } from './catalog';
 import type { CharacterLook } from './types';
 
@@ -81,10 +82,17 @@ const canonical = (v: unknown): string =>
   v && typeof v === 'object' && !Array.isArray(v)
     ? `{${Object.keys(v as Record<string, unknown>).sort().map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`).join(',')}}`
     : Array.isArray(v) ? `[${v.map(canonical).join(',')}]` : JSON.stringify(v ?? null);
-const PRESET_KEYS = new Map(PRESETS.map((p) => [canonical(p.look), p]));
+// La edad no cuenta para reconocer el aspecto, pero el retrato solo vale si el rango de edad
+// es el mismo que el del personaje listo (WP-10: el rostro y la ropa cambian con la edad).
+const withoutAge = ({ age: _age, ...rest }: CharacterLook) => rest;
+const PRESET_KEYS = new Map(PRESETS.map((p) => [canonical(withoutAge(p.look)), p]));
 function presetFor(look: CharacterLook) {
-  return PRESET_KEYS.get(canonical(look));
+  const p = PRESET_KEYS.get(canonical(withoutAge(look)));
+  return p && (look.age == null || ageRange(look.age).id === ageRange(p.age).id) ? p : undefined;
 }
+
+/** ¿Tiene retrato propio del catálogo? (si no, su foto sale de su 3D). */
+export const isPresetLook = (look: CharacterLook) => !!presetFor(look);
 
 /**
  * Imagen que se ve al instante en el escenario mientras carga el 3D (luego se funde):

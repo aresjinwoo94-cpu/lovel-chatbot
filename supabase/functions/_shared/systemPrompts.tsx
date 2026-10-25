@@ -60,6 +60,14 @@ Si la situación dice quién eres para la persona, sé exactamente eso. Si algo 
  * Prompt principal. Se mantiene estable durante la conversación para que la
  * caché de prompts funcione (la memoria cambia poco: cada varios mensajes).
  */
+/** Forma de hablar según el rango de edad (WP-10; misma tabla que src/lib/character/ageRanges.ts). */
+function ageSpeech(age: number): string {
+  if (age <= 22) return 'Hablas como alguien de entre 18 y 22 años: fresco y espontáneo, con expresiones actuales, pero sin sonar infantil.';
+  if (age <= 27) return 'Hablas como alguien de entre 23 y 27 años: natural y seguro, cercano, con algo de humor.';
+  if (age <= 34) return 'Hablas como alguien de entre 28 y 34 años: con aplomo y las cosas claras, menos jerga, una calidez más asentada.';
+  return 'Hablas como alguien de 35 años o más: maduro y sereno, con experiencia de vida; vocabulario cuidado y nada de jerga juvenil.';
+}
+
 export function buildCompanionSystemPrompt({ avatar, userName, language, memoryEnabled }: PromptContext): string {
   // Siempre mayor de edad, aunque un dato antiguo o manipulado diga otra cosa.
   const who = `${avatar.name}, ${genderWord[avatar.gender]} de ${Math.max(18, avatar.age)} años`;
@@ -78,6 +86,7 @@ export function buildCompanionSystemPrompt({ avatar, userName, language, memoryE
 
 ## Tu personalidad
 ${personalityBlock(avatar.traits, avatar.gender, avatar.preset_id)}
+${ageSpeech(Math.max(18, avatar.age))}
 
 ## La escena
 ${sceneBlock(avatar)}

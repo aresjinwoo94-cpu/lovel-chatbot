@@ -16,24 +16,27 @@ const STT_MODEL = Deno.env.get('ELEVENLABS_STT_MODEL') ?? 'scribe_v1';
  */
 const DEFAULT_VOICES = {
   female: 'EXAVITQu4vr4xnSDxMaL', // Sarah: cálida, joven
-  female_mature: 'XrExE9yKIg1WjnnlVkGX', // Matilda: cálida, madura
+  female_adult: 'Xb7hH8MSUJpSbSDYk0k2', // Alice: segura, elegante (28–34)
+  female_mature: 'XrExE9yKIg1WjnnlVkGX', // Matilda: cálida, madura (35+)
   male: 'TX3LPaxmHKxFdv7VOQHJ', // Liam: joven, cercano
-  male_mature: 'nPczCjzI2devNBz1zQrb', // Brian: grave, sereno
+  male_adult: 'cjVigY5qzO86Huf0OWal', // Eric: suave, de confianza (28–34)
+  male_mature: 'nPczCjzI2devNBz1zQrb', // Brian: grave, sereno (35+)
   other: 'SAz9YHcvj6GT2YYXdXww', // River: suave, neutra
 };
 
+/** Voz automática por rango de edad (WP-10; la primera de cada rango en src/lib/character/ageRanges.ts). */
 export function pickVoice(gender: 'female' | 'male' | 'other', age: number, custom: string | null): string {
   if (custom) return custom;
-  const mature = age >= 40;
+  const band = age >= 35 ? 'mature' : age >= 28 ? 'adult' : 'young';
   if (gender === 'female') {
-    return mature
-      ? (Deno.env.get('ELEVENLABS_VOICE_FEMALE_MATURE') ?? DEFAULT_VOICES.female_mature)
-      : (Deno.env.get('ELEVENLABS_VOICE_FEMALE') ?? DEFAULT_VOICES.female);
+    if (band === 'mature') return Deno.env.get('ELEVENLABS_VOICE_FEMALE_MATURE') ?? DEFAULT_VOICES.female_mature;
+    if (band === 'adult') return DEFAULT_VOICES.female_adult;
+    return Deno.env.get('ELEVENLABS_VOICE_FEMALE') ?? DEFAULT_VOICES.female;
   }
   if (gender === 'male') {
-    return mature
-      ? (Deno.env.get('ELEVENLABS_VOICE_MALE_MATURE') ?? DEFAULT_VOICES.male_mature)
-      : (Deno.env.get('ELEVENLABS_VOICE_MALE') ?? DEFAULT_VOICES.male);
+    if (band === 'mature') return Deno.env.get('ELEVENLABS_VOICE_MALE_MATURE') ?? DEFAULT_VOICES.male_mature;
+    if (band === 'adult') return DEFAULT_VOICES.male_adult;
+    return Deno.env.get('ELEVENLABS_VOICE_MALE') ?? DEFAULT_VOICES.male;
   }
   return Deno.env.get('ELEVENLABS_VOICE_OTHER') ?? DEFAULT_VOICES.other;
 }

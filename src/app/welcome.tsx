@@ -10,6 +10,7 @@ import { Logo } from '@/components/Logo';
 import { Text } from '@/components/Themed';
 import { Button, IconButton, Muted } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
+import { AGE_RANGES, bodyAllowedForAge, hairAllowedForAge } from '@/lib/character/ageRanges';
 import { type CharacterPreset, PRESETS } from '@/lib/character/catalog';
 import { faceImage, presetPortrait } from '@/lib/character/media';
 import { createFromDraft, isAvatarLimit } from '@/lib/createCharacter';
@@ -37,18 +38,17 @@ const CATEGORY_ICON: Record<ScenarioCategory, IconName> = {
   slice: 'cafe-outline',
 };
 
-const AGES = [
-  { id: 'a', range: '18–22', age: 21 },
-  { id: 'b', range: '23–27', age: 25 },
-  { id: 'c', range: '28–34', age: 30 },
-  { id: 'd', range: '35+', age: 37 },
-] as const;
+// los 4 rangos de edad (WP-10): la edad guardada es la típica de cada rango
+const AGES = (['a', 'b', 'c', 'd'] as const).map((id, i) => ({ id, range: AGE_RANGES[i].short, age: AGE_RANGES[i].typical }));
 
 const pick = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)];
 
 /** Personaje de la biblioteca que mejor encaja con lo elegido (género y edad). */
 function choosePreset(who: Who, age: number): CharacterPreset {
-  const pool = PRESETS.filter((p) => who === 'any' || p.gender === who);
+  const byGender = PRESETS.filter((p) => who === 'any' || p.gender === who);
+  // mejor uno cuya ropa y peinado ya encajen con esa edad (así cambia solo el rostro)
+  const fits = byGender.filter((p) => bodyAllowedForAge(p.look.model, age) && (!p.look.hair || hairAllowedForAge(p.look.hair, age)));
+  const pool = fits.length ? fits : byGender;
   const best = Math.min(...pool.map((p) => Math.abs(p.age - age)));
   return pick(pool.filter((p) => Math.abs(p.age - age) <= best + 2));
 }

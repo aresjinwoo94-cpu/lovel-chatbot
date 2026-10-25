@@ -1,7 +1,8 @@
 # QA visual de personajes — lista de revisión
 
 Cada hoja (`docs/qa/<id>.png`) muestra un personaje del catálogo con el escenario 3D real:
-6 expresiones (neutral, feliz, triste, sorprendida, tímida, enojada), 5 vocales al hablar
+arriba, un primer plano de la cara en reposo a doble tamaño y la zona de boca y ojos ampliada;
+debajo, 6 expresiones (neutral, feliz, triste, sorprendida, tímida, enojada), 5 vocales al hablar
 (aa, ih, ou, ee, oh), dos mezclas de emoción + habla, busto, busto feliz hablando y cuerpo.
 
 La revisa **alguien que no haya creado ni cambiado el personaje** (en este proyecto, un
@@ -16,7 +17,13 @@ subagente independiente). Marca un fallo si ves cualquiera de estas cosas:
 4. **Pelo** que atraviesa la cara, la ropa o el cuerpo de forma visible.
 5. **Ropa** que se lea como uniforme escolar (falda plisada con chaleco o corbata, etc.):
    todos los personajes son adultos (regla de WP-1).
-6. Cualquier otra cosa que rompa la ilusión: piel o pelo con colores rotos, partes del
+6. **Cara en reposo (las dos imágenes grandes de arriba, WP-10)**: la boca tiene que estar
+   **cerrada y natural** (una línea fina, sin punto blanco ni segunda línea debajo, sin
+   labios entreabiertos ni dientes), con una sonrisa muy leve o neutra según el personaje.
+   Ojos abiertos y simétricos, cejas en su sitio y sin atravesar el flequillo.
+7. **Edad**: el personaje aparenta claramente la edad de su ficha (siempre adulto). Ver la
+   tabla de rangos en `src/lib/character/ageRanges.ts`.
+8. Cualquier otra cosa que rompa la ilusión: piel o pelo con colores rotos, partes del
    modelo que faltan, encuadre que corta la cabeza.
 
 Cuando una hoja no tiene fallos, el personaje se marca `"status": "approved"` en

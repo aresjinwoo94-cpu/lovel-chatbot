@@ -21,8 +21,8 @@ import { useAuth } from '@/lib/auth';
 import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT, GUEST_TEXT_LIMIT, GUEST_VOICE_LIMIT } from '@/lib/billing';
 import { DARK_BACKGROUNDS, normalizeLook } from '@/lib/character/catalog';
 import type { Presence } from '@/lib/character/types';
-import { fetchAvatar, fetchMessages, PAGE_SIZE, startChat } from '@/lib/data';
-import { peekAvatar } from '@/lib/threads';
+import { fetchAvatar, fetchMessages, PAGE_SIZE, saveAvatarThumbnail, startChat } from '@/lib/data';
+import { peekAvatar, refreshThreads } from '@/lib/threads';
 import { showDialog } from '@/lib/dialog';
 import { exportConversation } from '@/lib/exportConversation';
 import { useI18n } from '@/lib/i18n';
@@ -32,7 +32,9 @@ import type { Avatar, ChatResponse, Message, QuotaState, VoiceChatResponse } fro
 import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
 import { track } from '@/lib/analytics';
-import { stagePoster } from '@/lib/character/media';
+import { applyAge } from '@/lib/character/ageRanges';
+import { isPresetLook, stagePoster } from '@/lib/character/media';
+import type { VrmAvatarHandle } from '@/components/VrmAvatar';
 import { perfStart, perfStartIfIdle } from '@/lib/perfMeter';
 
 /** Cuánto "habla" el personaje tras un mensaje de texto (aprox. velocidad de lectura en voz alta). */
@@ -345,7 +347,25 @@ export default function ChatScreen() {
     ]);
   };
 
-  const look = useMemo(() => (avatar ? normalizeLook(avatar.appearance, avatar.gender) : null), [avatar]);
+  // aspecto coherente con la edad de la ficha (WP-10)
+  const look = useMemo(() => (avatar ? applyAge(normalizeLook(avatar.appearance, avatar.gender), avatar.age, avatar.gender) : null), [avatar]);
+
+  // Sin foto propia y sin retrato del catálogo que encaje (p. ej. un personaje listo con otra
+  // edad): la foto de perfil se saca de su propio 3D la primera vez que se ve.
+  const stageRef = useRef<VrmAvatarHandle>(null);
+  const photoTried = useRef(false);
+  const ownPhoto = useCallback(() => {
+    if (!avatar || !look || avatar.avatar_image_url || isPresetLook(look) || photoTried.current) return;
+    photoTried.current = true;
+    const id = avatar.id;
+    setTimeout(async () => {
+      const shot = await stageRef.current?.snapshot({ framing: 'avatar', size: 384 }).catch(() => null);
+      const url = shot ? await saveAvatarThumbnail(id, shot).catch(() => null) : null;
+      if (!url) return;
+      setAvatar((a) => (a && a.id === id ? { ...a, avatar_image_url: url } : a));
+      refreshThreads();
+    }, 700);
+  }, [avatar, look]);
 
   if (!avatar || !look) {
     return (
@@ -377,6 +397,8 @@ export default function ChatScreen() {
   // encima (nombre, botones) se pinta sobre él.
   const stage = (
     <StageSlot
+      ref={stageRef}
+      onLoaded={ownPhoto}
       look={look}
       gender={avatar.gender}
       presence={presence}

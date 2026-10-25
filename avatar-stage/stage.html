@@ -317,12 +317,116 @@ const rgba = (hex, a) => { const [r, g, b] = rgb(hex); return `rgba(${r},${g},${
  * comparten el mismo mapa UV: ojos ≈ (0.35, 0.555) y (0.665, 0.555),
  * mejillas ≈ (0.31, 0.66) y (0.69, 0.66), boca ≈ (0.5, 0.765).
  */
+// Bocas dibujadas con forma propia (labios a dos tonos): no se retocan.
+const MOUTH_KEEP = new Set(['bibi', 'vita']);
+
+/**
+ * Boca en reposo cerrada y natural (WP-10). Las texturas de cara de VRoid traen un punto de
+ * brillo blanco bajo la línea de la boca (de lejos parece la boca entreabierta o una segunda
+ * línea) y, en los cuerpos masculinos, una línea muy larga, gruesa y naranja. Aquí:
+ *  - el brillo se borra con la piel de arriba y abajo de esa misma columna;
+ *  - la línea se suaviza (menos contraste, tono labio en vez de naranja) y se afina hacia
+ *    las comisuras, con un largo máximo, para que acabe en punta y no en un bloque.
+ * Se detecta en la propia textura, así que sirve para cualquier modelo con el mapa de VRoid.
+ */
+function cleanMouth(g, W, H) {
+  const x0 = Math.floor(W * 0.36), x1 = Math.ceil(W * 0.64), y0 = Math.floor(H * 0.725), y1 = Math.ceil(H * 0.835);
+  const w = x1 - x0, h = y1 - y0;
+  const d = g.getImageData(x0, y0, w, h); const px = d.data;
+  const at = (i, j) => (j * w + i) * 4;
+  const L = (k) => 0.299 * px[k] + 0.587 * px[k + 1] + 0.114 * px[k + 2];
+  // piel de referencia: la fila de abajo del todo (barbilla, sin boca ni brillo)
+  let sr = 0, sg = 0, sb = 0;
+  for (let i = 0; i < w; i++) { const k = at(i, h - 1); sr += px[k]; sg += px[k + 1]; sb += px[k + 2]; }
+  const skin = [sr / w, sg / w, sb / w];
+  const skinL = 0.299 * skin[0] + 0.587 * skin[1] + 0.114 * skin[2];
+  const skinB = skin[2] / skin[0];
+
+  // 1) la línea: filas y columnas claramente más oscuras que la piel
+  let minX = w, maxX = -1, lineY = -1, best = 0;
+  for (let j = 0; j < h; j++) {
+    let n = 0;
+    for (let i = 0; i < w; i++) if (skinL - L(at(i, j)) > 40) { n++; minX = Math.min(minX, i); maxX = Math.max(maxX, i); }
+    if (n > best) { best = n; lineY = j; }
+  }
+  if (lineY < 0 || best < w * 0.05) { g.putImageData(d, x0, y0); return; }
+  const cx = (minX + maxX) / 2, half = (maxX - minX) / 2;
+
+  // 2) el brillo: píxeles casi blancos (mucho azul para su rojo) justo debajo de la línea.
+  //    Se rellena cada fila interpolando entre la piel de su izquierda y de su derecha.
+  const hx0 = Math.max(0, Math.floor(cx - W * 0.05)), hx1 = Math.min(w - 1, Math.ceil(cx + W * 0.05));
+  const hy0 = lineY + 2, hy1 = Math.min(h - 2, lineY + Math.ceil(H * 0.05));
+  const isHi = (i, j) => { const k = at(i, j); return px[k + 2] / Math.max(1, px[k]) > skinB + 0.04 && L(k) > skinL - 12; };
+  for (let j = hy0; j <= hy1; j++) {
+    let i = hx0;
+    while (i <= hx1) {
+      if (!isHi(i, j)) { i++; continue; }
+      let e = i; while (e <= hx1 && isHi(e, j)) e++;
+      const a = Math.max(0, i - 5), b = Math.min(w - 1, e + 4); // más ancho: el borde suavizado del brillo
+      const ka = at(a, j), kb = at(b, j);
+      for (let x = a + 1; x < b; x++) {
+        const t = (x - a) / (b - a), k = at(x, j);
+        for (let c = 0; c < 3; c++) px[k + c] = px[ka + c] * (1 - t) + px[kb + c] * t;
+      }
+      i = e + 1;
+    }
+  }
+
+  // 3) la línea: tono labio en vez de naranja y afinada hacia las comisuras, con largo máximo.
+  //    La piel de cada columna es la de justo encima y debajo de la línea (no la de la barbilla).
+  const reach = Math.min(half, W * 0.05);
+  const lip = [160, 88, 84];
+  const pad = Math.max(6, Math.round(H * 0.016));
+  const ya = Math.max(0, lineY - pad), yb = Math.min(h - 1, lineY + pad);
+  for (let j = ya + 1; j < yb; j++) for (let i = 0; i < w; i++) {
+    const k = at(i, j), l = L(k);
+    const t = (j - ya) / (yb - ya), ka = at(i, ya), kb = at(i, yb);
+    const skin = [0, 1, 2].map((c) => px[ka + c] * (1 - t) + px[kb + c] * t);
+    const dark = 0.299 * skin[0] + 0.587 * skin[1] + 0.114 * skin[2] - l;
+    if (dark <= 3) continue;
+    const along = Math.abs(i - cx) / Math.max(1, reach); // 0 centro … 1 comisura
+    const taper = along >= 1 ? 0 : along < 0.5 ? 1 : 1 - Math.pow((along - 0.5) / 0.5, 1.5);
+    const tone = Math.min(1, dark / 80) * 0.5;
+    for (let c = 0; c < 3; c++) {
+      const v = px[k + c] + (lip[c] * (l / 140) - px[k + c]) * tone;
+      px[k + c] = skin[c] + (v - skin[c]) * taper;
+    }
+  }
+  g.putImageData(d, x0, y0);
+}
+
+/**
+ * Iris (y su brillo) más pequeños: las texturas de VRoid traen los dos ojos lado a lado sobre
+ * fondo transparente; cada mitad se encoge alrededor de su propio centro.
+ */
+function shrinkEyes(k) {
+  if (k >= 0.999) return null;
+  return (g, W, H) => {
+    const copy = document.createElement('canvas'); copy.width = W; copy.height = H;
+    copy.getContext('2d').drawImage(g.canvas, 0, 0);
+    const a = g.getImageData(0, 0, W, H).data;
+    g.clearRect(0, 0, W, H);
+    for (const [hx0, hx1] of [[0, W / 2], [W / 2, W]]) {
+      let sx = 0, sy = 0, n = 0;
+      for (let y = 0; y < H; y += 4) for (let x = Math.floor(hx0); x < hx1; x += 4) { const al = a[(y * W + x) * 4 + 3]; if (al > 60) { sx += x * al; sy += y * al; n += al; } }
+      if (!n) { g.drawImage(copy, hx0, 0, hx1 - hx0, H, hx0, 0, hx1 - hx0, H); continue; }
+      const cx = sx / n, cy = sy / n;
+      g.save(); g.beginPath(); g.rect(hx0, 0, hx1 - hx0, H); g.clip();
+      g.translate(cx, cy); g.scale(k, k); g.translate(-cx, -cy);
+      g.drawImage(copy, hx0, 0, hx1 - hx0, H, hx0, 0, hx1 - hx0, H);
+      g.restore();
+    }
+  };
+}
+
 function paintFace(look) {
   const blush = Math.max(0, Math.min(1, +look.blush || 0));
   const marks = Array.isArray(look.marks) ? look.marks : [];
-  if (!blush && !look.lipColor && !look.eyeshadow && !marks.length) return null;
+  const mouth = !MOUTH_KEEP.has(look.model);
+  if (!mouth && !ageFace(look).contour && !blush && !look.lipColor && !look.eyeshadow && !marks.length) return null;
   return (g, W, H) => {
     const X = (x) => x * W, Y = (y) => y * H;
+    if (mouth) cleanMouth(g, W, H);
     const soft = (cx, cy, rx, ry, color, alpha, op = 'source-over') => {
       g.save(); g.globalCompositeOperation = op;
       g.translate(X(cx), Y(cy)); g.scale(1, ry / rx);
@@ -330,6 +434,9 @@ function paintFace(look) {
       grd.addColorStop(0, rgba(color, alpha)); grd.addColorStop(1, rgba(color, 0));
       g.fillStyle = grd; g.beginPath(); g.arc(0, 0, X(rx), 0, Math.PI * 2); g.fill(); g.restore();
     };
+    // edad: sombra muy suave bajo los pómulos y hacia la mandíbula (cara más definida)
+    const contour = ageFace(look).contour;
+    if (contour) for (const cx of [0.25, 0.75]) soft(cx, 0.72, 0.075, 0.11, '#B88270', 0.3 * contour, 'multiply');
     if (look.eyeshadow) for (const cx of [0.352, 0.662]) soft(cx, 0.527, 0.09, 0.045, look.eyeshadow, 0.85, 'multiply');
     if (blush) for (const cx of [0.315, 0.688]) soft(cx, 0.655, 0.075, 0.045, '#F07C98', 0.5 * blush);
     if (look.lipColor) {
@@ -481,7 +588,7 @@ function applyFinish(look) {
 function applyColors(look) {
   const targets = [current.vrm?.scene, current.hairVrm?.scene].filter(Boolean);
   const facePaint = paintFace(look);
-  const faceKey = JSON.stringify([look.blush, look.lipColor, look.eyeshadow, look.marks]);
+  const faceKey = JSON.stringify(['boca1', look.model, ageFace(look).contour, look.blush, look.lipColor, look.eyeshadow, look.marks]);
   for (const root of targets) {
     const own = root === current.vrm.scene;
     eachMaterial(root, (m) => {
@@ -494,9 +601,9 @@ function applyColors(look) {
           if (on) { const [r, g, b] = rgb(look.hairTip); m.userData.tip.uTipColor.value.setRGB(r / 255, g / 255, b / 255, THREE.LinearSRGBColorSpace); }
         }
       } else if (!own) return;
-      else if (cat === 'iris') retexture(m, { hex: look.eyeColor || null });
+      else if (cat === 'iris') retexture(m, { hex: look.eyeColor || null, paint: shrinkEyes(ageFace(look).iris), key: `iris${ageFace(look).iris}` });
       else if (cat === 'brow') retexture(m, { hex: look.hairColor ? shadeHex(look.hairColor, 0.62) : null, strength: 0.85 });
-      else if (cat === 'highlight') m.visible = look.eyeShine !== false;
+      else if (cat === 'highlight') { m.visible = look.eyeShine !== false; retexture(m, { paint: shrinkEyes(ageFace(look).iris), key: `iris${ageFace(look).iris}` }); }
       else if (cat === 'face') retexture(m, { hex: look.skinTone || null, strength: 0.5, paint: facePaint, key: faceKey });
       else if (cat === 'skin') retexture(m, { hex: look.skinTone || null, strength: 0.5 });
       else if (cat === 'top') retexture(m, { hex: look.outfitColor || (look.plainOutfit ? '#2A2730' : null), strength: look.plainOutfit ? 1 : 0.9, flat: look.plainOutfit ? 0.82 : 0 });
@@ -702,8 +809,27 @@ async function load(look, base) {
   return true;
 }
 
+/**
+ * Rasgos por rango de edad (WP-10), siempre adultos. Misma tabla que
+ * src/lib/character/ageRanges.ts (face): párpado superior algo más bajo (mirada menos
+ * redonda), ojos "naturales" del propio modelo VRoid si los tiene, cabeza un poco más pequeña
+ * respecto al cuerpo, un sombreado suave bajo los pómulos que define la cara e iris algo más
+ * pequeños (el iris grande es lo que más aniña una cara anime).
+ */
+const AGE_FACE = {
+  '18-22': { lid: 0, natural: 0, head: 1.02, contour: 0, iris: 1 },
+  '23-27': { lid: 0.05, natural: 0.15, head: 1, contour: 0, iris: 0.97 },
+  '28-34': { lid: 0.17, natural: 0.55, head: 0.96, contour: 0.55, iris: 0.86 },
+  '35+': { lid: 0.3, natural: 1, head: 0.93, contour: 1, iris: 0.76 },
+};
+function ageFace(look) {
+  const a = +look.age;
+  if (!a) return AGE_FACE['23-27'];
+  return AGE_FACE[a <= 22 ? '18-22' : a <= 27 ? '23-27' : a <= 34 ? '28-34' : '35+'];
+}
+
 function applyHeadSize(look) {
-  const s = Math.max(0.88, Math.min(1.14, +look.headSize || 1));
+  const s = Math.max(0.86, Math.min(1.16, (+look.headSize || 1) * ageFace(look).head));
   const head = current.vrm?.humanoid.getRawBoneNode('head');
   if (head) head.scale.setScalar(s);
 }
@@ -1246,6 +1372,20 @@ const vis = { aa: 0, ih: 0, ou: 0, ee: 0, oh: 0 };
 let syllable = 'aa';
 const EMOTION_HOLD = 9; // segundos con la emoción marcada antes de volver al gesto base
 
+/** "Fcl_EYE_Natural" de VRoid (ojos menos redondos): no está en ninguna expresión VRM. */
+function setNaturalEyes(vrm, w) {
+  if (vrm.userData.naturalEyes === undefined) {
+    vrm.userData.naturalEyes = [];
+    vrm.scene.traverse((o) => {
+      const dict = o.morphTargetDictionary;
+      if (!dict) return;
+      const key = Object.keys(dict).find((k) => /Fcl_EYE_Natural$/.test(k));
+      if (key != null) vrm.userData.naturalEyes.push([o, dict[key]]);
+    });
+  }
+  for (const [o, i] of vrm.userData.naturalEyes) o.morphTargetInfluences[i] = w;
+}
+
 function step(dt, t, silent = false) {
   const vrm = current.vrm;
   if (!vrm) return;
@@ -1270,15 +1410,16 @@ function step(dt, t, silent = false) {
   if (qa) { blinkAnim = 0; talk = qa.viseme ? 1 : 0; syllable = qa.viseme || 'aa'; }
   else {
     if (speaking && t > nextSyll) {
-      talkTarget = 0.35 + Math.random() * 0.65; nextSyll = t + 0.07 + Math.random() * 0.1;
+      talkTarget = 0.45 + Math.random() * 0.5; nextSyll = t + 0.1 + Math.random() * 0.09; // sílabas de ~0,1–0,19 s
       syllable = VISEMES[Math.floor(Math.random() * VISEMES.length)];
     }
     if (!speaking) talkTarget = 0;
-    talk += (talkTarget - talk) * Math.min(1, dt * 20);
+    // apertura suave; al terminar de hablar se cierra en ~0,25 s
+    talk += (talkTarget - talk) * Math.min(1, dt * (speaking ? 13 : 10));
   }
   for (const v of VISEMES) {
     const target = v === syllable ? talk * VISEME_CAP[v] : 0;
-    vis[v] = qa ? target : vis[v] + (target - vis[v]) * Math.min(1, dt * 18);
+    vis[v] = qa ? target : vis[v] + (target - vis[v]) * Math.min(1, dt * 12); // de una vocal a otra sin saltos
     em?.setValue(v, vis[v]);
   }
   // expresión: base elegida + estado
@@ -1318,7 +1459,9 @@ function step(dt, t, silent = false) {
   em?.setValue('relaxed', ex.relaxed);
   em?.setValue('surprised', ex.surprised);
   em?.setValue('Surprised', ex.surprised);
-  em?.setValue('blink', Math.max(ex.blink, blinkAnim));
+  const AF = ageFace(look);
+  em?.setValue('blink', Math.max(ex.blink, blinkAnim, AF.lid * (1 - ex.happy * 2) * (1 - ex.surprised * 2)));
+  setNaturalEyes(vrm, AF.natural);
   // cabeza, respiración y pose
   const think = ex.relaxed > 0.3 && mood === 'thinking' ? 1 : 0;
   current.think = (current.think || 0) + (think - (current.think || 0)) * Math.min(1, dt * 3);
@@ -1452,8 +1595,8 @@ function paintFinish(out) {
 
 // ------------------------------------------------------------------ mensajes
 const pick = (l, keys) => JSON.stringify(keys.map((k) => l?.[k] ?? null));
-const COLOR_KEYS = ['plainOutfit', 'hairColor', 'hairTip', 'eyeColor', 'skinTone', 'outfitColor', 'bottomColor', 'shoesColor', 'accentColor', 'blush', 'lipColor', 'eyeshadow', 'marks', 'eyeShine'];
-const ACC_KEYS = ['accessories', 'accessoryColor', 'hairColor', 'headSize'];
+const COLOR_KEYS = ['age', 'plainOutfit', 'hairColor', 'hairTip', 'eyeColor', 'skinTone', 'outfitColor', 'bottomColor', 'shoesColor', 'accentColor', 'blush', 'lipColor', 'eyeshadow', 'marks', 'eyeShine'];
+const ACC_KEYS = ['accessories', 'accessoryColor', 'hairColor', 'headSize', 'age'];
 
 async function handle(msg) {
   if (msg.type === 'look') {
@@ -1470,7 +1613,7 @@ async function handle(msg) {
         applyPose(current.vrm, look.pose);
         if (current.hairVrm) applyPose(current.hairVrm, look.pose);
       }
-      if (!reloaded && (prev?.headSize || 1) !== (look.headSize || 1)) { applyHeadSize(look); scene.updateMatrixWorld(true); settle(); }
+      if (!reloaded && ((prev?.headSize || 1) !== (look.headSize || 1) || ageFace(prev || {}) !== ageFace(look))) { applyHeadSize(look); scene.updateMatrixWorld(true); settle(); }
       if (reloaded || pick(prev, COLOR_KEYS) !== pick(look, COLOR_KEYS)) applyColors(look);
       applyFinish(look);
       if (reloaded || pick(prev, ACC_KEYS) !== pick(look, ACC_KEYS)) buildAccessories(look);

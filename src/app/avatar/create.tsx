@@ -47,6 +47,7 @@ import {
   toggleAccessory,
   VOICES,
 } from '@/lib/character/catalog';
+import { accessoryAllowedForAge, ageRange, applyAge, bodyAllowedForAge, hairAllowedForAge, voiceAllowedForAge } from '@/lib/character/ageRanges';
 import { hairPortrait, modelPortrait, stagePoster } from '@/lib/character/media';
 import type { CharacterLook, Outline } from '@/lib/character/types';
 import { createFromDraft, isAvatarLimit } from '@/lib/createCharacter';
@@ -201,7 +202,7 @@ export default function CreateCharacter() {
           setName(a.name);
           setGender(a.gender);
           setAge(a.age);
-          const l = normalizeLook(a.appearance, a.gender);
+          const l = applyAge(normalizeLook(a.appearance, a.gender), a.age, a.gender);
           original.current = l;
           setLook(l);
           setTraits(a.traits ?? []);
@@ -216,7 +217,7 @@ export default function CreateCharacter() {
         setName(preset.name);
         setGender(preset.gender);
         setAge(preset.age);
-        setLook(preset.look);
+        setLook(applyAge(preset.look, preset.age, preset.gender));
         setTraits(preset.traits);
         setPresetRef(preset.id);
       } else {
@@ -225,7 +226,7 @@ export default function CreateCharacter() {
           setName(d.name);
           setGender(d.gender);
           setAge(d.age);
-          setLook(normalizeLook(d.look, d.gender));
+          setLook(applyAge(normalizeLook(d.look, d.gender), d.age, d.gender));
           setTraits(d.traits);
           setScenarioId(d.scenarioId);
           setCustomScene(d.customScene);
@@ -255,21 +256,27 @@ export default function CreateCharacter() {
       return typeof next === 'function' ? next(l) : next;
     });
   }, []);
-  // Al cambiar de peinado se quitan los accesorios que chocan con él (QA de personajes).
+  // Al cambiar de peinado se quitan los accesorios que chocan con él (QA de personajes), y todo
+  // queda coherente con la edad (WP-10).
   const patch = useCallback(
     (p: Partial<CharacterLook>) =>
       commit((l) => {
         const n = { ...l, ...p };
-        return { ...n, accessories: n.accessories.filter((a) => accessoryAllowed(n, a)) };
+        return applyAge({ ...n, accessories: n.accessories.filter((a) => accessoryAllowed(n, a)) }, age, gender);
       }),
-    [commit],
+    [commit, age, gender],
   );
+  // Cambiar la edad cambia el aspecto (rostro en el 3D; peinado, ropa, accesorios y voz si no encajan).
+  const changeAge = (v: number) => {
+    setAge(v);
+    setLook((l) => applyAge(l, v, gender));
+  };
   const undo = () => {
     const prev = history.current.pop();
     if (prev) setLook(prev);
   };
-  const randomize = () => commit((l) => randomLook(gender, l.voice));
-  const reset = () => commit(original.current ?? presetById(presetId)?.look ?? (gender === 'male' ? DEFAULT_MALE : DEFAULT_FEMALE).look);
+  const randomize = () => commit((l) => applyAge(randomLook(gender, l.voice), age, gender));
+  const reset = () => commit(applyAge(original.current ?? presetById(presetId)?.look ?? (gender === 'male' ? DEFAULT_MALE : DEFAULT_FEMALE).look, age, gender));
 
   const displayName = name.trim() || '…';
   // Una escena propia de otro personaje (o de este con otro género) no cuenta como elegida.
@@ -429,7 +436,7 @@ export default function CreateCharacter() {
       <>
         <Group first title={t('create.sec.model')}>
           <View className="flex-row flex-wrap" style={{ gap: 10 }}>
-            {MODELS.filter((m) => gender === 'other' || m.gender === gender).map((m) => (
+            {MODELS.filter((m) => (gender === 'other' || m.gender === gender) && bodyAllowedForAge(m.id, age)).map((m) => (
               <OptionTile
                 key={m.id}
                 width={tile}
@@ -461,7 +468,7 @@ export default function CreateCharacter() {
             {!needsHair ? (
               <OptionTile width={tile} label={t('create.hairOwn')} image={isCustomModel(look.model) ? undefined : modelPortrait(look.model)} selected={!look.hair} onPress={() => patch({ hair: null })} />
             ) : null}
-            {HAIRSTYLES.filter((h) => h.id !== look.model && hairAllowed(look.model, h.id)).map((h) => (
+            {HAIRSTYLES.filter((h) => h.id !== look.model && hairAllowed(look.model, h.id) && hairAllowedForAge(h.id, age)).map((h) => (
               <OptionTile key={h.id} width={tile} label={h.label[language]} image={hairPortrait(h.id)} selected={look.hair === h.id} disabled={!canHair} onPress={() => patch({ hair: h.id })} />
             ))}
           </View>
@@ -545,7 +552,7 @@ export default function CreateCharacter() {
     accessories: () => (
       <>
         {ACCESSORY_GROUPS.map((g, i) => {
-          const items = ACCESSORIES.filter((a) => a.slot === g.slot && accessoryAllowed(look, a.id));
+          const items = ACCESSORIES.filter((a) => a.slot === g.slot && accessoryAllowed(look, a.id) && accessoryAllowedForAge(a.id, age));
           const current = items.find((a) => look.accessories.includes(a.id))?.id ?? 'none';
           return (
             <Group key={g.slot} first={i === 0} title={g.label[language]}>
@@ -603,7 +610,8 @@ export default function CreateCharacter() {
     ),
     voice: () => {
       const order = (g: string) => (g === gender || (gender === 'other' && g === 'neutral') ? 0 : g === 'neutral' ? 1 : 2);
-      const voices = [...VOICES].sort((a, b) => order(a.gender) - order(b.gender));
+      // solo las voces que encajan con la edad
+      const voices = VOICES.filter((v) => voiceAllowedForAge(v.id, age, gender)).sort((a, b) => order(a.gender) - order(b.gender));
       const row = (id: string | null, title: string, sub: string, badge?: string) => {
         const selected = look.voice.id === id;
         return (
@@ -671,8 +679,8 @@ export default function CreateCharacter() {
             ]}
           />
         </Group>
-        <Group title={t('create.age')}>
-          <Slider label={t('create.age')} value={age} min={18} max={60} step={1} onChange={(v) => setAge(Math.round(v))} format={(v) => t('create.age.years', { n: Math.round(v) })} left="18" right="60" />
+        <Group title={t('create.age')} hint={t('create.ageHint', { range: ageRange(age).label[language] })}>
+          <Slider label={t('create.age')} value={age} min={18} max={60} step={1} onChange={(v) => changeAge(Math.round(v))} format={(v) => t('create.age.years', { n: Math.round(v) })} left="18" right="60" />
         </Group>
       </>
     ),

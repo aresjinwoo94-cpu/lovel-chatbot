@@ -485,13 +485,13 @@ export const PRESETS: CharacterPreset[] = [
     id: 'vera', name: 'Vera', gender: 'female', age: 28,
     tagline: { es: 'Veterinaria de pueblo, directa y cariñosa', en: 'A small-town vet, blunt and warm' },
     traits: ['affectionate', 'funny', 'protective'],
-    look: makeLook({ model: 'mei', hairColor: '#6B4A35', eyeColor: '#4E8C5A', plainOutfit: true, outfitColor: '#6F8450', expression: 'smile', accessories: ['flower_crown'], background: 'forest', voice: v('EXAVITQu4vr4xnSDxMaL', 0.97, 0.35) }),
+    look: makeLook({ model: 'mei', hairColor: '#6B4A35', eyeColor: '#4E8C5A', plainOutfit: true, outfitColor: '#6F8450', expression: 'smile', accessories: ['flower_crown'], background: 'forest', voice: v('XrExE9yKIg1WjnnlVkGX', 0.97, 0.35) }),
   },
   {
     id: 'vita', name: 'Vita', gender: 'female', age: 27,
     tagline: { es: 'Astrónoma entusiasta que se olvida de dormir', en: 'An eager astronomer who forgets to sleep' },
     traits: ['intellectual', 'serious', 'loyal'],
-    look: makeLook({ model: 'shibu', hairColor: '#2B2A3A', eyeColor: '#6E8FD8', outfitColor: '#2E3A5C', accessories: ['glasses_round'], expression: 'calm', background: 'starry', voice: v('XrExE9yKIg1WjnnlVkGX', 0.98, 0.25) }),
+    look: makeLook({ model: 'shibu', hairColor: '#2B2A3A', eyeColor: '#6E8FD8', outfitColor: '#2E3A5C', accessories: ['glasses_round'], expression: 'calm', background: 'starry', voice: v('Xb7hH8MSUJpSbSDYk0k2', 0.98, 0.25) }),
   },
 ];
 
@@ -559,6 +559,7 @@ export function normalizeLook(raw: unknown, gender: string = 'female'): Characte
       speed: clamp(v.speed, 0.7, 1.2, 1),
       style: clamp(v.style, 0, 1, 0.3),
     },
+    age: typeof r.age === 'number' && Number.isFinite(r.age) ? Math.max(18, Math.min(99, Math.round(r.age))) : null,
   };
 }
 

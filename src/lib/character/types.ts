@@ -68,6 +68,11 @@ export interface CharacterLook {
   /** Brillo de contorno 0 – 1 */
   shine: number;
   voice: VoiceSettings;
+  /**
+   * Edad del personaje (la misma de la ficha): el escenario ajusta el rostro a su rango
+   * (ver ageRanges.ts). null = sin ajustar (aspectos guardados antes de WP-10).
+   */
+  age?: number | null;
 }
 
 /** Estado visual del personaje. */

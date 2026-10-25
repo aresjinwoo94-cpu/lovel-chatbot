@@ -1,3 +1,4 @@
+import { applyAge } from './character/ageRanges';
 import { describeLook, normalizeLook, presetById, RETIRED_MODELS } from './character/catalog';
 import { createAvatar, saveAvatarThumbnail } from './data';
 import type { CharacterDraft } from './draft';
@@ -13,7 +14,8 @@ export async function createFromDraft(d: CharacterDraft) {
   const scenario = fits || !d.customScene.trim() ? picked : undefined;
   const name = d.name.trim();
   // Un borrador antiguo puede traer un cuerpo retirado: se migra y su captura no se usa.
-  const look = normalizeLook(d.look, d.gender);
+  // y con el aspecto coherente con la edad elegida (WP-10)
+  const look = applyAge(normalizeLook(d.look, d.gender), d.age, d.gender);
   // La forma de ser del personaje del catálogo solo vale si sigue siendo ese personaje (mismo género).
   const preset = presetById(d.presetId);
   const snapshot = d.look?.model && RETIRED_MODELS[d.look.model] ? null : d.snapshot;
