@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as DocumentPicker from 'expo-document-picker';
 import { Image } from 'expo-image';
@@ -46,7 +46,7 @@ import {
   toggleAccessory,
   VOICES,
 } from '@/lib/character/catalog';
-import { hairPortrait, modelPortrait } from '@/lib/character/media';
+import { hairPortrait, modelPortrait, stagePoster } from '@/lib/character/media';
 import type { CharacterLook, Outline } from '@/lib/character/types';
 import { createFromDraft, isAvatarLimit } from '@/lib/createCharacter';
 import { fetchAvatar, saveAvatarThumbnail, updateAvatar, uploadCustomVrm } from '@/lib/data';
@@ -874,7 +874,7 @@ export default function CreateCharacter() {
 
   const stageView = (
     <View className={wide ? 'flex-1' : 'border-b border-line'} style={wide ? undefined : { height: stageH }}>
-      <VrmAvatar ref={stage} look={look} gender={gender} framing={framing} presence={playing ? 'speaking' : 'idle'} style={{ flex: 1 }} onLoaded={() => setStageReady(true)} />
+      <VrmAvatar ref={stage} look={look} gender={gender} framing={framing} presence={playing ? 'speaking' : 'idle'} poster={stagePoster({ look })} style={{ flex: 1 }} onLoaded={() => setStageReady(true)} />
       {!stageReady ? (
         <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
           <ActivityIndicator color={colors.primary} />

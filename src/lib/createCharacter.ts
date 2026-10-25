@@ -3,6 +3,7 @@ import { createAvatar, saveAvatarThumbnail } from './data';
 import type { CharacterDraft } from './draft';
 import { sceneFitsGender, sceneText, scenarioById } from './roleplay';
 import { track } from './analytics';
+import { primeAvatar } from './threads';
 
 /** Convierte el borrador del creador en un personaje guardado en la cuenta. */
 export async function createFromDraft(d: CharacterDraft) {
@@ -28,6 +29,7 @@ export async function createFromDraft(d: CharacterDraft) {
     preset_id: preset && preset.gender === d.gender ? preset.id : null,
     voice_id: look.voice?.id ?? null,
   });
+  primeAvatar(avatar);
   track('character_created', { preset: avatar.preset_id ?? null, scene: avatar.scenario_id ?? null, custom: !scenario });
   // Foto de perfil capturada del 3D (si falla, se usa el retrato del modelo).
   if (snapshot) await saveAvatarThumbnail(avatar.id, snapshot).catch(() => undefined);

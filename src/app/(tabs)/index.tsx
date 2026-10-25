@@ -1,6 +1,6 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
-import { type ComponentProps, useCallback, useState } from 'react';
+import { type ComponentProps, useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +15,8 @@ import { useI18n } from '@/lib/i18n';
 import { useThreads } from '@/lib/threads';
 import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
+import { normalizeLook } from '@/lib/character/catalog';
+import { prefetchLook } from '@/lib/character/prefetch';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -56,6 +58,9 @@ export default function HomeScreen() {
   const { t } = useI18n();
   const { profile, session } = useAuth();
   const { threads, loaded, failed, refresh } = useThreads();
+  // El último chat suele ser el siguiente: su 3D se deja listo en la caché.
+  const lastLook = threads[0] ? normalizeLook(threads[0].appearance, threads[0].gender) : null;
+  useEffect(() => prefetchLook(lastLook), [lastLook?.model, lastLook?.hair]); // eslint-disable-line react-hooks/exhaustive-deps
   useMarkInteractive(loaded);
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);

@@ -1,7 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { type ComponentProps, useMemo, useState } from 'react';
+import { type ComponentProps, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,6 +20,7 @@ import type { Gender } from '@/lib/types';
 import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
 import { track } from '@/lib/analytics';
+import { prefetchLook } from '@/lib/character/prefetch';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 type Who = 'female' | 'male' | 'any';
@@ -106,6 +107,8 @@ export default function Welcome() {
   const [creating, setCreating] = useState<CharacterPreset | null>(null);
   /** Personaje elegido en cuanto se sabe género y edad (así las escenas ya llevan su nombre). */
   const [chosen, setChosen] = useState<CharacterPreset | null>(null);
+  // Mientras responde el cuestionario, el 3D del personaje elegido ya se va descargando.
+  useEffect(() => prefetchLook(chosen?.look), [chosen]);
   // Primero las escenas pensadas para el personaje elegido, después las generales.
   const scenarios = useMemo(() => [...scenariosFor(chosen?.id), ...SCENARIOS].filter((s) => s.category === category), [category, chosen]);
   /** Género del personaje para escribir las escenas sin "o/a". */

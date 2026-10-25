@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, KeyboardAvoidingView, Platform, Pressable, useWindowDimensions, View } from 'react-native';
@@ -22,6 +22,7 @@ import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT, GUEST_TEXT_LIMIT, GUEST_VOICE_LIMIT 
 import { DARK_BACKGROUNDS, normalizeLook } from '@/lib/character/catalog';
 import type { Presence } from '@/lib/character/types';
 import { fetchAvatar, fetchMessages, PAGE_SIZE, startChat } from '@/lib/data';
+import { peekAvatar } from '@/lib/threads';
 import { showDialog } from '@/lib/dialog';
 import { exportConversation } from '@/lib/exportConversation';
 import { useI18n } from '@/lib/i18n';
@@ -31,6 +32,7 @@ import type { Avatar, ChatResponse, Message, QuotaState, VoiceChatResponse } fro
 import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
 import { track } from '@/lib/analytics';
+import { stagePoster } from '@/lib/character/media';
 
 /** Cuánto "habla" el personaje tras un mensaje de texto (aprox. velocidad de lectura en voz alta). */
 const speakMs = (text: string) => Math.max(1400, Math.min(6000, 900 + text.length * 32));
@@ -50,7 +52,8 @@ export default function ChatScreen() {
   const wide = width >= 900;
   const withSidebar = width >= 1180;
 
-  const [avatar, setAvatar] = useState<Avatar | null>(null);
+  // Si ya lo conocemos (inicio, barra lateral o recién creado) se pinta al instante, sin esperar a la red.
+  const [avatar, setAvatar] = useState<Avatar | null>(() => peekAvatar(avatarId));
   const [messages, setMessages] = useState<Message[]>([]); // del más nuevo al más viejo
   // momento en que se abrió el chat: solo los mensajes nuevos marcan emoción en la cara
   const [openedAt] = useState(() => Date.now() - 10_000);
@@ -337,7 +340,7 @@ export default function ChatScreen() {
 
   const look = useMemo(() => (avatar ? normalizeLook(avatar.appearance, avatar.gender) : null), [avatar]);
 
-  if (loading || !avatar || !look) {
+  if (!avatar || !look) {
     return (
       <View className="flex-1 items-center justify-center bg-paper">
         <ActivityIndicator color={colors.primary} />
@@ -365,7 +368,7 @@ export default function ChatScreen() {
   const stageH = Math.round(Math.min(height * 0.36, 300));
   const stage = (
     <View className={wide ? 'flex-1' : ''} style={wide ? undefined : { height: stageH }}>
-      <VrmAvatar look={look} gender={avatar.gender} presence={presence} emotion={emotion} emotionId={freshMsg?.id} framing={wide ? 'portrait' : 'bust'} style={{ flex: 1 }} />
+      <VrmAvatar look={look} gender={avatar.gender} presence={presence} emotion={emotion} emotionId={freshMsg?.id} framing={wide ? 'portrait' : 'bust'} poster={stagePoster({ imageUrl: avatar.avatar_image_url, look })} style={{ flex: 1 }} />
       {/* Nombre y estado sobre el escenario */}
       <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 flex-row items-end justify-between px-4 pb-3">
         <View className={`rounded-xl px-3 py-2 ${darkStage ? 'bg-black/40' : 'bg-paper/90'}`}>
@@ -461,8 +464,8 @@ export default function ChatScreen() {
         ListHeaderComponent={busy || listening ? <TypingIndicator avatar={avatar} listening={listening} /> : null}
         ListFooterComponent={
           <View className="px-4 pb-2 pt-1">
-            {loadingOlder ? <ActivityIndicator color={colors.muted} /> : null}
-            {!hasMore || messages.length === 0 ? (
+            {loadingOlder || loading ? <ActivityIndicator color={colors.muted} /> : null}
+            {!loading && (!hasMore || messages.length === 0) ? (
               <View className="items-center">
                 <View className="w-full max-w-[560px] rounded-2xl border border-line bg-paper px-4 py-3">
                   <Text className="font-medium text-[12px] text-muted">

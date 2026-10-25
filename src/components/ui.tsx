@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, Pressable, Switch, useWindowDimensions, View, type GestureResponderEvent, type TextInputProps, type TextProps } from 'react-native';
 

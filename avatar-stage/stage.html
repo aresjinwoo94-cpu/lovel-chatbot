@@ -22,7 +22,7 @@
 <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js",
   "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
   "@pixiv/three-vrm": "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js"
 } }
@@ -50,6 +50,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 
 // ------------------------------------------------------------------ puente con la app
@@ -524,11 +525,43 @@ function updateHairTipRange() {
 
 // ------------------------------------------------------------------ carga
 const loader = new GLTFLoader();
+// Los modelos de vrm-models/v2 llevan la geometría comprimida (EXT_meshopt_compression, sin pérdida).
+loader.setMeshoptDecoder(MeshoptDecoder);
 loader.register((parser) => new VRMLoaderPlugin(parser));
+
+/**
+ * Caché local de modelos (Cache Storage): la segunda vez el personaje no se descarga.
+ * Los modelos del catálogo van en carpetas versionadas (vrm-models/v2/…): si cambian, cambia la
+ * carpeta, así que aquí se puede servir siempre desde la caché. La app también la llena antes
+ * (precarga durante el cuestionario y al abrir con un chat reciente).
+ */
+const MODEL_CACHE = 'lovel-vrm-v2';
+/** Tiempos de la última carga (ms), para medir en un teléfono real: window.__lovelTimings. */
+const timings = (window.__lovelTimings = { start: 0, bytes: 0, parse: 0, setup: 0, firstFrame: 0, total: 0, cache: '' });
+async function modelBytes(url) {
+  if (!/\/vrm-models\/v\d+\//.test(url) || typeof caches === 'undefined') return null;
+  try {
+    const cache = await caches.open(MODEL_CACHE);
+    let res = await cache.match(url);
+    if (!res) {
+      res = await fetch(url);
+      if (!res.ok) return null;
+      await cache.put(url, res.clone());
+    }
+    return await res.arrayBuffer();
+  } catch {
+    return null; // sin Cache Storage (p. ej. algún WebView): se descarga como siempre
+  }
+}
 const current = { vrm: null, hairVrm: null, modelUrl: null, hairUrl: null, look: null, mood: 'idle', framing: 'bust', accessories: [], headScale: 1, pose: null };
 
 async function fetchVrm(url) {
-  const gltf = await loader.loadAsync(url);
+  const t0 = performance.now();
+  const bytes = await modelBytes(url);
+  const t1 = performance.now();
+  timings.bytes = Math.max(timings.bytes, Math.round(t1 - t0));
+  const gltf = bytes ? await loader.parseAsync(bytes, url.slice(0, url.lastIndexOf('/') + 1)) : await loader.loadAsync(url);
+  timings.parse = Math.max(timings.parse, Math.round(performance.now() - t1));
   const vrm = gltf.userData.vrm;
   VRMUtils.removeUnnecessaryVertices(gltf.scene);
   VRMUtils.combineSkeletons(gltf.scene);
@@ -648,6 +681,7 @@ async function load(look, base) {
   // expresiones; ~2 MB en lugar de ~5), generada al publicar los modelos (avatar-stage/MODELS.md).
   const hairUrl = look.hair && look.hair !== look.model ? (/^https?:/.test(look.hair) ? look.hair : `${base}/${look.hair}.hair.vrm`) : null;
   if (current.modelUrl === modelUrl && current.hairUrl === hairUrl) return false;
+  Object.assign(timings, { start: performance.now(), bytes: 0, parse: 0, setup: 0, firstFrame: 0, total: 0 });
   document.getElementById('loading').style.display = 'flex';
   const [vrm, hairVrm] = await Promise.all([fetchVrm(modelUrl), hairUrl ? fetchVrm(hairUrl) : null]);
   for (const v of [current.vrm, current.hairVrm]) if (v) { scene.remove(v.scene); VRMUtils.deepDispose(v.scene); }
@@ -1441,7 +1475,15 @@ async function handle(msg) {
       if (reloaded || pick(prev, ACC_KEYS) !== pick(look, ACC_KEYS)) buildAccessories(look);
       frameCamera();
       document.getElementById('loading').style.display = 'none';
-      send({ type: 'loaded' });
+      if (reloaded) {
+        // primer fotograma de verdad (compila los shaders): el 3D ya se ve
+        const t2 = performance.now();
+        renderer.render(scene, camera);
+        timings.firstFrame = Math.round(performance.now() - t2);
+        timings.setup = Math.round(t2 - timings.start - timings.bytes - timings.parse);
+        timings.total = Math.round(performance.now() - timings.start);
+      }
+      send({ type: 'loaded', timings: reloaded ? { ...timings } : null });
     } catch (e) {
       document.getElementById('loading').style.display = 'none';
       send({ type: 'error', message: String((e && e.message) || e) });

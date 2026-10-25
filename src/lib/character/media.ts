@@ -6,7 +6,10 @@ import { PRESETS } from './catalog';
 import type { CharacterLook } from './types';
 
 /** Modelos VRM base (bucket público de Supabase, texturas optimizadas para móvil). */
-export const MODEL_BASE_URL = `${SUPABASE_URL}/storage/v1/object/public/vrm-models`;
+// v2: texturas re-codificadas, geometría con EXT_meshopt_compression y peinados "solo pelo"
+// (scripts/optimize-vrm.cjs, make-hair-vrm.cjs, meshopt-vrm.cjs). Las versiones antiguas de la app
+// siguen leyendo la raíz del bucket, que no cambia.
+export const MODEL_BASE_URL = `${SUPABASE_URL}/storage/v1/object/public/vrm-models/v2`;
 
 /** Retratos generados con scripts/render-characters.mjs a partir del 3D real. */
 const PRESET_PORTRAITS: Record<string, ImageSourcePropType> = {
@@ -81,6 +84,16 @@ const canonical = (v: unknown): string =>
 const PRESET_KEYS = new Map(PRESETS.map((p) => [canonical(p.look), p]));
 function presetFor(look: CharacterLook) {
   return PRESET_KEYS.get(canonical(look));
+}
+
+/**
+ * Imagen que se ve al instante en el escenario mientras carga el 3D (luego se funde):
+ * el retrato del personaje listo, o su foto de perfil.
+ */
+export function stagePoster(opts: { imageUrl?: string | null; look: CharacterLook }): ImageSourcePropType {
+  const preset = presetFor(opts.look);
+  if (preset) return PRESET_PORTRAITS[preset.id];
+  return faceImage(opts);
 }
 
 /**

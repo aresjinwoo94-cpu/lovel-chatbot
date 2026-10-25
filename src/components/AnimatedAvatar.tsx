@@ -125,10 +125,12 @@ export function AnimatedAvatar({ avatar, source, presence = 'idle', size = 40, s
         </Svg>
       </Animated.View>
       <Animated.View style={[{ position: 'absolute', left: pad, top: pad, width: inner, height: inner, borderRadius: inner / 2, overflow: 'hidden', backgroundColor: colors.subtle, borderWidth: 1, borderColor: colors.line }, imgStyle]}>
+        {/* El borde redondo también en la imagen: en Android expo-image no siempre respeta el recorte
+            del contenedor y asomaban las esquinas de la foto (WP-9). */}
         {img ? (
           <Image
             source={img}
-            style={{ width: inner, height: inner, opacity: offline ? 0.5 : 1, transform: oldShot ? [{ translateY: inner * 0.19 }, { scale: 1.6 }] : undefined }}
+            style={{ width: inner, height: inner, borderRadius: inner / 2, opacity: offline ? 0.5 : 1, transform: oldShot ? [{ translateY: inner * 0.19 }, { scale: 1.6 }] : undefined }}
             contentFit="cover"
             contentPosition="top"
             transition={150}

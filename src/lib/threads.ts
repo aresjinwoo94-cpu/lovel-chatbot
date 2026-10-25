@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { type AvatarThread, fetchAvatarThreads } from './data';
+import type { Avatar } from './types';
 
 /**
  * Lista de historias compartida por la barra lateral y el inicio: una sola
@@ -23,6 +24,17 @@ export function refreshThreads(): Promise<void> {
       inflight = null;
     });
   return inflight;
+}
+
+/** Personajes recién creados (aún no están en la lista): el chat los pinta al instante. */
+const primed = new Map<string, Avatar>();
+export function primeAvatar(a: Avatar) {
+  primed.set(a.id, a);
+}
+/** El personaje ya conocido (lista de historias o recién creado), sin esperar a la base de datos. */
+export function peekAvatar(id: string | null | undefined): Avatar | null {
+  if (!id) return null;
+  return state.threads.find((t) => t.id === id) ?? primed.get(id) ?? null;
 }
 
 /** Al cerrar sesión. */

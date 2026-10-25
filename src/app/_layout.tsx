@@ -8,7 +8,6 @@ import {
   PlusJakartaSans_500Medium,
   PlusJakartaSans_600SemiBold,
   PlusJakartaSans_700Bold,
-  PlusJakartaSans_800ExtraBold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 import { useFonts } from 'expo-font';
 import { ObserveRoot } from 'expo-observe';
@@ -64,7 +63,6 @@ function RootNavigator() {
     PlusJakartaSans_500Medium,
     PlusJakartaSans_600SemiBold,
     PlusJakartaSans_700Bold,
-    PlusJakartaSans_800ExtraBold,
   });
   const ready = !loading && age !== 'loading' && themeLoaded && (fontsLoaded || !!fontError);
 

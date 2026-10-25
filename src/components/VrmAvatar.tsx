@@ -1,5 +1,7 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, type ForwardedRef } from 'react';
-import { Platform, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type ForwardedRef } from 'react';
+import { type ImageSourcePropType, Platform, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, { FadeOut } from 'react-native-reanimated';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 
 import { MODEL_BASE_URL } from '@/lib/character/media';
@@ -25,6 +27,8 @@ interface Props {
   /** Fondo transparente (el contenedor pone el color). */
   transparent?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** Imagen que se ve al instante mientras carga el 3D; se funde cuando el personaje aparece. */
+  poster?: ImageSourcePropType;
   onLoaded?: () => void;
   onError?: (message: string) => void;
 }
@@ -37,7 +41,7 @@ type StageMessage = { type: 'ready' | 'loaded' | 'error' | 'snapshot'; message?:
  * En móvil se dibuja en un WebView; en web, en un iframe.
  */
 function VrmAvatarBase(
-  { look, gender, presence = 'idle', emotion = null, emotionId = null, framing = 'bust', transparent = false, style, onLoaded, onError }: Props,
+  { look, gender, presence = 'idle', emotion = null, emotionId = null, framing = 'bust', transparent = false, style, poster, onLoaded, onError }: Props,
   ref: ForwardedRef<VrmAvatarHandle>,
 ) {
   const webRef = useRef<WebView>(null);
@@ -45,6 +49,7 @@ function VrmAvatarBase(
   const ready = useRef(false);
   const queue = useRef<object[]>([]);
   const pendingSnapshot = useRef<((url: string) => void) | null>(null);
+  const [shown, setShown] = useState(false);
 
   const post = useCallback((msg: object) => {
     if (!ready.current) {
@@ -69,8 +74,13 @@ function VrmAvatarBase(
         const pending = queue.current;
         queue.current = [];
         pending.forEach(post);
-      } else if (msg.type === 'loaded') onLoaded?.();
-      else if (msg.type === 'error') onError?.(msg.message ?? 'Error');
+      } else if (msg.type === 'loaded') {
+        setShown(true);
+        onLoaded?.();
+      } else if (msg.type === 'error') {
+        setShown(true);
+        onError?.(msg.message ?? 'Error');
+      }
       else if (msg.type === 'snapshot' && msg.dataUrl) {
         pendingSnapshot.current?.(msg.dataUrl);
         pendingSnapshot.current = null;
@@ -115,10 +125,19 @@ function VrmAvatarBase(
     return () => window.removeEventListener('message', onMsg);
   }, [handle]);
 
+  // Retrato estático encima hasta que el 3D está listo (nunca un hueco vacío al entrar).
+  const posterLayer =
+    poster && !shown ? (
+      <Animated.View exiting={FadeOut.duration(350)} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <Image source={poster} style={{ width: '100%', height: '100%' }} contentFit="cover" contentPosition="top" />
+      </Animated.View>
+    ) : null;
+
   if (Platform.OS === 'web') {
     return (
       <View style={[{ overflow: 'hidden' }, style]}>
         <iframe ref={frameRef} srcDoc={AVATAR_STAGE_HTML} title="personaje" style={{ border: 0, width: '100%', height: '100%', background: 'transparent' }} />
+        {posterLayer}
       </View>
     );
   }
@@ -142,6 +161,7 @@ function VrmAvatarBase(
         style={{ flex: 1, backgroundColor: 'transparent' }}
         containerStyle={{ backgroundColor: 'transparent' }}
       />
+      {posterLayer}
     </View>
   );
 }
