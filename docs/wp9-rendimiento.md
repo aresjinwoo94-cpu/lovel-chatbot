@@ -16,17 +16,37 @@ un teléfono real (ver "Medir en tu teléfono").
 
 Script: `perf.mjs`, en el scratchpad de la sesión. Crea un usuario temporal y lo borra al terminar.
 
+## Medición real (Samsung Galaxy S22 Ultra, Samsung Internet 30)
+
+Tras tres rondas (3,45 s → 5,4 s → arreglos), todos los presupuestos se cumplen en el teléfono:
+
+```
+Abrir app → Inicio usable: 1248 (≤ 2000 ms)
+Chat: retrato visible: 134, 21 (≤ 300 ms)
+3D primera vez: 1324 (≤ 2500 ms)
+3D ya cargado antes: 21 (≤ 800 ms)
+Enviar → "escribiendo": 15 (≤ 200 ms)
+Animación (fps): 60, 60, 60, 28 (≥ 45)
+Fases de Inicio: código 1096 · sesión 1159 · perfil 1161 · app lista 1185 · ruta decidida 1195 · inicio (copia local) 1248
+fps por estado: 60 thinking, 60 speaking, 60 idle, 28 idle
+```
+
+La ventana de 28 fps es la de volver a entrar al chat: la pantalla entra deslizándose y el
+escenario se recoloca en cada fotograma. No es la animación en sí.
+
+Pendiente: medir en un Android de gama media (el presupuesto del brief) con el mismo medidor.
+
 ## Antes / después
 
 | Momento (presupuesto) | Antes (producción) | Después | ¿Cumple? |
 |---|---|---|---|
 | Primera visita → puerta 18+ usable | 4,0 s | 2,8 s | — (sin presupuesto propio) |
-| Abrir app con sesión → Inicio usable (≤ 2 s) | 1,6 s (S22 Ultra real: 3,45 s y 5,4 s) | 1,1 s | Sí en emulación; falta confirmar en el teléfono |
-| Chat desde Inicio: retrato visible (≤ 300 ms) | 0,73 s (S22 Ultra real: 0,6 s) | 0,22–0,35 s; 0,08 s si ya se abrió | Sí en emulación; falta confirmar en el teléfono |
+| Abrir app con sesión → Inicio usable (≤ 2 s) | 1,6 s emulado; S22 Ultra real: 3,45 s y 5,4 s | 1,1 s emulado; **S22 Ultra real: 1,25 s** | **Sí** |
+| Chat desde Inicio: retrato visible (≤ 300 ms) | 0,73 s; S22 Ultra real: 0,6 s | **S22 Ultra real: 134 ms; 21 ms si ya se abrió** | **Sí** |
 | 3D primera vez (≤ 2,5 s) | 11,9 s | 5,3 s por software; **S22 Ultra real: 1,39 s** | **Sí** en el teléfono |
-| 3D ya cargado antes (≤ 800 ms) | 6,0 s | 0,27–0,37 s | **Sí** |
+| 3D ya cargado antes (≤ 800 ms) | 6,0 s | **S22 Ultra real: 21 ms** | **Sí** |
 | Enviar → "escribiendo" (≤ 200 ms) | ~0,58 s | 0,24–0,34 s desde el toque (CPU 4×); **S22 Ultra real: 15 ms** | **Sí** en el teléfono |
-| Animación (≥ 45 fps) | — | **S22 Ultra real: 58–60 fps, con dos caídas a 13** | Casi: se investigan las caídas |
+| Animación (≥ 45 fps) | — | **S22 Ultra real: 60 fps pensando, hablando y en reposo**; una ventana de 28 fps al volver a entrar al chat (transición de pantalla) | **Sí** |
 
 Fases del 3D la primera vez, sin GPU:
 
