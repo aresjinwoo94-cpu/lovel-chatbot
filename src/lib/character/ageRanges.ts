@@ -9,6 +9,8 @@ import type { CharacterLook } from './types';
  *
  * El rostro lo dibuja el escenario 3D (avatar-stage/stage.html, AGE_FACE) a partir de
  * `look.age`: párpado, iris, ojos "naturales", tamaño de cabeza y sombreado de la cara.
+ * La forma de hablar por rango está en el prompt del servidor
+ * (supabase/functions/_shared/systemPrompts.tsx, ageSpeech) y la voz automática en pickVoice.
  */
 export type AgeRangeId = '18-22' | '23-27' | '28-34' | '35+';
 
@@ -35,8 +37,6 @@ export interface AgeRange {
   makeup: { blushMax: number; lip: string | null; eyeshadow: string | null };
   /** Voces adecuadas (ids de VOICES); la primera es la automática. */
   voices: { female: string[]; male: string[] };
-  /** Cómo habla (va al prompt del personaje). */
-  speech: string;
 }
 
 const V = {
@@ -69,14 +69,13 @@ export const AGE_RANGES: AgeRange[] = [
     label: { es: '18–22 años', en: '18–22' },
     short: '18–22',
     typical: 21,
-    face: { lid: 0, iris: 1, head: 1.02, contour: 0 },
+    face: { lid: 0, iris: 1.03, head: 1.03, contour: 0 },
     bodiesDenied: [],
     hairDenied: [],
     accessoriesDenied: [],
     plainOutfit: false,
     makeup: { blushMax: 1, lip: null, eyeshadow: null },
     voices: { female: [V.sarah, V.laura, V.jessica, V.lily], male: [V.liam, V.chris, V.will, V.eric] },
-    speech: 'Hablas como alguien de entre 18 y 22 años: fresco y espontáneo, con expresiones actuales, pero sin sonar infantil.',
   },
   {
     id: '23-27',
@@ -85,14 +84,13 @@ export const AGE_RANGES: AgeRange[] = [
     label: { es: '23–27 años', en: '23–27' },
     short: '23–27',
     typical: 25,
-    face: { lid: 0.07, iris: 0.97, head: 1, contour: 0 },
+    face: { lid: 0.1, iris: 0.95, head: 1, contour: 0.25 },
     bodiesDenied: [],
     hairDenied: [],
     accessoriesDenied: [],
     plainOutfit: false,
     makeup: { blushMax: 0.5, lip: null, eyeshadow: null },
     voices: { female: [V.sarah, V.jessica, V.alice, V.laura, V.lily], male: [V.liam, V.will, V.eric, V.chris, V.callum] },
-    speech: 'Hablas como alguien de entre 23 y 27 años: natural y seguro, cercano, con algo de humor.',
   },
   {
     id: '28-34',
@@ -109,7 +107,6 @@ export const AGE_RANGES: AgeRange[] = [
     plainOutfit: true,
     makeup: { blushMax: 0.2, lip: '#B0646C', eyeshadow: '#B79A9A' },
     voices: { female: [V.alice, V.lily, V.matilda, V.jessica], male: [V.eric, V.callum, V.brian, V.george, V.will] },
-    speech: 'Hablas como alguien de entre 28 y 34 años: con aplomo y las cosas claras, menos jerga, una calidez más asentada.',
   },
   {
     id: '35+',
@@ -127,7 +124,6 @@ export const AGE_RANGES: AgeRange[] = [
     plainOutfit: true,
     makeup: { blushMax: 0.1, lip: '#A0525E', eyeshadow: '#A88A8C' },
     voices: { female: [V.matilda, V.alice, V.lily], male: [V.brian, V.george, V.daniel, V.callum] },
-    speech: 'Hablas como alguien de 35 años o más: maduro y sereno, con experiencia de vida; vocabulario cuidado y nada de jerga juvenil.',
   },
 ];
 

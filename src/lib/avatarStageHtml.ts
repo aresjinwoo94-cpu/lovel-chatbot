@@ -402,7 +402,7 @@ function cleanMouth(g, W, H) {
  * fondo transparente; cada mitad se encoge alrededor de su propio centro.
  */
 function shrinkEyes(k) {
-  if (k >= 0.999) return null;
+  if (Math.abs(k - 1) < 0.001) return null;
   return (g, W, H) => {
     const copy = document.createElement('canvas'); copy.width = W; copy.height = H;
     copy.getContext('2d').drawImage(g.canvas, 0, 0);
@@ -441,8 +441,9 @@ function paintFace(look) {
     if (contour) for (const cx of [0.25, 0.75]) soft(cx, 0.72, 0.075, 0.11, '#B88270', 0.3 * contour, 'multiply');
     // hombres de 35+: sombra de barba muy leve en barbilla y mandíbula
     if (ageFace(look).stubble && MALE_BODIES.has(look.model)) {
-      soft(0.5, 0.81, 0.1, 0.045, '#8C8496', 0.32, 'multiply');
-      for (const cx of [0.36, 0.64]) soft(cx, 0.76, 0.06, 0.06, '#8C8496', 0.22, 'multiply');
+      // a lo largo de la mandíbula, no alrededor de la boca; tono gris neutro (no verdoso)
+      for (const cx of [0.3, 0.7]) soft(cx, 0.8, 0.075, 0.05, '#9A9090', 0.22, 'multiply');
+      soft(0.5, 0.855, 0.09, 0.03, '#9A9090', 0.24, 'multiply');
     }
     if (look.eyeshadow) for (const cx of [0.352, 0.662]) soft(cx, 0.527, 0.09, 0.045, look.eyeshadow, 0.85, 'multiply');
     if (blush) for (const cx of [0.315, 0.688]) soft(cx, 0.655, 0.075, 0.045, '#F07C98', 0.5 * blush);
@@ -824,8 +825,8 @@ async function load(look, base) {
  * pequeños (el iris grande es lo que más aniña una cara anime).
  */
 const AGE_FACE = {
-  '18-22': { lid: 0, natural: 0, head: 1.02, contour: 0, iris: 1, stubble: 0 },
-  '23-27': { lid: 0.07, natural: 0.15, head: 1, contour: 0, iris: 0.97, stubble: 0 },
+  '18-22': { lid: 0, natural: 0, head: 1.03, contour: 0, iris: 1.03, stubble: 0 },
+  '23-27': { lid: 0.1, natural: 0.25, head: 1, contour: 0.25, iris: 0.95, stubble: 0 },
   '28-34': { lid: 0.2, natural: 0.55, head: 0.96, contour: 0.55, iris: 0.9, stubble: 0 },
   '35+': { lid: 0.36, natural: 1, head: 0.93, contour: 1, iris: 0.86, stubble: 1 },
 };
