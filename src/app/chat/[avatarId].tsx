@@ -14,7 +14,7 @@ import { Text, TextInput } from '@/components/Themed';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { Button, IconButton } from '@/components/ui';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
-import { VrmAvatar } from '@/components/VrmAvatar';
+import { StageSlot } from '@/components/StageHost';
 import { ApiError, callFunction, isPaywall } from '@/lib/api';
 import { base64ToPlayableUri, readRecording } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
@@ -33,6 +33,7 @@ import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
 import { track } from '@/lib/analytics';
 import { stagePoster } from '@/lib/character/media';
+import { perfStart } from '@/lib/perfMeter';
 
 /** Cuánto "habla" el personaje tras un mensaje de texto (aprox. velocidad de lectura en voz alta). */
 const speakMs = (text: string) => Math.max(1400, Math.min(6000, 900 + text.length * 32));
@@ -272,6 +273,7 @@ export default function ChatScreen() {
     if (!body || !avatarId || typing || opening) return;
     if (!isPro && textLeft <= 0) return isGuest ? askAccount() : setPaywall('text');
     const temp = tempMessage('text', body);
+    perfStart('typing');
     setMessages((prev) => [temp, ...prev]);
     setText('');
     setTyping(true);
@@ -366,31 +368,57 @@ export default function ChatScreen() {
 
   // ------------------------------------------------ escenario del personaje
   const stageH = Math.round(Math.min(height * 0.36, 300));
+  // El escenario 3D es único en la app (StageHost): aquí solo se reserva su hueco; lo que va
+  // encima (nombre, botones) se pinta sobre él.
   const stage = (
-    <View className={wide ? 'flex-1' : ''} style={wide ? undefined : { height: stageH }}>
-      <VrmAvatar look={look} gender={avatar.gender} presence={presence} emotion={emotion} emotionId={freshMsg?.id} framing={wide ? 'portrait' : 'bust'} poster={stagePoster({ imageUrl: avatar.avatar_image_url, look })} style={{ flex: 1 }} />
-      {/* Nombre y estado sobre el escenario */}
-      <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 flex-row items-end justify-between px-4 pb-3">
-        <View className={`rounded-xl px-3 py-2 ${darkStage ? 'bg-black/40' : 'bg-paper/90'}`}>
-          <Text className={`font-semibold text-[17px] leading-[22px] tracking-tighter ${darkStage ? 'text-paper' : 'text-ink'}`}>{avatar.name}</Text>
-          <PresencePill presence={presence} onDark={darkStage} />
-        </View>
-        {!wide ? <IconButton icon="chevron-up" variant="outline" size={34} label={t('chat.collapse')} onPress={() => setManualCollapsed(true)} /> : null}
-      </View>
-      {/* Personalizar: aspecto, voz e identidad */}
-      <View pointerEvents="box-none" className={`absolute ${wide ? 'right-3 top-3' : 'right-14 top-2'}`}>
-        <Pressable
-          onPress={customize}
-          accessibilityRole="button"
-          accessibilityLabel={t('chat.customize')}
-          className="h-9 flex-row items-center rounded-full border border-line bg-paper px-3.5 active:bg-subtle"
-          style={{ cursor: 'pointer' } as object}
-        >
-          <Ionicons name="color-palette-outline" size={16} color={colors.ink} />
-          <Text className="ml-1.5 font-semibold text-[13px] text-ink">{t('chat.customize')}</Text>
-        </Pressable>
-      </View>
-    </View>
+    <StageSlot
+      look={look}
+      gender={avatar.gender}
+      presence={presence}
+      emotion={emotion}
+      emotionId={freshMsg?.id}
+      framing={wide ? 'portrait' : 'bust'}
+      poster={stagePoster({ imageUrl: avatar.avatar_image_url, look })}
+      style={wide ? { flex: 1 } : { height: stageH }}
+      overlay={
+        <>
+          {/* Volver (y exportar en móvil) */}
+          {wide ? (
+            !withSidebar ? (
+              <View className="absolute left-3 top-3 z-10">
+                <IconButton icon="chevron-back" variant="outline" label={t('common.back')} onPress={goBack} />
+              </View>
+            ) : null
+          ) : (
+            <View pointerEvents="box-none" className="absolute left-2 right-2 top-2 flex-row justify-between">
+              <IconButton icon="chevron-back" variant="outline" size={36} label={t('common.back')} onPress={goBack} />
+              <IconButton icon="share-outline" variant="outline" size={36} label={t('chat.export')} onPress={onExport} />
+            </View>
+          )}
+          {/* Nombre y estado sobre el escenario */}
+          <View pointerEvents="box-none" className="absolute bottom-0 left-0 right-0 flex-row items-end justify-between px-4 pb-3">
+            <View className={`rounded-xl px-3 py-2 ${darkStage ? 'bg-black/40' : 'bg-paper/90'}`}>
+              <Text className={`font-semibold text-[17px] leading-[22px] tracking-tighter ${darkStage ? 'text-white' : 'text-ink'}`}>{avatar.name}</Text>
+              <PresencePill presence={presence} onDark={darkStage} />
+            </View>
+            {!wide ? <IconButton icon="chevron-up" variant="outline" size={34} label={t('chat.collapse')} onPress={() => setManualCollapsed(true)} /> : null}
+          </View>
+          {/* Personalizar: aspecto, voz e identidad */}
+          <View pointerEvents="box-none" className={`absolute ${wide ? 'right-3 top-3' : 'right-14 top-2'}`}>
+            <Pressable
+              onPress={customize}
+              accessibilityRole="button"
+              accessibilityLabel={t('chat.customize')}
+              className="h-9 flex-row items-center rounded-full border border-line bg-paper px-3.5 active:bg-subtle"
+              style={{ cursor: 'pointer' } as object}
+            >
+              <Ionicons name="color-palette-outline" size={16} color={colors.ink} />
+              <Text className="ml-1.5 font-semibold text-[13px] text-ink">{t('chat.customize')}</Text>
+            </Pressable>
+          </View>
+        </>
+      }
+    />
   );
 
   const guestBar =
@@ -548,11 +576,6 @@ export default function ChatScreen() {
       <SafeAreaView className="flex-1 flex-row bg-paper" edges={['top']}>
         {withSidebar ? <AppSidebar activeChat={avatar.id} /> : null}
         <View className="border-r border-line" style={{ width: Math.min(480, (width - (withSidebar ? 248 : 0)) * 0.4) }}>
-          {!withSidebar ? (
-            <View className="absolute left-3 top-3 z-10">
-              <IconButton icon="chevron-back" variant="outline" label={t('common.back')} onPress={goBack} />
-            </View>
-          ) : null}
           {stage}
         </View>
         <View className="flex-1">
@@ -584,10 +607,6 @@ export default function ChatScreen() {
       ) : (
         <Animated.View layout={LinearTransition.duration(220)} className="border-b border-line">
           {stage}
-          <View pointerEvents="box-none" className="absolute left-2 right-2 top-2 flex-row justify-between">
-            <IconButton icon="chevron-back" variant="outline" size={36} label={t('common.back')} onPress={goBack} />
-            <IconButton icon="share-outline" variant="outline" size={36} label={t('chat.export')} onPress={onExport} />
-          </View>
         </Animated.View>
       )}
       {conversation}

@@ -73,6 +73,8 @@ export async function speechToText(audio: Uint8Array<ArrayBuffer>, mimeType: str
   const form = new FormData();
   form.append('model_id', STT_MODEL);
   form.append('file', new Blob([audio], { type: mimeType }), `voice.${ext}`);
+  // sin etiquetas de sonido ("[beeping]", "(música)"): solo lo que la persona dijo
+  form.append('tag_audio_events', 'false');
   const res = await fetch(`${API}/speech-to-text`, {
     method: 'POST',
     headers: { 'xi-api-key': requireEnv('ELEVENLABS_API_KEY') },
@@ -83,7 +85,7 @@ export async function speechToText(audio: Uint8Array<ArrayBuffer>, mimeType: str
     throw new HttpError(502, 'No pudimos procesar tu nota de voz ahora mismo. Inténtalo de nuevo en un momento.', 'VOICE_STT');
   }
   const data = (await res.json()) as { text?: string };
-  // Scribe marca el silencio o el ruido entre paréntesis: "(silencio)", "(música)".
-  const text = (data.text ?? '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+  // Por si acaso: Scribe marca silencio o ruido entre paréntesis o corchetes: "(silencio)", "[beeping]".
+  const text = (data.text ?? '').replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\s+/g, ' ').trim();
   return text;
 }

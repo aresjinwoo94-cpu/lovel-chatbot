@@ -8,6 +8,7 @@ import { MODEL_BASE_URL } from '@/lib/character/media';
 import { normalizeLook } from '@/lib/character/catalog';
 import type { Emotion, Presence } from '@/lib/character/types';
 import { AVATAR_STAGE_HTML } from '@/lib/avatarStageHtml';
+import { perfEnd, perfFps } from '@/lib/perfMeter';
 
 export interface VrmAvatarHandle {
   /** Captura el personaje como JPEG (data URL). `framing: 'avatar'` = foto de perfil cuadrada (solo la cara). */
@@ -29,11 +30,13 @@ interface Props {
   style?: StyleProp<ViewStyle>;
   /** Imagen que se ve al instante mientras carga el 3D; se funde cuando el personaje aparece. */
   poster?: ImageSourcePropType;
+  /** false = escondido: el escenario se pausa (no dibuja). */
+  active?: boolean;
   onLoaded?: () => void;
   onError?: (message: string) => void;
 }
 
-type StageMessage = { type: 'ready' | 'loaded' | 'error' | 'snapshot'; message?: string; dataUrl?: string };
+type StageMessage = { type: 'ready' | 'loaded' | 'error' | 'snapshot' | 'fps'; message?: string; dataUrl?: string; fps?: number };
 
 /**
  * Personaje VRM en vivo (el formato 3D de los VTubers): sombreado anime,
@@ -41,7 +44,7 @@ type StageMessage = { type: 'ready' | 'loaded' | 'error' | 'snapshot'; message?:
  * En móvil se dibuja en un WebView; en web, en un iframe.
  */
 function VrmAvatarBase(
-  { look, gender, presence = 'idle', emotion = null, emotionId = null, framing = 'bust', transparent = false, style, poster, onLoaded, onError }: Props,
+  { look, gender, presence = 'idle', emotion = null, emotionId = null, framing = 'bust', transparent = false, style, poster, active = true, onLoaded, onError }: Props,
   ref: ForwardedRef<VrmAvatarHandle>,
 ) {
   const webRef = useRef<WebView>(null);
@@ -49,7 +52,9 @@ function VrmAvatarBase(
   const ready = useRef(false);
   const queue = useRef<object[]>([]);
   const pendingSnapshot = useRef<((url: string) => void) | null>(null);
-  const [shown, setShown] = useState(false);
+  // modelo (cuerpo + pelo) que ya se ve en 3D: si cambia de personaje, vuelve el retrato hasta que cargue
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const modelKeyRef = useRef('');
 
   const post = useCallback((msg: object) => {
     if (!ready.current) {
@@ -75,12 +80,13 @@ function VrmAvatarBase(
         queue.current = [];
         pending.forEach(post);
       } else if (msg.type === 'loaded') {
-        setShown(true);
+        setLoadedFor(modelKeyRef.current);
         onLoaded?.();
       } else if (msg.type === 'error') {
-        setShown(true);
+        setLoadedFor(modelKeyRef.current);
         onError?.(msg.message ?? 'Error');
       }
+      else if (msg.type === 'fps' && msg.fps) perfFps(msg.fps);
       else if (msg.type === 'snapshot' && msg.dataUrl) {
         pendingSnapshot.current?.(msg.dataUrl);
         pendingSnapshot.current = null;
@@ -89,7 +95,13 @@ function VrmAvatarBase(
     [onLoaded, onError, post],
   );
 
-  const lookKey = JSON.stringify(normalizeLook(look, gender));
+  const normalized = normalizeLook(look, gender);
+  const lookKey = JSON.stringify(normalized);
+  const modelKey = `${normalized.model}|${normalized.hair ?? ''}`;
+  useEffect(() => {
+    modelKeyRef.current = modelKey;
+  }, [modelKey]);
+
   useEffect(() => {
     post({ type: 'look', look: JSON.parse(lookKey), modelBaseUrl: MODEL_BASE_URL, framing, transparent });
   }, [lookKey, framing, transparent, post]);
@@ -97,6 +109,10 @@ function VrmAvatarBase(
   useEffect(() => {
     post({ type: 'state', mood: presence, emotion, emotionId });
   }, [presence, emotion, emotionId, post]);
+
+  useEffect(() => {
+    post({ type: 'active', on: active });
+  }, [active, post]);
 
   useImperativeHandle(
     ref,
@@ -127,9 +143,9 @@ function VrmAvatarBase(
 
   // Retrato estático encima hasta que el 3D está listo (nunca un hueco vacío al entrar).
   const posterLayer =
-    poster && !shown ? (
-      <Animated.View exiting={FadeOut.duration(350)} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-        <Image source={poster} style={{ width: '100%', height: '100%' }} contentFit="cover" contentPosition="top" />
+    poster && loadedFor !== modelKey ? (
+      <Animated.View testID="stage-poster" exiting={FadeOut.duration(350)} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <Image source={poster} style={{ width: '100%', height: '100%' }} contentFit="cover" contentPosition="top" onDisplay={() => perfEnd('portrait')} />
       </Animated.View>
     ) : null;
 

@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,6 +10,7 @@ import { useAuth } from '@/lib/auth';
 import { updateProfile } from '@/lib/data';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
+import { perfEnabled, setPerfEnabled } from '@/lib/perfMeter';
 import { supabase } from '@/lib/supabase';
 import { type ThemePref, useTheme } from '@/lib/theme';
 import type { Language } from '@/lib/types';
@@ -20,6 +21,7 @@ export default function SettingsScreen() {
   const { pref: themePref, setPref: setThemePref } = useTheme();
   const { t, language, setLanguage } = useI18n();
   const { profile, refreshProfile, signOut, session } = useAuth();
+  const versionTaps = useRef(0);
   const params = useLocalSearchParams<{ password?: string }>();
   const [storeVoice, setStoreVoice] = useState(profile?.store_voice ?? true);
   const [showPassword, setShowPassword] = useState(params.password === '1');
@@ -160,8 +162,18 @@ export default function SettingsScreen() {
           />
         </Card>
 
-        <Muted className="mt-8 text-center text-[12px]">
-          {t('appName')} · {t('legal.adultsOnly')} · {t('settings.version', { v: Constants.expoConfig?.version ?? '1.0.0' })}
+        {/* 5 toques: medidor de rendimiento (para medir en un teléfono real) */}
+        <Muted
+          className="mt-8 text-center text-[12px]"
+          onPress={() => {
+            versionTaps.current += 1;
+            if (versionTaps.current >= 5) {
+              versionTaps.current = 0;
+              setPerfEnabled(!perfEnabled());
+            }
+          }}
+        >
+          {t('appName')} · {t('legal.adultsOnly').replace(/\.$/, '')} · {t('settings.version', { v: Constants.expoConfig?.version ?? '1.0.0' })}
         </Muted>
       </ScrollView>
     </SafeAreaView>

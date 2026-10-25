@@ -14,7 +14,7 @@ export const AVATAR_STAGE_HTML = `<!doctype html>
     { type: 'look', look: {...}, modelBaseUrl, framing: 'bust'|'face'|'portrait', transparent?: bool }
     { type: 'state', mood: 'idle'|'thinking'|'listening'|'speaking'|'happy'|'offline', emotion?: 'happy'|'sad'|'surprised'|'shy'|null }
     { type: 'snapshot', framing?, size? | width & height }  → responde { type: 'snapshot', dataUrl }
-  Envía: { type: 'ready' } · { type: 'loaded' } · { type: 'error', message }
+  Envía: { type: 'ready' } · { type: 'loaded' } · { type: 'error', message } · { type: 'fps', fps } (cada 3 s)
 
   Aspecto (look): modelo, peinado, colores de pelo (+ puntas), ojos, piel, ropa
   por piezas, maquillaje y marcas, expresión, pose, cabeza (inclinación, giro,
@@ -1407,6 +1407,7 @@ function governor(t, rawDt) {
   if (t - perf.since < 3) return;
   perf.fps = perf.frames / (t - perf.since);
   resetWindow(); perf.checks++;
+  send({ type: 'fps', fps: Math.round(perf.fps) });
   if (!MOBILE || FORCE_FX) return;
   perf.slow = perf.fps < 45 ? perf.slow + 1 : 0;
   if (perf.slow >= 2 && !perf.lowfx) { perf.lowfx = true; document.body.classList.add('lowfx'); }
@@ -1502,6 +1503,9 @@ async function handle(msg) {
     }
     else nextGlance = clock.elapsedTime + 3;
     send({ type: 'qa-ok' });
+  } else if (msg.type === 'active') {
+    // escenario persistente de la app: escondido = en pausa (sin gastar batería ni GPU)
+    if (msg.on) { clock.getDelta(); renderer.setAnimationLoop(frame); } else renderer.setAnimationLoop(null);
   } else if (msg.type === 'state') {
     current.mood = msg.mood || 'idle';
     const emoKey = \`\${msg.emotion || ''}|\${msg.emotionId || ''}\`;

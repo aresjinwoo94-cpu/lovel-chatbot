@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router/js-tabs';
 import { useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppSidebar } from '@/components/AppSidebar';
 import { fonts } from '@/constants/theme';
@@ -17,6 +18,7 @@ export default function TabsLayout() {
   const { t } = useI18n();
   const { width } = useWindowDimensions();
   const side = width >= 900;
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       tabBar={side ? (props) => <AppSidebar active={props.state.routes[props.state.index]?.name as 'index' | 'profile' | 'settings'} /> : undefined}
@@ -25,8 +27,9 @@ export default function TabsLayout() {
         tabBarPosition: side ? 'left' : 'bottom',
         tabBarActiveTintColor: colors.ink,
         tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { backgroundColor: colors.paper, borderTopColor: colors.line },
-        tabBarLabelStyle: { fontFamily: fonts.semibold, fontSize: 11 },
+        // alto propio: con la altura por defecto la fuente recortaba la parte de abajo de las etiquetas ("Ajustes")
+        tabBarStyle: { backgroundColor: colors.paper, borderTopColor: colors.line, height: 64 + insets.bottom, paddingTop: 4, paddingBottom: insets.bottom + 6 },
+        tabBarLabelStyle: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 15 },
         sceneStyle: { backgroundColor: colors.paper },
       }}
     >

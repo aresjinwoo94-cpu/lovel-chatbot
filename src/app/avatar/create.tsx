@@ -9,7 +9,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Text, TextInput } from '@/components/Themed';
 import { Badge, Button, Caption, Display, Field, IconButton, Muted, Segmented, Slider, Swatch, Tag } from '@/components/ui';
-import { VrmAvatar, type VrmAvatarHandle } from '@/components/VrmAvatar';
+import { StageSlot } from '@/components/StageHost';
+import type { VrmAvatarHandle } from '@/components/VrmAvatar';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/supabaseConfig';
 import { readRecording } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
@@ -874,32 +875,46 @@ export default function CreateCharacter() {
 
   const stageView = (
     <View className={wide ? 'flex-1' : 'border-b border-line'} style={wide ? undefined : { height: stageH }}>
-      <VrmAvatar ref={stage} look={look} gender={gender} framing={framing} presence={playing ? 'speaking' : 'idle'} poster={stagePoster({ look })} style={{ flex: 1 }} onLoaded={() => setStageReady(true)} />
-      {!stageReady ? (
-        <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
-          <ActivityIndicator color={colors.primary} />
-        </View>
-      ) : null}
-      {step === 0 ? (
-        <>
-          <View className="absolute left-3 top-3" style={{ width: 210 }}>
-            <Segmented<View3D>
-              value={view}
-              onChange={setView}
-              options={[
-                { id: 'face', label: t('create.view.face') },
-                { id: 'bust', label: t('create.view.bust') },
-                { id: 'portrait', label: t('create.view.body') },
-              ]}
-            />
-          </View>
-          <View className="absolute right-3 top-3 flex-row" style={{ gap: 6 }}>
-            <IconButton icon="arrow-undo-outline" variant="outline" size={34} label={t('create.undo')} onPress={undo} />
-            <IconButton icon="refresh-outline" variant="outline" size={34} label={t('create.reset')} onPress={reset} />
-            <IconButton icon="shuffle" variant="outline" size={34} label={t('create.random')} onPress={randomize} />
-          </View>
-        </>
-      ) : null}
+      {/* Escenario 3D único de la app (StageHost); los controles van encima. */}
+      <StageSlot
+        ref={stage}
+        look={look}
+        gender={gender}
+        framing={framing}
+        presence={playing ? 'speaking' : 'idle'}
+        poster={stagePoster({ look })}
+        style={{ flex: 1 }}
+        onLoaded={() => setStageReady(true)}
+        overlay={
+          <>
+          {!stageReady ? (
+            <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          ) : null}
+          {step === 0 ? (
+            <>
+              <View className="absolute left-3 top-3" style={{ width: 210 }}>
+                <Segmented<View3D>
+                  value={view}
+                  onChange={setView}
+                  options={[
+                    { id: 'face', label: t('create.view.face') },
+                    { id: 'bust', label: t('create.view.bust') },
+                    { id: 'portrait', label: t('create.view.body') },
+                  ]}
+                />
+              </View>
+              <View className="absolute right-3 top-3 flex-row" style={{ gap: 6 }}>
+                <IconButton icon="arrow-undo-outline" variant="outline" size={34} label={t('create.undo')} onPress={undo} />
+                <IconButton icon="refresh-outline" variant="outline" size={34} label={t('create.reset')} onPress={reset} />
+                <IconButton icon="shuffle" variant="outline" size={34} label={t('create.random')} onPress={randomize} />
+              </View>
+            </>
+          ) : null}
+          </>
+        }
+      />
     </View>
   );
 

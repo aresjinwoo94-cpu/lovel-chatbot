@@ -19,6 +19,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppCrashFallback } from '@/components/AppCrashFallback';
+import { PerfPanel } from '@/components/PerfPanel';
+import { StageProvider } from '@/components/StageHost';
 import { AgeGateProvider, useAgeGate } from '@/lib/ageGate';
 import { startAnalytics, trackScreen } from '@/lib/analytics';
 import { AuthProvider, useAuth } from '@/lib/auth';
@@ -74,6 +76,8 @@ function RootNavigator() {
 
   return (
     <NavThemeProvider value={navTheme}>
+      {/* Escenario 3D único y persistente (chat y creador lo colocan en su hueco). */}
+      <StageProvider>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.cream } }}>
         {/* Primera pantalla disponible mientras no se haya confirmado la edad. */}
         <Stack.Protected guard={!adult}>
@@ -101,8 +105,10 @@ function RootNavigator() {
         <Stack.Screen name="terms" />
         <Stack.Screen name="privacy" />
       </Stack>
+      </StageProvider>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       <DialogHost />
+      <PerfPanel />
     </NavThemeProvider>
   );
 }

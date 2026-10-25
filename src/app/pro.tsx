@@ -67,12 +67,13 @@ export default function ProScreen() {
       <ScrollView contentContainerClassName="w-full max-w-[440px] self-center px-5 pb-12">
         <Logo size={36} />
         <Text className="mt-5 font-semibold text-[26px] leading-[32px] tracking-tighter text-ink">Lovel House Pro</Text>
-        <Muted className="mt-2 text-[15px] leading-[22px]">{t('pro.priceNote')}</Muted>
+        <Muted className="mt-2 text-[15px] leading-[22px]">{t('pro.title')}</Muted>
 
         <View className="mt-6 rounded-2xl border border-line bg-paper p-5">
           <View className="flex-row items-baseline">
             <Text className="font-semibold text-[30px] tracking-tighter text-ink">{t('pro.price')}</Text>
           </View>
+          <Muted className="mt-1 text-[13px] leading-[18px]">{t('pro.priceNote')}</Muted>
           <View className="mt-4 border-t border-line pt-2">
             {features.map((f) => (
               <View key={f} className="mt-2.5 flex-row items-center">

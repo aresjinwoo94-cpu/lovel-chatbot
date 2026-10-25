@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth';
 import { type AvatarThread, deleteAvatar } from '@/lib/data';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
+import { perfHomeReady, perfStart } from '@/lib/perfMeter';
 import { useThreads } from '@/lib/threads';
 import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
@@ -56,7 +57,7 @@ function QuickAction({ icon, tint, bg, title, hint, onPress, width }: { icon: Ic
 export default function HomeScreen() {
   const colors = useColors();
   const { t } = useI18n();
-  const { profile, session } = useAuth();
+  const { profile } = useAuth();
   const { threads, loaded, failed, refresh } = useThreads();
   // El último chat suele ser el siguiente: su 3D se deja listo en la caché.
   const lastLook = threads[0] ? normalizeLook(threads[0].appearance, threads[0].gender) : null;
@@ -77,8 +78,10 @@ export default function HomeScreen() {
   );
 
   const hour = new Date().getHours();
-  const greet = hour < 12 ? t('home.morning') : hour < 20 ? t('home.afternoon') : t('home.evening');
-  const name = profile?.display_name || session?.user.email?.split('@')[0] || '';
+  // de madrugada también es "Buenas noches"
+  const greet = hour >= 5 && hour < 12 ? t('home.morning') : hour >= 12 && hour < 20 ? t('home.afternoon') : t('home.evening');
+  // solo el nombre que eligió la persona (no la parte del correo: "juan.perez93" no es un nombre)
+  const name = profile?.display_name?.trim() || '';
 
   const newCharacter = () => {
     if (!profile?.is_pro && threads.length >= 1) {
@@ -91,7 +94,14 @@ export default function HomeScreen() {
     router.push('/avatar/create');
   };
 
-  const open = (a: AvatarThread) => router.push({ pathname: '/chat/[avatarId]', params: { avatarId: a.id } });
+  const open = (a: AvatarThread) => {
+    perfStart('portrait');
+    perfStart('stage');
+    router.push({ pathname: '/chat/[avatarId]', params: { avatarId: a.id } });
+  };
+  useEffect(() => {
+    if (loaded) perfHomeReady();
+  }, [loaded]);
   const confirmDelete = (a: AvatarThread) =>
     showDialog(t('chats.deleteConfirm', { name: a.name }), undefined, [
       { text: t('common.cancel'), style: 'cancel' },

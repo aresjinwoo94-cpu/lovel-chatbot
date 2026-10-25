@@ -286,7 +286,7 @@ export function ToggleRow({ label, hint, value, onChange }: { label: string; hin
         onValueChange={onChange}
         trackColor={{ true: colors.primary, false: colors.line }}
         thumbColor="#FFFFFF"
-        {...({ activeThumbColor: colors.paper } as object)}
+        {...({ activeThumbColor: '#FFFFFF' } as object)}
       />
     </View>
   );

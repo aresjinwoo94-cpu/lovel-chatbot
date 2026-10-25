@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
+import { perfEnd } from '@/lib/perfMeter';
 import { useColors } from '@/lib/theme';
 import { AnimatedAvatar, type AvatarLike } from './AnimatedAvatar';
 
@@ -18,6 +19,7 @@ function Dot({ delay }: { delay: number }) {
 
 /** "Escribiendo…": el personaje a la izquierda, con su foto pensando y tres puntos. */
 export function TypingIndicator({ avatar, listening = false }: { avatar: AvatarLike; listening?: boolean }) {
+  useEffect(() => perfEnd('typing'), []);
   return (
     <Animated.View entering={FadeIn.duration(120)} exiting={FadeOut.duration(150)} className="my-1 flex-row items-end px-4">
       <View style={{ marginRight: 8 }}>

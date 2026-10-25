@@ -13,6 +13,7 @@ import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT } from '@/lib/billing';
 import { useI18n } from '@/lib/i18n';
 import { useThreads } from '@/lib/threads';
 import { useColors } from '@/lib/theme';
+import { perfStart } from '@/lib/perfMeter';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -66,7 +67,11 @@ export function AppSidebar({ active, activeChat }: { active?: 'index' | 'profile
         {threads.slice(0, 12).map((a) => (
           <Pressable
             key={a.id}
-            onPress={() => router.push({ pathname: '/chat/[avatarId]', params: { avatarId: a.id } })}
+            onPress={() => {
+              perfStart('portrait');
+              perfStart('stage');
+              router.push({ pathname: '/chat/[avatarId]', params: { avatarId: a.id } });
+            }}
             className={`mb-0.5 h-9 flex-row items-center rounded-lg px-2 ${activeChat === a.id ? 'bg-subtle' : 'active:bg-subtle'}`}
             style={{ cursor: 'pointer' } as object}
           >

@@ -213,6 +213,8 @@ export default function Welcome() {
   }
 
   // ------------------------------------------------ preguntas
+  // 4 pantallas: con quién, edad, tipo de historia y escena (las dos últimas son el paso 3 interno)
+  const shownStep = step === 3 && category ? 4 : step;
   const canNext = step === 1 ? !!who : step === 2 ? !!ageId : !!category;
   const questions = [t('welcome.q.who'), t('welcome.q.age'), t('welcome.q.situation')];
 
@@ -221,11 +223,11 @@ export default function Welcome() {
       <View className="h-14 flex-row items-center px-2">
         <IconButton icon="chevron-back" label={t('common.back')} onPress={back} />
         <View className="mx-3 flex-1 flex-row" style={{ gap: 4 }}>
-          {[1, 2, 3].map((i) => (
-            <View key={i} className={`h-1 flex-1 rounded-full ${i <= step ? 'bg-ink' : 'bg-line'}`} />
+          {[1, 2, 3, 4].map((i) => (
+            <View key={i} className={`h-1 flex-1 rounded-full ${i <= shownStep ? 'bg-ink' : 'bg-line'}`} />
           ))}
         </View>
-        <Text className="mr-3 text-[12px] text-muted">{t('create.stepOf', { n: step, total: 3 })}</Text>
+        <Text className="mr-3 text-[12px] text-muted">{t('create.stepOf', { n: shownStep, total: 4 })}</Text>
       </View>
       <ScrollView contentContainerClassName="px-5 pb-6 pt-4" keyboardShouldPersistTaps="handled">
         <View className="w-full self-center" style={{ maxWidth: 520 }}>
