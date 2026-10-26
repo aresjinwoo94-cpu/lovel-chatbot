@@ -106,3 +106,19 @@ export async function generateOpening(opts: { system: string; instruction: strin
   if (result.refused || !result.text.trim()) return null;
   return result.text.trim();
 }
+
+/**
+ * WP-12: el personaje escribe primero (modelo barato). La pausa se marca como un turno de
+ * escena para que el modelo sepa que pasó el tiempo y que le toca a él.
+ */
+export async function generateFirstMessage(opts: { system: string; history: ChatTurn[]; hoursSilent: number; language: 'es' | 'en' }): Promise<string | null> {
+  const hours = Math.max(1, Math.round(opts.hoursSilent));
+  const pause = opts.language === 'en' ? `(Some time has passed: about ${hours} h without talking. You write first.)` : `(Ha pasado un rato: unas ${hours} h sin hablar. Escribes tú primero.)`;
+  const turns: ChatTurn[] = [...opts.history];
+  const last = turns[turns.length - 1];
+  if (last && last.role === 'user') last.content += `\n${pause}`;
+  else turns.push({ role: 'user', content: pause });
+  const result = await geminiGenerate({ system: opts.system, turns, maxTokens: 2000, tier: 'free' });
+  if (result.refused || !result.text.trim()) return null;
+  return result.text.replace(/\s*\n+\s*/g, ' ').trim();
+}

@@ -1,4 +1,5 @@
-import { generateOpening, generateReply, loadHistory, maybeUpdateMemory } from './llm.ts';
+import { generateFirstMessage, generateOpening, generateReply, loadHistory, maybeUpdateMemory } from './llm.ts';
+import { careViolations, detectLanguage, proactiveInstruction, wrongLanguage } from './proactive.ts';
 import type { PlatinoState } from './platino.ts';
 import { background } from './runtime.ts';
 import { admin, type AvatarRow, type ProfileRow } from './supabase.ts';
@@ -95,4 +96,26 @@ export async function saveExchange(opts: {
 
   background(maybeUpdateMemory(opts.avatar, opts.profile.is_pro));
   return { userMessage, avatarMessage, platino: opts.platino };
+}
+
+/**
+ * WP-12: mensaje que el personaje escribe por su cuenta. Se comprueba contra las reglas de
+ * cuidado y el idioma; si falla se intenta hasta dos veces más y, si sigue fallando, no se envía nada.
+ */
+export async function writeFirst(opts: { avatar: AvatarRow; profile: ProfileRow; hoursSilent: number }): Promise<{ text: string | null; rejected: string[] }> {
+  const history = await loadHistory(opts.avatar.id, 30);
+  // Idioma de la conversación (lo último que escribió la persona); si no hay, el del perfil.
+  const lastUser = [...history].reverse().find((t) => t.role === 'user')?.content ?? '';
+  const language = detectLanguage(lastUser) ?? (opts.profile.language === 'en' ? 'en' : 'es');
+  const system = `${systemFor(opts.avatar, opts.profile)}\n\n## Ahora mismo\n${proactiveInstruction(language)}`;
+  const rejected: string[] = [];
+  for (let i = 0; i < 3; i++) {
+    const text = await generateFirstMessage({ system, history, hoursSilent: opts.hoursSilent, language });
+    if (!text) continue;
+    const bad = careViolations(text);
+    if (wrongLanguage(text, language)) bad.push(language === 'en' ? 'idioma (no está en inglés)' : 'idioma (no está en español)');
+    if (!bad.length) return { text, rejected };
+    rejected.push(`${bad.join(', ')}: ${text}`);
+  }
+  return { text: null, rejected };
 }

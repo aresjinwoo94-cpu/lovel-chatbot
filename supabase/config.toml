@@ -29,3 +29,11 @@ verify_jwt = false
 # Analítica: llega también sin sesión (visitas antes de la puerta 18+) y con sendBeacon al salir.
 [functions.track]
 verify_jwt = false
+
+# WP-12: la llama pg_cron cada hora con un secreto propio (no hay usuario).
+[functions.proactive-tick]
+verify_jwt = false
+
+# WP-12: "dejar de escribirme" desde una notificación (enlace firmado, sin sesión).
+[functions.proactive-off]
+verify_jwt = false
