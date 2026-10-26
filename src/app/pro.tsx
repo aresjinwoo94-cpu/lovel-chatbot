@@ -10,7 +10,7 @@ import { Text } from '@/components/Themed';
 import { Button, IconButton, Muted } from '@/components/ui';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
-import { isBillingDisabled, openBillingPortal, startCheckout, waitForPlatino, waitForPro } from '@/lib/billing';
+import { checkoutErrorKey, openBillingPortal, startCheckout, waitForPlatino, waitForPro } from '@/lib/billing';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { formatPlatino, formatUsd, PACKS, PRO, type ProductId } from '@/lib/platino';
@@ -63,8 +63,7 @@ export default function ProScreen() {
         showDialog(pack ? t('platino.bought.ok', { n: formatPlatino(pack.platino, language) }) : t('pro.success'));
       }
     } catch (e) {
-      if (isBillingDisabled(e)) showDialog(t('plans.title'), t('billing.disabled'));
-      else showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
+      showDialog(t('plans.title'), t(checkoutErrorKey(e)));
     } finally {
       setLoading(null);
     }
@@ -127,7 +126,7 @@ export default function ProScreen() {
                   </Text>
                 ) : null}
               </View>
-              <Button title={t('pro.manage')} variant="secondary" onPress={() => openBillingPortal().then(refreshProfile)} className="mt-3" />
+              <Button title={t('pro.manage')} variant="secondary" onPress={() => openBillingPortal().then(refreshProfile, (e) => showDialog(t('pro.manage'), t(checkoutErrorKey(e))))} className="mt-3" />
             </>
           ) : (
             <Button title={`${t('home.upgrade')} · ${formatUsd(PRO.usd)} / ${month}`} variant="brand" onPress={() => buy('pro')} loading={loading === 'pro'} disabled={!!loading} className="mt-4" />

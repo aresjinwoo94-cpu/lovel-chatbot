@@ -9,7 +9,7 @@ import { Button, IconButton, Muted } from './ui';
 import { Text } from '@/components/Themed';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
-import { isBillingDisabled, startCheckout } from '@/lib/billing';
+import { checkoutErrorKey, startCheckout } from '@/lib/billing';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { formatPlatino, formatUsd, PACKS, PLATINO_COST, type PlatinoKind, type PlatinoState, PRO, resetIn } from '@/lib/platino';
@@ -51,8 +51,7 @@ export function PaywallModal({ visible, avatar, onClose, onUpgraded, mode, plati
         onUpgraded();
       }
     } catch (e) {
-      if (isBillingDisabled(e)) showDialog(t('platino.packsTitle'), t('billing.disabled'));
-      else showDialog(t('common.error'), e instanceof Error ? e.message : String(e));
+      showDialog(t('platino.packsTitle'), t(checkoutErrorKey(e)));
     } finally {
       setLoading(null);
     }

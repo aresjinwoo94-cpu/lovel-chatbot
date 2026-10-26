@@ -255,8 +255,10 @@ export default function ChatScreen() {
       setPaywall(kind);
       return;
     }
-    if (e instanceof ApiError && e.status === 0) setOffline(true);
-    showDialog(t('chat.errorSend'), e instanceof Error ? e.message : undefined);
+    // sin detalles técnicos: sin conexión, o fallo del servidor (el Platino se devuelve solo)
+    const status = e instanceof ApiError ? e.status : 0;
+    if (status === 0) setOffline(true);
+    showDialog(t('chat.errorSend'), status === 0 ? t('chat.errorOffline') : status >= 500 ? t('chat.errorServer') : e instanceof Error ? e.message : undefined);
   };
 
   // ---------------------------------------------------------------- enviar texto

@@ -12,6 +12,12 @@ const returnUrl = () => (Platform.OS === 'web' ? `${window.location.origin}/pro`
 
 export const isBillingDisabled = (e: unknown) => e instanceof ApiError && (e.code === 'BILLING_DISABLED' || /STRIPE_SECRET_KEY/.test(e.message));
 
+/** Texto amable si no se pudo abrir el pago (sin detalles técnicos): sin conexión o fallo del servidor. */
+export function checkoutErrorKey(e: unknown): 'billing.disabled' | 'billing.offline' | 'billing.failed' {
+  if (isBillingDisabled(e)) return 'billing.disabled';
+  return e instanceof ApiError && e.status > 0 ? 'billing.failed' : 'billing.offline';
+}
+
 /**
  * Abre Stripe Checkout en un navegador seguro: Pro ($9.90/mes) o un paquete de Platino.
  * Devuelve true si al volver ya está acreditado (lo hace el webhook de Stripe).
