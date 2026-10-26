@@ -5,9 +5,9 @@
  */
 import { writeFirst } from '../_shared/companion.ts';
 import { HttpError, json, serve } from '../_shared/http.ts';
-import { type Candidate, decide, type ProactiveMode } from '../_shared/proactive.ts';
+import { type Candidate, DAILY_LIMIT, decide, type ProactiveMode } from '../_shared/proactive.ts';
 import { offToken, sendPush } from '../_shared/push.ts';
-import { admin, type AvatarRow, getConversationId, getProfile } from '../_shared/supabase.ts';
+import { admin, type AvatarRow, getProfile } from '../_shared/supabase.ts';
 
 interface Row {
   avatar_id: string;
@@ -79,11 +79,17 @@ serve(async (req) => {
         results.push({ avatar: r.avatar_id, send: true, dryRun: true, text, rejected });
         continue;
       }
-      const conversationId = await getConversationId(r.avatar_id);
-      const { error: e2 } = await admin
-        .from('messages')
-        .insert({ conversation_id: conversationId, avatar_id: r.avatar_id, user_id: r.user_id, role: 'avatar', kind: 'text', content: text, proactive: true });
+      // Guardado atómico: vuelve a comprobar activado, sin respuesta pendiente y límite diario.
+      const { data: messageId, error: e2 } = await admin.rpc('proactive_insert', {
+        p_avatar: r.avatar_id,
+        p_content: text,
+        p_limit: opts.force ? 99 : r.is_pro ? DAILY_LIMIT.pro : DAILY_LIMIT.free,
+      });
       if (e2) throw e2;
+      if (!messageId) {
+        results.push({ avatar: r.avatar_id, send: false, reason: 'otra pasada ya lo envió' });
+        continue;
+      }
       const lang = profile.language === 'en' ? 'en' : 'es';
       const plain = text.replace(/\*[^*]+\*/g, ' ').replace(/\s+/g, ' ').trim() || text;
       const push = await sendPush(r.user_id, {
