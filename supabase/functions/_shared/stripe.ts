@@ -1,6 +1,7 @@
 import Stripe from 'npm:stripe@22.6.2';
 
 import { HttpError, requireEnv } from './http.ts';
+import { PRODUCTS } from './platino.ts';
 import { admin, type ProfileRow } from './supabase.ts';
 
 /**
@@ -17,7 +18,6 @@ function getStripe(): Stripe {
 export const stripe = new Proxy({} as Stripe, { get: (_t, prop) => Reflect.get(getStripe(), prop) });
 export const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
-export const PRO_PRICE_CENTS = 990;
 
 /** Solo redirigimos de vuelta a la app o a dominios permitidos (evita open redirects). */
 export function assertAllowedReturnUrl(url: unknown): string {
@@ -43,7 +43,12 @@ export async function ensureCustomer(profile: ProfileRow, email: string | undefi
   return customer.id;
 }
 
-/** Refleja el estado de la suscripción en profiles.is_pro. */
+/**
+ * Refleja el estado de la suscripción en profiles.is_pro y en el Platino del periodo:
+ * activa → 1.500 Platino fijados una vez por periodo (la renovación llega como
+ * customer.subscription.updated con un nuevo current_period_end); fin → se pierde
+ * el Platino del periodo (el comprado se queda).
+ */
 export async function syncSubscription(sub: Stripe.Subscription, userIdHint?: string | null) {
   const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
   // Suscripciones de otros productos en la misma cuenta de Stripe: no son nuestras.
@@ -70,4 +75,36 @@ export async function syncSubscription(sub: Stripe.Subscription, userIdHint?: st
     })
     .eq('id', userId);
   if (error) throw error;
+  if (isPro && periodEnd) {
+    const until = new Date(periodEnd * 1000).toISOString();
+    const { error: e2 } = await admin.rpc('platino_set_sub', {
+      p_user: userId,
+      p_amount: PRODUCTS.pro.platinoPerMonth,
+      p_until: until,
+      p_ref: `stripe:sub:${sub.id}:${periodEnd}`,
+      p_source: 'stripe',
+    });
+    if (e2) throw e2;
+  } else if (!isPro) {
+    const { error: e3 } = await admin.rpc('platino_end_sub', { p_user: userId });
+    if (e3) throw e3;
+  }
+}
+
+/** Paquete pagado: acredita su Platino una sola vez (la referencia es la sesión de pago). */
+export async function creditPack(session: Stripe.Checkout.Session) {
+  const product = session.metadata?.product;
+  const userId = session.client_reference_id ?? session.metadata?.user_id;
+  if (session.metadata?.app !== 'lovel-house' || !userId || (product !== 'pack_400' && product !== 'pack_1200')) return;
+  if (session.payment_status !== 'paid') return; // pagos diferidos: llegarán con async_payment_succeeded
+  const { data, error } = await admin.rpc('platino_credit', {
+    p_user: userId,
+    p_bucket: 'bought',
+    p_amount: PRODUCTS[product].platino,
+    p_reason: 'purchase',
+    p_ref: `stripe:checkout:${session.id}`,
+    p_source: 'stripe',
+  });
+  if (error) throw error;
+  console.log(JSON.stringify({ platino_pack: { user: userId, product, credited: data } }));
 }

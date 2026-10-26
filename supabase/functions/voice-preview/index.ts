@@ -4,7 +4,7 @@
  * frase fija por idioma; se genera una vez y queda en el bucket público
  * `voice-previews`, así que no consume créditos de ElevenLabs más que la primera vez.
  */
-import { textToSpeech } from '../_shared/elevenlabs.ts';
+import { textToSpeech, TTS_MODEL } from '../_shared/elevenlabs.ts';
 import { HttpError, json, readJson, requireEnv, serve } from '../_shared/http.ts';
 import { admin } from '../_shared/supabase.ts';
 
@@ -25,7 +25,8 @@ serve(async (req) => {
   const { voiceId, lang = 'es' } = await readJson<{ voiceId?: string; lang?: string }>(req);
   if (!voiceId || !VOICE_IDS.has(voiceId)) throw new HttpError(400, 'Voz no disponible');
   const l = lang === 'en' ? 'en' : 'es';
-  const path = `${voiceId}-${l}.mp3`;
+  // con el modelo en el nombre: al cambiar de modelo, la muestra se regenera con la voz real
+  const path = `${voiceId}-${l}-${TTS_MODEL}.mp3`;
   const publicUrl = `${requireEnv('SUPABASE_URL')}/storage/v1/object/public/voice-previews/${path}`;
 
   const { data: existing } = await admin.storage.from('voice-previews').list('', { search: path, limit: 1 });

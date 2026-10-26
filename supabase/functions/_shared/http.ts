@@ -13,6 +13,8 @@ export class HttpError extends Error {
     public status: number,
     message: string,
     public code?: string,
+    /** Datos extra para la app (p. ej. el saldo de Platino al quedarse sin él). */
+    public extra?: Record<string, unknown>,
   ) {
     super(message);
   }
@@ -32,7 +34,7 @@ export function serve(handler: (req: Request) => Promise<Response>) {
     try {
       return await handler(req);
     } catch (e) {
-      if (e instanceof HttpError) return json({ error: e.message, code: e.code }, e.status);
+      if (e instanceof HttpError) return json({ error: e.message, code: e.code, ...e.extra }, e.status);
       console.error(e);
       return json({ error: e instanceof Error ? e.message : String(e) }, 500);
     }

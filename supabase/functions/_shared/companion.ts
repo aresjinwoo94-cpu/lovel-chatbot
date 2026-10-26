@@ -1,5 +1,5 @@
 import { generateOpening, generateReply, loadHistory, maybeUpdateMemory } from './llm.ts';
-import type { QuotaState } from './quota.ts';
+import type { PlatinoState } from './platino.ts';
 import { background } from './runtime.ts';
 import { admin, type AvatarRow, type ProfileRow } from './supabase.ts';
 import { buildCompanionSystemPrompt, buildOpeningInstruction } from './systemPrompts.tsx';
@@ -21,6 +21,7 @@ export async function replyAsAvatar(opts: { avatar: AvatarRow; profile: ProfileR
     userText: opts.userText,
     voice: opts.voice,
     language: opts.profile.language,
+    tier: opts.profile.is_pro ? 'pro' : 'free',
   });
 }
 
@@ -38,7 +39,7 @@ export async function openScene(opts: { avatar: AvatarRow; profile: ProfileRow; 
   if (count) return null;
   let text: string | null = null;
   try {
-    text = await generateOpening({ system: systemFor(opts.avatar, opts.profile), instruction: buildOpeningInstruction(opts.avatar) });
+    text = await generateOpening({ system: systemFor(opts.avatar, opts.profile), instruction: buildOpeningInstruction(opts.avatar), tier: opts.profile.is_pro ? 'pro' : 'free' });
   } catch (e) {
     console.error('opening', e);
   }
@@ -76,8 +77,8 @@ export async function saveExchange(opts: {
   conversationId: string;
   user: NewMessage;
   reply: NewMessage;
-  quota: QuotaState;
-}): Promise<{ userMessage: unknown; avatarMessage: unknown; quota: QuotaState }> {
+  platino: PlatinoState;
+}): Promise<{ userMessage: unknown; avatarMessage: unknown; platino: PlatinoState }> {
   const base = { conversation_id: opts.conversationId, avatar_id: opts.avatar.id, user_id: opts.profile.id };
   const { data: userMessage, error: e1 } = await admin
     .from('messages')
@@ -93,5 +94,5 @@ export async function saveExchange(opts: {
   if (e2) throw e2;
 
   background(maybeUpdateMemory(opts.avatar, opts.profile.is_pro));
-  return { userMessage, avatarMessage, quota: opts.quota };
+  return { userMessage, avatarMessage, platino: opts.platino };
 }

@@ -2,12 +2,12 @@
  * POST /voice-chat  { avatarId, audioBase64, mimeType, durationMs }
  * Nota de voz → transcripción (ElevenLabs Scribe) → respuesta del personaje
  * → voz (ElevenLabs TTS). Si la voz falla, la respuesta llega igual como texto.
- * Cuenta como nota de voz del plan gratuito (se devuelve si algo falla).
+ * Cuesta 8 Platino (se descuenta antes y se devuelve si algo falla).
  */
 import { replyAsAvatar, saveExchange } from '../_shared/companion.ts';
 import { pickVoice, speechToText, textToSpeech, voiceTuning } from '../_shared/elevenlabs.ts';
 import { base64ToBytes, bytesToBase64, HttpError, json, readJson, serve } from '../_shared/http.ts';
-import { refundFree, reserveFree } from '../_shared/quota.ts';
+import { refundPlatino, spendPlatino } from '../_shared/platino.ts';
 import { admin, getConversationId, getOwnedAvatar, getProfile, requireAdult, requireUser } from '../_shared/supabase.ts';
 
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
@@ -36,7 +36,7 @@ serve(async (req) => {
   await requireAdult(profile, adultConfirmed);
   const avatar = await getOwnedAvatar(user.id, avatarId);
   const conversationId = await getConversationId(avatarId);
-  const quota = await reserveFree(profile, 'voice', !!user.is_anonymous);
+  const spent = await spendPlatino(user.id, 'voice', !!user.is_anonymous);
 
   try {
     // 1) Voz de la persona → texto
@@ -74,7 +74,7 @@ serve(async (req) => {
       avatar,
       profile,
       conversationId,
-      quota,
+      platino: spent.state,
       user: { role: 'user', kind: 'voice', content: transcript, audio_path: userAudioPath, audio_duration_ms: durationMs ?? null },
       reply:
         replyAudio && replyAudioPath
@@ -91,7 +91,7 @@ serve(async (req) => {
 
     return json({ ...result, replyAudioBase64: replyAudio && replyAudioPath ? bytesToBase64(replyAudio) : null });
   } catch (e) {
-    await refundFree(profile, 'voice');
+    await refundPlatino(spent.ledgerId);
     throw e;
   }
 });

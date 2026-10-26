@@ -9,7 +9,9 @@ import { Logo } from './Logo';
 import { Text } from './Themed';
 import { Button, Menu, Meter } from './ui';
 import { useAuth } from '@/lib/auth';
-import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT } from '@/lib/billing';
+import { PlatinoBalance } from '@/components/Platino';
+import { DAILY_PLATINO } from '@/lib/platino';
+import { usePlatino } from '@/lib/usePlatino';
 import { useI18n } from '@/lib/i18n';
 import { useThreads } from '@/lib/threads';
 import { useColors } from '@/lib/theme';
@@ -44,6 +46,7 @@ export function AppSidebar({ active, activeChat }: { active?: 'index' | 'profile
   const route = active;
   const go = (name: 'index' | 'profile' | 'settings') => router.navigate(name === 'index' ? '/(tabs)' : `/(tabs)/${name}`);
   const isPro = !!profile?.is_pro;
+  const platino = usePlatino();
   const email = session?.user.email ?? '';
   const display = isGuest ? t('nav.guest') : profile?.display_name || email.split('@')[0];
 
@@ -94,27 +97,18 @@ export function AppSidebar({ active, activeChat }: { active?: 'index' | 'profile
       <View className="mx-3 mb-2 rounded-xl border border-line bg-paper p-3" style={isGuest ? { display: 'none' } : undefined}>
         <View className="flex-row items-center justify-between">
           <Text className="font-semibold text-[13px] text-ink">{isPro ? t('nav.plan.pro') : t('nav.plan.free')}</Text>
-          {isPro ? <Text className="text-[12px] text-muted">{t('nav.unlimited')}</Text> : null}
+          {platino ? <PlatinoBalance total={platino.total} tone="ink" onPress={() => router.push('/pro')} /> : null}
         </View>
-        {!isPro && profile ? (
+        {platino && !isPro ? (
           <View className="mt-2.5" style={{ gap: 8 }}>
             <View>
               <View className="mb-1 flex-row justify-between">
-                <Text className="text-[12px] text-muted">{t('nav.messages')}</Text>
+                <Text className="text-[12px] text-muted">{t('platino.daily')}</Text>
                 <Text className="text-[12px] text-muted" style={{ fontVariant: ['tabular-nums'] }}>
-                  {Math.min(profile.free_messages_used ?? 0, FREE_TEXT_LIMIT)}/{FREE_TEXT_LIMIT}
+                  {platino.daily}/{DAILY_PLATINO}
                 </Text>
               </View>
-              <Meter value={profile.free_messages_used ?? 0} max={FREE_TEXT_LIMIT} />
-            </View>
-            <View>
-              <View className="mb-1 flex-row justify-between">
-                <Text className="text-[12px] text-muted">{t('nav.voice')}</Text>
-                <Text className="text-[12px] text-muted" style={{ fontVariant: ['tabular-nums'] }}>
-                  {Math.min(profile.free_voice_used ?? 0, FREE_VOICE_LIMIT)}/{FREE_VOICE_LIMIT}
-                </Text>
-              </View>
-              <Meter value={profile.free_voice_used ?? 0} max={FREE_VOICE_LIMIT} />
+              <Meter value={DAILY_PLATINO - platino.daily} max={DAILY_PLATINO} />
             </View>
             <Button title={t('nav.upgrade')} size="sm" variant="brand" onPress={() => router.push('/pro')} className="mt-1" />
           </View>

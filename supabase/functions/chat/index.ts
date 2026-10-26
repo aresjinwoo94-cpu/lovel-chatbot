@@ -1,11 +1,11 @@
 /**
  * POST /chat  { avatarId, text }
  * Mensaje de texto → respuesta del personaje, fiel a su personalidad y a la escena.
- * El cupo gratuito se reserva antes (atómico) y se devuelve si algo falla.
+ * Cuesta 1 Platino: se descuenta antes (atómico) y se devuelve si algo falla.
  */
 import { replyAsAvatar, saveExchange } from '../_shared/companion.ts';
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
-import { refundFree, reserveFree } from '../_shared/quota.ts';
+import { refundPlatino, spendPlatino } from '../_shared/platino.ts';
 import { getConversationId, getOwnedAvatar, getProfile, requireAdult, requireUser } from '../_shared/supabase.ts';
 
 serve(async (req) => {
@@ -19,7 +19,7 @@ serve(async (req) => {
   await requireAdult(profile, adultConfirmed);
   const avatar = await getOwnedAvatar(user.id, avatarId);
   const conversationId = await getConversationId(avatarId);
-  const quota = await reserveFree(profile, 'text', !!user.is_anonymous);
+  const spent = await spendPlatino(user.id, 'text', !!user.is_anonymous);
 
   try {
     const reply = await replyAsAvatar({ avatar, profile, userText: body });
@@ -27,13 +27,13 @@ serve(async (req) => {
       avatar,
       profile,
       conversationId,
-      quota,
+      platino: spent.state,
       user: { role: 'user', kind: 'text', content: body },
       reply: { role: 'avatar', kind: 'text', content: reply },
     });
     return json(result);
   } catch (e) {
-    await refundFree(profile, 'text');
+    await refundPlatino(spent.ledgerId);
     throw e;
   }
 });

@@ -5,7 +5,8 @@ import { HttpError, requireEnv } from './http.ts';
  * usuario (Speech-to-Text "Scribe").
  */
 const API = 'https://api.elevenlabs.io/v1';
-const TTS_MODEL = Deno.env.get('ELEVENLABS_TTS_MODEL') ?? 'eleven_multilingual_v2';
+// Flash v2.5: mitad de precio que Multilingual v2 y responde antes (WP-11, opción B aprobada).
+export const TTS_MODEL = Deno.env.get('ELEVENLABS_TTS_MODEL') ?? 'eleven_flash_v2_5';
 const STT_MODEL = Deno.env.get('ELEVENLABS_STT_MODEL') ?? 'scribe_v1';
 
 /**

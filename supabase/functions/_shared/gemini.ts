@@ -9,9 +9,19 @@ import type { ChatTurn, GenerateResult } from './llm.ts';
  */
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-function modelChain(): string[] {
-  const preferred = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash-lite';
-  return [...new Set([preferred, 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-flash-latest'])];
+/**
+ * Modelo por plan (WP-11, calibración del Platino con costos reales):
+ *  - Pro: Gemini 3.5 Flash-Lite ($0.30 / $2.50 por millón de tokens).
+ *  - Gratis e invitados: Gemini 2.5 Flash-Lite ($0.10 / $0.40), ~3 veces más barato.
+ * De respaldo (saturado o no disponible) solo otros Flash-Lite: nada de modelos con
+ * razonamiento, que costaban varias veces más por respuesta.
+ */
+export type Tier = 'pro' | 'free';
+function modelChain(tier: Tier): string[] {
+  const pro = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash-lite';
+  const free = Deno.env.get('GEMINI_MODEL_FREE') ?? 'gemini-2.5-flash-lite';
+  const lite = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite'];
+  return [...new Set(tier === 'pro' ? [pro, ...lite] : [free, ...lite])];
 }
 
 interface GeminiPart {
@@ -28,9 +38,9 @@ interface GeminiResponse {
 
 const BLOCKED = new Set(['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'SPII', 'RECITATION']);
 
-async function callGemini(body: Record<string, unknown>): Promise<GenerateResult> {
+async function callGemini(body: Record<string, unknown>, tier: Tier): Promise<GenerateResult> {
   let lastError = '';
-  for (const model of modelChain()) {
+  for (const model of modelChain(tier)) {
     const res = await fetch(`${API}/${model}:generateContent`, {
       method: 'POST',
       headers: { 'x-goog-api-key': requireEnv('GEMINI_API_KEY'), 'content-type': 'application/json' },
@@ -63,10 +73,10 @@ async function callGemini(body: Record<string, unknown>): Promise<GenerateResult
 }
 
 /** Conversación: system prompt + historial alternado. */
-export function geminiGenerate(opts: { system: string; turns: ChatTurn[]; maxTokens: number }): Promise<GenerateResult> {
+export function geminiGenerate(opts: { system: string; turns: ChatTurn[]; maxTokens: number; tier?: Tier }): Promise<GenerateResult> {
   return callGemini({
     systemInstruction: { parts: [{ text: opts.system }] },
     contents: opts.turns.map((t) => ({ role: t.role === 'assistant' ? 'model' : 'user', parts: [{ text: t.content }] })),
     generationConfig: { maxOutputTokens: opts.maxTokens },
-  });
+  }, opts.tier ?? 'free');
 }

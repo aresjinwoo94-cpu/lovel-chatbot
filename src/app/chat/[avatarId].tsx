@@ -15,10 +15,12 @@ import { TypingIndicator } from '@/components/TypingIndicator';
 import { Button, IconButton } from '@/components/ui';
 import { VoiceRecorder } from '@/components/VoiceRecorder';
 import { StageSlot } from '@/components/StageHost';
-import { ApiError, callFunction, isPaywall } from '@/lib/api';
+import { ApiError, callFunction, isPlatinoEmpty } from '@/lib/api';
 import { base64ToPlayableUri, readRecording } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
-import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT, GUEST_TEXT_LIMIT, GUEST_VOICE_LIMIT } from '@/lib/billing';
+import { canAfford, type PlatinoKind, type PlatinoState } from '@/lib/platino';
+import { setPlatino, usePlatino } from '@/lib/usePlatino';
+import { PlatinoBalance } from '@/components/Platino';
 import { DARK_BACKGROUNDS, normalizeLook } from '@/lib/character/catalog';
 import type { Presence } from '@/lib/character/types';
 import { fetchAvatar, fetchMessages, PAGE_SIZE, saveAvatarThumbnail, startChat } from '@/lib/data';
@@ -28,7 +30,7 @@ import { exportConversation } from '@/lib/exportConversation';
 import { useI18n } from '@/lib/i18n';
 import { detectEmotion } from '@/lib/emotion';
 import { genderize, sceneText as fillScene, scenarioById } from '@/lib/roleplay';
-import type { Avatar, ChatResponse, Message, QuotaState, VoiceChatResponse } from '@/lib/types';
+import type { Avatar, ChatResponse, Message, VoiceChatResponse } from '@/lib/types';
 import { useColors } from '@/lib/theme';
 import { useMarkInteractive } from '@/lib/observe';
 import { track } from '@/lib/analytics';
@@ -50,7 +52,7 @@ export default function ChatScreen() {
   const colors = useColors();
   const { avatarId, intro } = useLocalSearchParams<{ avatarId: string; intro?: string }>();
   const { t, language } = useI18n();
-  const { profile, refreshProfile, isGuest } = useAuth();
+  const { profile, refreshProfile, isGuest, session } = useAuth();
   const { width, height } = useWindowDimensions();
   const wide = width >= 900;
   const withSidebar = width >= 1180;
@@ -90,28 +92,13 @@ export default function ChatScreen() {
   const [autoPlayId, setAutoPlayId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const [paywall, setPaywall] = useState<null | 'text' | 'voice' | 'info'>(null);
-  const [override, setQuota] = useState<QuotaState | null>(null);
+  const [paywall, setPaywall] = useState<null | PlatinoKind | 'info'>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const speakTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openingRequested = useRef(false);
 
-  // Cupo gratuito: el perfil (servidor, en vivo) + lo último que devolvió una respuesta.
-  const quota = useMemo<QuotaState | null>(() => {
-    const fromProfile: QuotaState | null = profile
-      ? { isPro: profile.is_pro, textUsed: profile.free_messages_used ?? 0, textLimit: isGuest ? GUEST_TEXT_LIMIT : FREE_TEXT_LIMIT, voiceUsed: profile.free_voice_used ?? 0, voiceLimit: isGuest ? GUEST_VOICE_LIMIT : FREE_VOICE_LIMIT }
-      : null;
-    if (!override || !fromProfile) return override ?? fromProfile;
-    return {
-      ...fromProfile,
-      isPro: override.isPro || fromProfile.isPro,
-      textUsed: Math.max(override.textUsed, fromProfile.textUsed),
-      voiceUsed: Math.max(override.voiceUsed, fromProfile.voiceUsed),
-    };
-  }, [profile, override, isGuest]);
-  const isPro = quota?.isPro ?? false;
-  const textLeft = quota ? Math.max(0, quota.textLimit - quota.textUsed) : FREE_TEXT_LIMIT;
-  const voiceLeft = quota ? Math.max(0, quota.voiceLimit - quota.voiceUsed) : FREE_VOICE_LIMIT;
+  // Platino (WP-11): el saldo del servidor (perfil) y lo último que devolvió un gasto.
+  const platino = usePlatino();
 
   const later = (fn: () => void, ms: number) => timers.current.push(setTimeout(fn, ms));
 
@@ -225,12 +212,10 @@ export default function ChatScreen() {
     }
   }, [avatarId, loadingOlder, hasMore, messages]);
 
-  const applyQuota = (q: QuotaState, kind: 'text' | 'voice') => {
-    setQuota(q);
-    refreshProfile();
-    if (q.isPro) return;
-    const out = kind === 'text' ? q.textUsed >= q.textLimit : q.voiceUsed >= q.voiceLimit;
-    if (out) later(() => setPaywall(kind), 1600);
+  // Saldo nuevo tras cada respuesta (el aviso de "sin Platino" sale al intentar el siguiente
+  // mensaje, nunca a mitad de una respuesta del personaje).
+  const applyPlatino = (s: PlatinoState | undefined) => {
+    setPlatino(session?.user.id, s, profile);
   };
 
   const onVoicePlaying = useCallback((id: string, playing: boolean) => {
@@ -265,8 +250,8 @@ export default function ChatScreen() {
 
   const failed = (e: unknown, kind: 'text' | 'voice') => {
     if (e instanceof ApiError && e.code === 'NEEDS_ACCOUNT') return askAccount();
-    if (isPaywall(e)) {
-      if (quota) setQuota(kind === 'text' ? { ...quota, textUsed: quota.textLimit } : { ...quota, voiceUsed: quota.voiceLimit });
+    if (isPlatinoEmpty(e)) {
+      applyPlatino((e as ApiError).data?.platino as PlatinoState | undefined);
       setPaywall(kind);
       return;
     }
@@ -278,7 +263,7 @@ export default function ChatScreen() {
   const sendText = async () => {
     const body = text.trim();
     if (!body || !avatarId || typing || opening) return;
-    if (!isPro && textLeft <= 0) return isGuest ? askAccount() : setPaywall('text');
+    if (!canAfford(platino, 'text')) return isGuest ? askAccount() : setPaywall('text');
     const temp = tempMessage('text', body);
     perfStart('typing');
     setMessages((prev) => [temp, ...prev]);
@@ -290,7 +275,7 @@ export default function ChatScreen() {
       setMessages((prev) => [res.avatarMessage, res.userMessage, ...prev.filter((m) => m.id !== temp.id)]);
       setOffline(false);
       speakText(res.avatarMessage);
-      applyQuota(res.quota, 'text');
+      applyPlatino(res.platino);
     } catch (e) {
       setMessages((prev) => prev.filter((m) => m.id !== temp.id));
       setText(body);
@@ -302,7 +287,7 @@ export default function ChatScreen() {
 
   // ---------------------------------------------------------------- enviar voz
   const openRecorder = () => {
-    if (!isPro && voiceLeft <= 0) return isGuest ? askAccount() : setPaywall('voice');
+    if (!canAfford(platino, 'voice')) return isGuest ? askAccount() : setPaywall('voice');
     setRecording(true);
   };
 
@@ -328,7 +313,7 @@ export default function ChatScreen() {
       setLocalAudio((prev) => ({ ...prev, ...audio }));
       setMessages((prev) => [res.avatarMessage, res.userMessage, ...prev.filter((m) => m.id !== temp.id)]);
       setOffline(false);
-      applyQuota(res.quota, 'voice');
+      applyPlatino(res.platino);
     } catch (e) {
       setMessages((prev) => prev.filter((m) => m.id !== temp.id));
       failed(e, 'voice');
@@ -479,13 +464,16 @@ export default function ChatScreen() {
     </View>
   );
 
-  const quotaLine = (
-    <Pressable onPress={() => setPaywall(isPro ? null : 'info')} disabled={isPro}>
-      <Text className={`pb-1 text-center text-[11px] ${!isPro && (textLeft === 0 || voiceLeft === 0) ? 'text-primary' : 'text-muted'}`}>
-        {isPro ? t('chat.proUnlimited') : textLeft === 0 ? t('chat.freeTextOut', { n: FREE_TEXT_LIMIT }) : t('chat.free', { text: textLeft, voice: voiceLeft })}
+  // Saldo de Platino, discreto bajo el campo de texto (tocándolo: desglose y opciones)
+  const total = platino?.total ?? 0;
+  const quotaLine = platino ? (
+    <Pressable onPress={() => setPaywall('info')} accessibilityRole="button" className="flex-row items-center justify-center pb-1">
+      <PlatinoBalance total={total} tone={total < 1 ? 'warn' : 'muted'} />
+      <Text className={`ml-1.5 text-[11px] ${total < 1 ? 'text-primary' : 'text-muted'}`}>
+        {platino.guest ? t('platino.lineGuest') : t('platino.line')}
       </Text>
     </Pressable>
-  );
+  ) : null;
 
   // ------------------------------------------------ conversación
   const conversation = (
@@ -550,7 +538,7 @@ export default function ChatScreen() {
       ) : null}
 
       {recording ? (
-        <VoiceRecorder avatar={avatar} voiceLeft={isPro ? null : voiceLeft} onSend={sendVoice} onClose={() => setRecording(false)} onPreviewPlaying={() => undefined} />
+        <VoiceRecorder avatar={avatar} voiceLeft={platino ? platino.total : null} onSend={sendVoice} onClose={() => setRecording(false)} onPreviewPlaying={() => undefined} />
       ) : (
         <SafeAreaView edges={['bottom']} className="bg-paper">
           <View className="w-full self-center px-3 pt-2" style={{ maxWidth: 760 }}>
@@ -587,12 +575,12 @@ export default function ChatScreen() {
     <PaywallModal
       visible={!!paywall}
       avatar={avatar}
-      reason={paywall === 'text' ? t('chat.freeTextOut', { n: FREE_TEXT_LIMIT }) : paywall === 'voice' ? t('chat.freeVoiceOut', { n: FREE_VOICE_LIMIT }) : t('chat.free', { text: textLeft, voice: voiceLeft })}
+      mode={paywall ?? 'info'}
+      platino={platino}
       onClose={() => setPaywall(null)}
       onUpgraded={() => {
         setPaywall(null);
         refreshProfile();
-        if (quota) setQuota({ ...quota, isPro: true });
       }}
     />
   );

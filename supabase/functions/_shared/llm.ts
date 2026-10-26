@@ -1,5 +1,5 @@
 import { claudeGenerate } from './claude.ts';
-import { geminiGenerate } from './gemini.ts';
+import { geminiGenerate, type Tier } from './gemini.ts';
 import { admin } from './supabase.ts';
 import { buildMemoryPrompt, EARLY_CLARITY_NOTE, VOICE_REPLY_NOTE } from './systemPrompts.tsx';
 
@@ -61,6 +61,7 @@ export async function generateReply(opts: {
   userText: string;
   voice?: boolean;
   language: 'es' | 'en';
+  tier: Tier;
 }): Promise<string> {
   const turns: ChatTurn[] = [...opts.history, { role: 'user', content: opts.userText }];
   // Los 3 primeros mensajes del personaje (el de apertura + 2 respuestas): claridad antes que estilo.
@@ -69,7 +70,7 @@ export async function generateReply(opts: {
   const result =
     provider() === 'anthropic'
       ? await claudeGenerate({ system: opts.system, turns, extraSystem: note || undefined, maxTokens: 8000, cache: true })
-      : await geminiGenerate({ system: note ? `${opts.system}\n\n## Ahora mismo\n${note}` : opts.system, turns, maxTokens: 8000 });
+      : await geminiGenerate({ system: note ? `${opts.system}\n\n## Ahora mismo\n${note}` : opts.system, turns, maxTokens: 8000, tier: opts.tier });
   if (result.refused || !result.text) return SOFT_DECLINE[opts.language];
   return result.text;
 }
@@ -90,17 +91,17 @@ export async function maybeUpdateMemory(avatar: { id: string; name: string; memo
   const result =
     provider() === 'anthropic'
       ? await claudeGenerate({ system, turns, maxTokens: 4000 })
-      : await geminiGenerate({ system, turns, maxTokens: 4000 });
+      : await geminiGenerate({ system, turns, maxTokens: 4000, tier: 'pro' });
   if (!result.refused && result.text) await admin.from('avatars').update({ memory: result.text }).eq('id', avatar.id);
 }
 
 /** Primer mensaje del personaje (abre la escena). */
-export async function generateOpening(opts: { system: string; instruction: string }): Promise<string | null> {
+export async function generateOpening(opts: { system: string; instruction: string; tier: Tier }): Promise<string | null> {
   const turns: ChatTurn[] = [{ role: 'user', content: opts.instruction }];
   const result =
     provider() === 'anthropic'
       ? await claudeGenerate({ system: opts.system, turns, maxTokens: 8000, cache: true })
-      : await geminiGenerate({ system: opts.system, turns, maxTokens: 8000 });
+      : await geminiGenerate({ system: opts.system, turns, maxTokens: 8000, tier: opts.tier });
   if (result.refused || !result.text.trim()) return null;
   return result.text.trim();
 }

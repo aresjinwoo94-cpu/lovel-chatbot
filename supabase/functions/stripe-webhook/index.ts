@@ -1,10 +1,13 @@
 /**
  * POST /stripe-webhook  (Stripe → Supabase, se despliega con --no-verify-jwt)
- * Activa o desactiva Pro según el estado real de la suscripción.
- * Eventos: checkout.session.completed, customer.subscription.created/updated/deleted
+ * Activa o desactiva Pro según el estado real de la suscripción, fija el Platino de cada
+ * periodo y acredita los paquetes comprados. Todo es idempotente: Stripe puede repetir un
+ * evento y el Platino se acredita una sola vez (referencia única en platino_ledger).
+ * Eventos: checkout.session.completed, checkout.session.async_payment_succeeded,
+ *          customer.subscription.created/updated/deleted
  */
 import { json, requireEnv } from '../_shared/http.ts';
-import { cryptoProvider, stripe, syncSubscription } from '../_shared/stripe.ts';
+import { creditPack, cryptoProvider, stripe, syncSubscription } from '../_shared/stripe.ts';
 
 Deno.serve(async (req) => {
   const signature = req.headers.get('Stripe-Signature');
@@ -28,8 +31,12 @@ Deno.serve(async (req) => {
           const sub = await stripe.subscriptions.retrieve(subId);
           await syncSubscription(sub, session.client_reference_id);
         }
+        if (session.mode === 'payment') await creditPack(session);
         break;
       }
+      case 'checkout.session.async_payment_succeeded':
+        await creditPack(event.data.object);
+        break;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':

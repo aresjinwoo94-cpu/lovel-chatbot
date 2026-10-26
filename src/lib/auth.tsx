@@ -12,6 +12,7 @@ import { resetThreads } from './threads';
 import type { Profile } from './types';
 import { track } from './analytics';
 import { perfPhase } from './perfMeter';
+import { deviceTimezone } from './platino';
 
 /** Cuentas nuevas ya contadas en la analítica (una vez por usuario y arranque). */
 const counted = new Set<string>();
@@ -93,6 +94,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return null; // sin red: se queda el perfil guardado
     setProfile((data as Profile) ?? null);
     if (data) AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(data)).catch(() => {});
+    // el Platino diario se renueva a medianoche de la zona horaria de la persona
+    const tz = deviceTimezone();
+    if (data && tz && (data as Profile).timezone !== tz) {
+      supabase.rpc('set_my_timezone', { p_tz: tz }).then(({ error: e }) => {
+        if (!e) setProfile((p) => (p && p.id === userId ? { ...p, timezone: tz } : p));
+      });
+    }
     return (data as Profile) ?? null;
   }, []);
 

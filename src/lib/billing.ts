@@ -6,32 +6,31 @@ import { ApiError, callFunction } from './api';
 import { supabase } from './supabase';
 import { track } from './analytics';
 
-/** Límites del plan gratuito (idénticos a supabase/functions/_shared/quota.ts). */
-export const FREE_TEXT_LIMIT = 25;
-export const FREE_VOICE_LIMIT = 3;
-/** Invitados sin cuenta (idéntico a supabase/functions/_shared/quota.ts). */
-export const GUEST_TEXT_LIMIT = 10;
-export const GUEST_VOICE_LIMIT = 0;
+import type { ProductId } from './platino';
 
 const returnUrl = () => (Platform.OS === 'web' ? `${window.location.origin}/pro` : Linking.createURL('pro'));
 
-/**
- * Abre Stripe Checkout (suscripción Pro $9.90/mes) en un navegador seguro.
- * Devuelve true si al volver la cuenta ya es Pro (el webhook de Stripe la activa).
- */
 export const isBillingDisabled = (e: unknown) => e instanceof ApiError && (e.code === 'BILLING_DISABLED' || /STRIPE_SECRET_KEY/.test(e.message));
 
-export async function startProCheckout(): Promise<boolean> {
-  track('checkout_started');
-  const { url } = await callFunction<{ url: string }>('create-checkout', { returnUrl: returnUrl() });
+/**
+ * Abre Stripe Checkout en un navegador seguro: Pro ($9.90/mes) o un paquete de Platino.
+ * Devuelve true si al volver ya está acreditado (lo hace el webhook de Stripe).
+ * Nota para tiendas: en una app de Google Play o App Store esto tendrá que ir por su
+ * sistema de compras (el servidor ya acepta su origen en el registro de Platino).
+ */
+export async function startCheckout(product: ProductId = 'pro'): Promise<boolean> {
+  track('checkout_started', { product });
+  const { url } = await callFunction<{ url: string }>('create-checkout', { returnUrl: returnUrl(), product });
   if (Platform.OS === 'web') {
     window.location.href = url;
     return false;
   }
   const result = await WebBrowser.openAuthSessionAsync(url, returnUrl());
   if (result.type !== 'success' || !result.url.includes('status=success')) return false;
-  return waitForPro();
+  return product === 'pro' ? waitForPro() : waitForPlatino();
 }
+/** Compatibilidad: el botón de Pro de siempre. */
+export const startProCheckout = () => startCheckout('pro');
 
 /** El webhook puede tardar unos segundos: consultamos el perfil hasta ~15 s. */
 export async function waitForPro(timeoutMs = 15000): Promise<boolean> {
@@ -46,6 +45,25 @@ export async function waitForPro(timeoutMs = 15000): Promise<boolean> {
       return true;
     }
     await new Promise((r) => setTimeout(r, 1500));
+  }
+  return false;
+}
+
+/** Tras comprar un paquete: espera a que el webhook acredite el Platino comprado (~15 s). */
+export async function waitForPlatino(timeoutMs = 15000): Promise<boolean> {
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) return false;
+  const first = await supabase.from('profiles').select('platino_bought').eq('id', userId).single();
+  const before = first.data?.platino_bought ?? 0;
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const { data } = await supabase.from('profiles').select('platino_bought').eq('id', userId).single();
+    if ((data?.platino_bought ?? 0) > before) {
+      track('checkout_completed', { product: 'pack' });
+      return true;
+    }
   }
   return false;
 }

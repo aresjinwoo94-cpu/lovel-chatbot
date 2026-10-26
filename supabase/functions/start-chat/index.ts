@@ -2,11 +2,11 @@
  * POST /start-chat  { avatarId }
  * El personaje envía el PRIMER mensaje de la historia, coherente con su
  * personalidad y el escenario. Idempotente: si ya hay mensajes, no hace nada.
- * No cuenta para el plan gratuito.
+ * No cuesta Platino.
  */
 import { openScene } from '../_shared/companion.ts';
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
-import { quotaState } from '../_shared/quota.ts';
+import { platinoState } from '../_shared/platino.ts';
 import { getConversationId, getOwnedAvatar, getProfile, requireAdult, requireUser } from '../_shared/supabase.ts';
 
 serve(async (req) => {
@@ -19,5 +19,5 @@ serve(async (req) => {
   const avatar = await getOwnedAvatar(user.id, avatarId);
   const conversationId = await getConversationId(avatarId);
   const message = await openScene({ avatar, profile, conversationId });
-  return json({ message, quota: quotaState(profile, !!user.is_anonymous) });
+  return json({ message, platino: await platinoState(user.id) });
 });

@@ -5,7 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Field, ListRow, Muted, SectionLabel, Title } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { FREE_TEXT_LIMIT, FREE_VOICE_LIMIT, openBillingPortal } from '@/lib/billing';
+import { openBillingPortal } from '@/lib/billing';
+import { PlatinoBalance } from '@/components/Platino';
+import { DAILY_PLATINO, formatPlatino } from '@/lib/platino';
+import { usePlatino } from '@/lib/usePlatino';
 import { countUserMessages, updateProfile } from '@/lib/data';
 import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
@@ -15,8 +18,9 @@ import { useColors } from '@/lib/theme';
 
 /** Perfil del usuario: nombre, plan, estadísticas y cerrar sesión. */
 export default function ProfileScreen() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { session, profile, refreshProfile, signOut } = useAuth();
+  const platino = usePlatino();
   const [name, setName] = useState(profile?.display_name ?? '');
   const [saved, setSaved] = useState(false);
   const [stats, setStats] = useState({ avatars: 0, messages: 0 });
@@ -96,10 +100,17 @@ export default function ProfileScreen() {
               </View>
             ) : null}
           </View>
-          {profile && !profile.is_pro ? (
+          {platino ? (
             <View className="mt-3 gap-3">
-              <Usage label={t('profile.usageText')} used={profile.free_messages_used ?? 0} max={FREE_TEXT_LIMIT} />
-              <Usage label={t('profile.usageVoice')} used={profile.free_voice_used ?? 0} max={FREE_VOICE_LIMIT} />
+              <View className="flex-row items-center justify-between">
+                <Text className="text-[13px] text-ink">{t('platino.infoTitle')}</Text>
+                <PlatinoBalance total={platino.total} size="md" tone="ink" />
+              </View>
+              {!platino.guest ? <Usage label={t('platino.daily')} used={DAILY_PLATINO - platino.daily} max={DAILY_PLATINO} left={platino.daily} /> : null}
+              {platino.sub > 0 ? <Line label={t('platino.sub')} n={formatPlatino(platino.sub, language)} /> : null}
+              {platino.bought > 0 ? <Line label={t('platino.bought')} n={formatPlatino(platino.bought, language)} /> : null}
+              {platino.gift > 0 ? <Line label={t('platino.gift')} n={formatPlatino(platino.gift, language)} /> : null}
+              <Muted className="text-[12px] leading-[17px]">{platino.guest ? t('platino.howGuest') : t('platino.how')}</Muted>
             </View>
           ) : null}
           {profile?.is_pro && profile.current_period_end ? (
@@ -116,6 +127,7 @@ export default function ProfileScreen() {
           ) : (
             <Button title={t('profile.upgrade')} variant="brand" size="sm" onPress={() => router.push('/pro')} className="mt-4 self-start" />
           )}
+          <Button title={t('platino.packsTitle')} variant="ghost" size="sm" onPress={() => router.push('/pro')} className="mt-1 self-start" />
         </Card>
 
         <Card className="mt-6">
@@ -139,7 +151,19 @@ function Stat({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function Usage({ label, used, max }: { label: string; used: number; max: number }) {
+function Line({ label, n }: { label: string; n: string }) {
+  return (
+    <View className="flex-row justify-between">
+      <Text className="text-[13px] text-ink">{label}</Text>
+      <Text className="text-[13px] text-muted" style={{ fontVariant: ['tabular-nums'] }}>
+        {n}
+      </Text>
+    </View>
+  );
+}
+
+/** Barra de uso del diario: lo gastado hoy; el número es lo que queda. */
+function Usage({ label, used, max, left }: { label: string; used: number; max: number; left: number }) {
   const colors = useColors();
   const n = Math.min(used, max);
   return (
@@ -147,7 +171,7 @@ function Usage({ label, used, max }: { label: string; used: number; max: number 
       <View className="flex-row justify-between">
         <Text className="text-[13px] text-ink">{label}</Text>
         <Text className="text-[13px] text-muted" style={{ fontVariant: ['tabular-nums'] }}>
-          {n} / {max}
+          {left} / {max}
         </Text>
       </View>
       <View className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-subtle">

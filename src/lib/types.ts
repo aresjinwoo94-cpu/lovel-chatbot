@@ -1,3 +1,5 @@
+import type { PlatinoState } from './platino';
+
 import type { CharacterLook } from './character/types';
 
 /**
@@ -68,27 +70,26 @@ export interface Profile {
   subscription_status: string | null;
   current_period_end: string | null;
   trial_started_at: string | null;
-  free_messages_used: number;
-  free_voice_used: number;
   store_voice: boolean;
+  // Platino (WP-11): saldos por tipo, los gasta y acredita solo el servidor
+  platino_daily: number;
+  platino_daily_on: string | null;
+  platino_sub: number;
+  platino_sub_until: string | null;
+  platino_gift: number;
+  platino_bought: number;
+  /** Zona horaria (IANA) para la medianoche del Platino diario. */
+  timezone: string;
   /** Cuándo confirmó que es mayor de 18 (puerta 18+). */
   adult_confirmed_at: string | null;
   created_at: string;
 }
 
-/** Cupo del plan gratuito que devuelven las Edge Functions. */
-export interface QuotaState {
-  isPro: boolean;
-  textUsed: number;
-  textLimit: number;
-  voiceUsed: number;
-  voiceLimit: number;
-}
-
 export interface ChatResponse {
   userMessage: Message;
   avatarMessage: Message;
-  quota: QuotaState;
+  /** Saldo de Platino tras el gasto. */
+  platino: PlatinoState;
 }
 
 export interface VoiceChatResponse extends ChatResponse {
@@ -98,5 +99,5 @@ export interface VoiceChatResponse extends ChatResponse {
 
 export interface StartChatResponse {
   message: Message | null;
-  quota: QuotaState;
+  platino: PlatinoState;
 }
