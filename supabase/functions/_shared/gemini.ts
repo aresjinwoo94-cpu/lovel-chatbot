@@ -12,16 +12,16 @@ const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 /**
  * Modelo por plan (WP-11, calibración del Platino con costos reales):
  *  - Pro: Gemini 3.5 Flash-Lite ($0.30 / $2.50 por millón de tokens).
- *  - Gratis e invitados: Gemini 2.5 Flash-Lite ($0.10 / $0.40), ~3 veces más barato.
- * De respaldo (saturado o no disponible) solo otros Flash-Lite: nada de modelos con
+ *  - Gratis e invitados: Gemini 3.1 Flash-Lite ($0.25 / $1.50), el más barato disponible
+ *    (Google ya no ofrece 2.5 Flash-Lite a cuentas nuevas: responde 404).
+ * De respaldo (saturado o no disponible) solo el otro Flash-Lite: nada de modelos con
  * razonamiento, que costaban varias veces más por respuesta.
  */
 export type Tier = 'pro' | 'free';
 function modelChain(tier: Tier): string[] {
   const pro = Deno.env.get('GEMINI_MODEL') ?? 'gemini-3.5-flash-lite';
-  const free = Deno.env.get('GEMINI_MODEL_FREE') ?? 'gemini-2.5-flash-lite';
-  const lite = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-3.5-flash-lite'];
-  return [...new Set(tier === 'pro' ? [pro, ...lite] : [free, ...lite])];
+  const free = Deno.env.get('GEMINI_MODEL_FREE') ?? 'gemini-3.1-flash-lite';
+  return [...new Set(tier === 'pro' ? [pro, free] : [free, pro])];
 }
 
 interface GeminiPart {
@@ -49,6 +49,7 @@ async function callGemini(body: Record<string, unknown>, tier: Tier): Promise<Ge
     const data = (await res.json().catch(() => ({}))) as GeminiResponse;
     if (!res.ok) {
       lastError = `${res.status} ${data.error?.message ?? ''}`;
+      console.warn(JSON.stringify({ ai_fallback: { model, status: res.status, message: (data.error?.message ?? '').slice(0, 160) } }));
       // Saturado o límite gratuito: probamos el siguiente modelo.
       if (res.status === 429 || res.status >= 500 || res.status === 404) continue;
       throw new HttpError(502, `Gemini: ${lastError}`);
