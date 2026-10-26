@@ -10,12 +10,16 @@ import { Text } from '@/components/Themed';
 import { Button, IconButton, Muted } from '@/components/ui';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
-import { checkoutErrorKey, openBillingPortal, startCheckout, waitForPlatino, waitForPro } from '@/lib/billing';
+import { checkoutErrorKey, checkoutSince, openBillingPortal, type Purchase, startCheckout, waitForPurchase } from '@/lib/billing';
 import { showDialog } from '@/lib/dialog';
-import { useI18n } from '@/lib/i18n';
+import { type TFunction, useI18n } from '@/lib/i18n';
 import { formatPlatino, formatUsd, PACKS, PRO, type ProductId } from '@/lib/platino';
 import { useColors } from '@/lib/theme';
 import { usePlatino } from '@/lib/usePlatino';
+
+/** Confirmación de lo que se acreditó: Pro o el Platino del paquete. */
+const purchaseText = (p: Purchase, t: TFunction, language: 'es' | 'en') =>
+  p.kind === 'pack' ? t('platino.bought.ok', { n: formatPlatino(p.platino, language) }) : t('pro.success');
 
 /**
  * Planes y Platino (WP-11). También es la URL de retorno de Stripe Checkout en web
@@ -40,14 +44,12 @@ export default function ProScreen() {
   useEffect(() => {
     if (status !== 'success') return;
     (async () => {
-      const [pro, pack] = await Promise.all([waitForPro(8000), waitForPlatino(8000)]);
+      const done = await waitForPurchase(checkoutSince());
       await refreshProfile();
       setConfirming(false);
-      if (pack) showDialog(t('platino.bought.okGeneric'));
-      else if (pro) showDialog(t('pro.success'));
-      else showDialog(t('platino.bought.pending'));
+      showDialog(done ? purchaseText(done, t, language) : t('platino.bought.pending'));
     })();
-  }, [status, refreshProfile, t]);
+  }, [status, refreshProfile, t, language]);
 
   const buy = async (product: ProductId) => {
     if (isGuest) {
@@ -56,12 +58,9 @@ export default function ProScreen() {
     }
     setLoading(product);
     try {
-      const ok = await startCheckout(product);
+      const done = await startCheckout(product);
       await refreshProfile();
-      if (ok) {
-        const pack = PACKS.find((p) => p.id === product);
-        showDialog(pack ? t('platino.bought.ok', { n: formatPlatino(pack.platino, language) }) : t('pro.success'));
-      }
+      if (done) showDialog(purchaseText(done, t, language));
     } catch (e) {
       showDialog(t('plans.title'), t(checkoutErrorKey(e)));
     } finally {
@@ -91,7 +90,7 @@ export default function ProScreen() {
             <PlatinoBalance total={platino.total} size="md" tone="ink" />
           </View>
         ) : null}
-        <Muted className="mt-2 text-[14px] leading-[20px]">{isGuest ? t('platino.howGuest') : t('platino.how')}</Muted>
+        <Muted className="mt-2 text-[14px] leading-[20px]">{isGuest ? t('platino.howGuest') : isPro ? t('platino.howPro') : t('platino.how')}</Muted>
 
         {confirming ? <Muted className="mt-6 text-center">{t('pro.pending')}</Muted> : null}
 
@@ -118,10 +117,10 @@ export default function ProScreen() {
           <View className="mt-2">{[t('pro.f1'), t('pro.f2'), t('pro.f3'), t('pro.f4')].map(check)}</View>
           {isPro ? (
             <>
-              <View className="mt-4 rounded-xl bg-primary-soft px-3 py-2.5">
-                <Text className="font-semibold text-[13px] text-primary-deep">{t('plans.proYours')}</Text>
+              <View className="mt-4 rounded-xl border border-line bg-subtle px-3 py-2.5">
+                <Text className="font-semibold text-[13px] text-ink">{t('plans.proYours')}</Text>
                 {profile?.current_period_end ? (
-                  <Text className="mt-0.5 text-[12px] leading-[17px] text-primary-deep">
+                  <Text className="mt-0.5 text-[12px] leading-[17px] text-muted">
                     {t('plans.proRenews', { date: new Date(profile.current_period_end).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES') })}
                   </Text>
                 ) : null}

@@ -29,8 +29,10 @@ serve(async (req) => {
       conversationId,
       platino: spent.state,
       user: { role: 'user', kind: 'text', content: body },
-      reply: { role: 'avatar', kind: 'text', content: reply },
+      reply: { role: 'avatar', kind: 'text', content: reply.text },
     });
+    // Respuesta de cortesía (la IA no respondió de verdad): no se cobra.
+    if (reply.declined) result.platino = (await refundPlatino(spent.ledgerId)) ?? result.platino;
     return json(result);
   } catch (e) {
     await refundPlatino(spent.ledgerId);

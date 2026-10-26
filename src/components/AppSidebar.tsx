@@ -108,7 +108,7 @@ export function AppSidebar({ active, activeChat }: { active?: 'index' | 'profile
                   {platino.daily}/{DAILY_PLATINO}
                 </Text>
               </View>
-              <Meter value={DAILY_PLATINO - platino.daily} max={DAILY_PLATINO} />
+              <Meter value={platino.daily} max={DAILY_PLATINO} tone="brand" />
             </View>
             <Button title={t('nav.upgrade')} size="sm" variant="brand" onPress={() => router.push('/pro')} className="mt-1" />
           </View>

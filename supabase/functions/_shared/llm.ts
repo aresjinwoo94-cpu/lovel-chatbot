@@ -62,7 +62,7 @@ export async function generateReply(opts: {
   voice?: boolean;
   language: 'es' | 'en';
   tier: Tier;
-}): Promise<string> {
+}): Promise<{ text: string; declined: boolean }> {
   const turns: ChatTurn[] = [...opts.history, { role: 'user', content: opts.userText }];
   // Los 3 primeros mensajes del personaje (el de apertura + 2 respuestas): claridad antes que estilo.
   const early = opts.history.filter((t) => t.role === 'assistant').length < 3;
@@ -71,8 +71,9 @@ export async function generateReply(opts: {
     provider() === 'anthropic'
       ? await claudeGenerate({ system: opts.system, turns, extraSystem: note || undefined, maxTokens: 8000, cache: true })
       : await geminiGenerate({ system: note ? `${opts.system}\n\n## Ahora mismo\n${note}` : opts.system, turns, maxTokens: 8000, tier: opts.tier });
-  if (result.refused || !result.text) return SOFT_DECLINE[opts.language];
-  return result.text;
+  // Si la IA no responde de verdad, el personaje cambia de tema con amabilidad y no se cobra.
+  if (result.refused || !result.text) return { text: SOFT_DECLINE[opts.language], declined: true };
+  return { text: result.text, declined: false };
 }
 
 /**

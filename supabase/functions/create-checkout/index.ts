@@ -11,7 +11,7 @@
  */
 import { HttpError, json, readJson, serve } from '../_shared/http.ts';
 import { isPack, PRODUCTS, type ProductId } from '../_shared/platino.ts';
-import { assertAllowedReturnUrl, ensureCustomer, returnViaFunction, stripe } from '../_shared/stripe.ts';
+import { assertAllowedReturnUrl, ensureCustomer, PENDING, returnViaFunction, stripe } from '../_shared/stripe.ts';
 import { getProfile, requireUser } from '../_shared/supabase.ts';
 
 serve(async (req) => {
@@ -23,6 +23,10 @@ serve(async (req) => {
   const to = assertAllowedReturnUrl(returnUrl);
   const profile = await getProfile(user.id);
   if (id === 'pro' && profile.is_pro) return json({ url: `${to}${to.includes('?') ? '&' : '?'}status=success` });
+  // Con un pago pendiente de la suscripción no se crea otra: se arregla en "Administrar suscripción".
+  if (id === 'pro' && profile.stripe_subscription_id && PENDING.has(profile.subscription_status ?? '')) {
+    throw new HttpError(409, 'Tu suscripción tiene un pago pendiente. Actualiza tu método de pago en "Administrar suscripción".', 'SUB_PENDING');
+  }
 
   const customer = await ensureCustomer(profile, user.email);
   // La cuenta de Stripe puede ser compartida con otros productos: marcamos lo nuestro.
@@ -69,7 +73,7 @@ serve(async (req) => {
               recurring: { interval: 'month' },
               product_data: {
                 name: pro.name,
-                description: `${pro.platinoPerMonth} Platino al mes + 40 Platino gratis cada día, notas de voz y memoria de la historia.`,
+                description: `${pro.platinoPerMonth} Platino al mes + 40 Platino gratis cada día, un modelo de IA superior y memoria de la historia.`,
               },
             },
           },

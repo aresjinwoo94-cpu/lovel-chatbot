@@ -43,13 +43,19 @@ export async function ensureCustomer(profile: ProfileRow, email: string | undefi
   return customer.id;
 }
 
+/** Estados en los que la suscripción sigue viva (no se debe crear otra). */
+export const ACTIVE = new Set(['active', 'trialing']);
+export const PENDING = new Set(['past_due', 'unpaid', 'incomplete']);
+
 /**
  * Refleja el estado de la suscripción en profiles.is_pro y en el Platino del periodo:
  * activa → 1.500 Platino fijados una vez por periodo (la renovación llega como
  * customer.subscription.updated con un nuevo current_period_end); fin → se pierde
  * el Platino del periodo (el comprado se queda).
  */
-export async function syncSubscription(sub: Stripe.Subscription, userIdHint?: string | null) {
+export async function syncSubscription(event: Stripe.Subscription, userIdHint?: string | null) {
+  // Stripe no garantiza el orden de los eventos: usamos siempre el estado actual de la suscripción.
+  const sub = await stripe.subscriptions.retrieve(event.id);
   const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
   // Suscripciones de otros productos en la misma cuenta de Stripe: no son nuestras.
   if (sub.metadata?.app && sub.metadata.app !== 'lovel-house') return;
@@ -64,6 +70,12 @@ export async function syncSubscription(sub: Stripe.Subscription, userIdHint?: st
   }
   const periodEnd = sub.items.data[0]?.current_period_end;
   const isPro = sub.status === 'active' || sub.status === 'trialing';
+  // Una suscripción vieja que termina no quita el Pro de otra que sigue activa.
+  const { data: current } = await admin.from('profiles').select('stripe_subscription_id, subscription_status').eq('id', userId).maybeSingle();
+  if (!isPro && current?.stripe_subscription_id && current.stripe_subscription_id !== sub.id && ACTIVE.has(current.subscription_status ?? '')) {
+    console.warn('Ignoramos el fin de una suscripción que no es la actual', sub.id);
+    return;
+  }
   const { error } = await admin
     .from('profiles')
     .update({

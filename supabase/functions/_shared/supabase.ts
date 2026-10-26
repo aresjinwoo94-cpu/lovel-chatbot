@@ -17,6 +17,8 @@ export interface ProfileRow {
   language: 'es' | 'en';
   is_pro: boolean;
   stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  subscription_status: string | null;
   trial_started_at: string | null;
   free_messages_used: number;
   free_voice_used: number;

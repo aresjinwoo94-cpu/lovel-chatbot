@@ -7,7 +7,7 @@
 import { replyAsAvatar, saveExchange } from '../_shared/companion.ts';
 import { pickVoice, speechToText, textToSpeech, voiceTuning } from '../_shared/elevenlabs.ts';
 import { base64ToBytes, bytesToBase64, HttpError, json, readJson, serve } from '../_shared/http.ts';
-import { refundPlatino, spendPlatino } from '../_shared/platino.ts';
+import { chargeText, refundPlatino, spendPlatino } from '../_shared/platino.ts';
 import { admin, getConversationId, getOwnedAvatar, getProfile, requireAdult, requireUser } from '../_shared/supabase.ts';
 
 const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
@@ -44,7 +44,8 @@ serve(async (req) => {
     if (!transcript) throw new HttpError(422, 'No pudimos entender el audio. ¿Lo intentas de nuevo, un poco más cerca del micrófono?', 'EMPTY_TRANSCRIPT');
 
     // 2) Respuesta pensada para decirse en voz alta (sin acciones entre asteriscos)
-    const raw = await replyAsAvatar({ avatar, profile, userText: transcript, voice: true });
+    const answer = await replyAsAvatar({ avatar, profile, userText: transcript, voice: true });
+    const raw = answer.text;
     const reply = raw.replace(/\*[^*]+\*/g, ' ').replace(/\s+/g, ' ').trim() || raw;
 
     // 3) Texto → voz. Si ElevenLabs falla, el personaje responde por escrito (nunca en silencio).
@@ -89,6 +90,14 @@ serve(async (req) => {
           : { role: 'avatar', kind: 'text', content: raw },
     });
 
+    // Sin voz del personaje (o respuesta de cortesía) no se cobra la nota de voz completa:
+    // se devuelven los 8 y, si hubo respuesta escrita de verdad, se cobra como mensaje (1).
+    if (answer.declined || !(replyAudio && replyAudioPath)) {
+      const back = await refundPlatino(spent.ledgerId);
+      let state = back ?? result.platino;
+      if (back && !answer.declined) state = await chargeText(user.id) ?? state;
+      result.platino = state;
+    }
     return json({ ...result, replyAudioBase64: replyAudio && replyAudioPath ? bytesToBase64(replyAudio) : null });
   } catch (e) {
     await refundPlatino(spent.ledgerId);

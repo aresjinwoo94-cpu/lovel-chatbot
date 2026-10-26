@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button, Card, Field, ListRow, Muted, SectionLabel, Title } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
-import { openBillingPortal } from '@/lib/billing';
+import { checkoutErrorKey, openBillingPortal } from '@/lib/billing';
 import { PlatinoBalance } from '@/components/Platino';
 import { DAILY_PLATINO, formatPlatino } from '@/lib/platino';
 import { usePlatino } from '@/lib/usePlatino';
@@ -106,28 +106,28 @@ export default function ProfileScreen() {
                 <Text className="text-[13px] text-ink">{t('platino.infoTitle')}</Text>
                 <PlatinoBalance total={platino.total} size="md" tone="ink" />
               </View>
-              {!platino.guest ? <Usage label={t('platino.daily')} used={DAILY_PLATINO - platino.daily} max={DAILY_PLATINO} left={platino.daily} /> : null}
+              {!platino.guest ? <Usage label={t('platino.daily')} max={DAILY_PLATINO} left={platino.daily} /> : null}
               {platino.sub > 0 ? <Line label={t('platino.sub')} n={formatPlatino(platino.sub, language)} /> : null}
               {platino.bought > 0 ? <Line label={t('platino.bought')} n={formatPlatino(platino.bought, language)} /> : null}
               {platino.gift > 0 ? <Line label={t('platino.gift')} n={formatPlatino(platino.gift, language)} /> : null}
-              <Muted className="text-[12px] leading-[17px]">{platino.guest ? t('platino.howGuest') : t('platino.how')}</Muted>
+              <Muted className="text-[12px] leading-[17px]">{platino.guest ? t('platino.howGuest') : platino.isPro ? t('platino.howPro') : t('platino.how')}</Muted>
             </View>
           ) : null}
           {profile?.is_pro && profile.current_period_end ? (
-            <Muted className="mt-1 text-[13px]">{t('profile.renews', { date: new Date(profile.current_period_end).toLocaleDateString() })}</Muted>
+            <Muted className="mt-1 text-[13px]">{t('profile.renews', { date: new Date(profile.current_period_end).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES') })}</Muted>
           ) : null}
           {profile?.is_pro ? (
             <Button
               title={t('pro.manage')}
               variant="secondary"
               size="sm"
-              onPress={() => openBillingPortal().then(refreshProfile).catch((e) => showDialog(t('common.error'), String(e)))}
+              onPress={() => openBillingPortal().then(refreshProfile, (e) => showDialog(t('pro.manage'), t(checkoutErrorKey(e))))}
               className="mt-4 self-start"
             />
           ) : (
             <Button title={t('profile.upgrade')} variant="brand" size="sm" onPress={() => router.push('/pro')} className="mt-4 self-start" />
           )}
-          <Button title={t('platino.packsTitle')} variant="ghost" size="sm" onPress={() => router.push('/pro')} className="mt-1 self-start" />
+          <Button title={t('platino.packsTitle')} variant="secondary" size="sm" onPress={() => router.push('/pro')} className="mt-2 self-start" />
         </Card>
 
         <Card className="mt-6">
@@ -162,10 +162,10 @@ function Line({ label, n }: { label: string; n: string }) {
   );
 }
 
-/** Barra de uso del diario: lo gastado hoy; el número es lo que queda. */
-function Usage({ label, used, max, left }: { label: string; used: number; max: number; left: number }) {
+/** Barra del diario: lo que queda hoy (vacía cuando se acaba), igual que el número. */
+function Usage({ label, max, left }: { label: string; max: number; left: number }) {
   const colors = useColors();
-  const n = Math.min(used, max);
+  const n = Math.max(0, Math.min(left, max));
   return (
     <View>
       <View className="flex-row justify-between">
@@ -175,7 +175,7 @@ function Usage({ label, used, max, left }: { label: string; used: number; max: n
         </Text>
       </View>
       <View className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-subtle">
-        <View className="h-full rounded-full" style={{ width: `${(n / max) * 100}%`, backgroundColor: n >= max ? colors.accent : colors.primary }} />
+        <View className="h-full rounded-full" style={{ width: `${(n / max) * 100}%`, backgroundColor: n === 0 ? colors.accent : colors.primary }} />
       </View>
     </View>
   );

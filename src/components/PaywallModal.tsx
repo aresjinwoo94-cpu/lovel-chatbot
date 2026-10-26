@@ -43,11 +43,10 @@ export function PaywallModal({ visible, avatar, onClose, onUpgraded, mode, plati
   const buy = async (product: 'pro' | 'pack_400' | 'pack_1200') => {
     setLoading(product);
     try {
-      const ok = await startCheckout(product);
+      const done = await startCheckout(product);
       await refreshProfile();
-      if (ok) {
-        const pack = PACKS.find((p) => p.id === product);
-        showDialog(pack ? t('platino.bought.ok', { n: formatPlatino(pack.platino, language) }) : t('pro.success'));
+      if (done) {
+        showDialog(done.kind === 'pack' ? t('platino.bought.ok', { n: formatPlatino(done.platino, language) }) : t('pro.success'));
         onUpgraded();
       }
     } catch (e) {
@@ -86,7 +85,7 @@ export function PaywallModal({ visible, avatar, onClose, onUpgraded, mode, plati
               {isPro ? t('platino.emptyBodyPro', { time: resetIn(language) }) : t('platino.emptyBody', { name: avatar?.name ?? '', time: resetIn(language) })}
             </Muted>
           ) : (
-            <Muted className="mt-3 text-[14px] leading-[20px]">{platino?.guest ? t('platino.howGuest') : t('platino.how')}</Muted>
+            <Muted className="mt-3 text-[14px] leading-[20px]">{platino?.guest ? t('platino.howGuest') : isPro ? t('platino.howPro') : t('platino.how')}</Muted>
           )}
 
           {/* saldo por tipo */}
@@ -121,6 +120,7 @@ export function PaywallModal({ visible, avatar, onClose, onUpgraded, mode, plati
                   <Text className="font-semibold text-[14px] text-ink">{loading === p.id ? '…' : formatUsd(p.usd)}</Text>
                 </Pressable>
               ))}
+              <Muted className="mb-1 text-center text-[11px] leading-[15px]">{t('platino.payNote')}</Muted>
               {!isPro ? (
                 <Button
                   title={`${t('home.upgrade')} · ${formatUsd(PRO.usd)} / ${language === 'en' ? 'month' : 'mes'}`}
@@ -130,6 +130,7 @@ export function PaywallModal({ visible, avatar, onClose, onUpgraded, mode, plati
                   className="mt-2"
                 />
               ) : null}
+              {!isPro ? <Muted className="mt-1 text-center text-[11px] leading-[15px]">{t('pro.priceNote')}</Muted> : null}
               <Pressable
                 onPress={() => {
                   onClose();
@@ -139,7 +140,6 @@ export function PaywallModal({ visible, avatar, onClose, onUpgraded, mode, plati
               >
                 <Text className="text-[12px] text-muted underline">{t('plans.title')}</Text>
               </Pressable>
-              <Muted className="mt-1 text-center text-[11px] leading-[15px]">{t('platino.payNote')}</Muted>
             </View>
           ) : null}
 

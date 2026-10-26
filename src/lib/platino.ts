@@ -20,7 +20,9 @@ export const PACKS = [
 export type ProductId = 'pro' | (typeof PACKS)[number]['id'];
 
 export const formatUsd = (n: number) => `$${n.toFixed(2)} USD`;
-export const formatPlatino = (n: number, lang: 'es' | 'en' = 'es') => Math.max(0, Math.round(n)).toLocaleString(lang === 'en' ? 'en-US' : 'es-ES');
+/** 1.500 / 1,500: siempre con separador de miles (es-ES no agrupa las cifras de 4 dígitos). */
+export const formatPlatino = (n: number, lang: 'es' | 'en' = 'es') =>
+  String(Math.max(0, Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, lang === 'en' ? ',' : '.');
 
 /** Lo que devuelve el servidor tras cada gasto. */
 export interface PlatinoState {
@@ -54,7 +56,7 @@ export function platinoFromProfile(p: Profile | null, guest: boolean, now = new 
   if (!p) return null;
   const tz = p.timezone || 'UTC';
   const dailyOn = p.platino_daily_on ?? null;
-  const daily = guest ? 0 : dailyOn !== todayIn(tz, now) ? DAILY_PLATINO : (p.platino_daily ?? 0);
+  const daily = guest ? 0 : !dailyOn || dailyOn < todayIn(tz, now) ? DAILY_PLATINO : (p.platino_daily ?? 0);
   const subActive = !p.platino_sub_until || new Date(p.platino_sub_until).getTime() > now.getTime();
   const sub = subActive ? (p.platino_sub ?? 0) : 0;
   const gift = p.platino_gift ?? 0;
@@ -62,13 +64,20 @@ export function platinoFromProfile(p: Profile | null, guest: boolean, now = new 
   return { daily, sub, gift, bought, total: daily + sub + gift + bought, dailyAmount: guest ? 0 : DAILY_PLATINO, dailyOn, subUntil: p.platino_sub_until ?? null, timezone: tz, isPro: p.is_pro, guest };
 }
 
+/** Si ya pasó la medianoche desde ese saldo, el diario está renovado (el servidor lo hará en el próximo gasto). */
+export function rollover(s: PlatinoState, now = new Date()): PlatinoState {
+  if (s.guest || (s.dailyOn && s.dailyOn >= todayIn(s.timezone, now))) return s;
+  const daily = DAILY_PLATINO;
+  return { ...s, daily, total: s.total - s.daily + daily };
+}
+
 /** Lo más reciente entre el perfil y la última respuesta del servidor. */
-export function freshest(fromProfile: PlatinoState | null, fromServer: PlatinoState | null): PlatinoState | null {
+export function freshest(fromProfile: PlatinoState | null, fromServer: PlatinoState | null, now = new Date()): PlatinoState | null {
   if (!fromServer) return fromProfile;
-  if (!fromProfile) return fromServer;
+  if (!fromProfile) return rollover(fromServer, now);
   // la respuesta del servidor es de esta sesión: manda, salvo que el perfil ya sea de un día posterior
   if (fromProfile.dailyOn && fromServer.dailyOn && fromProfile.dailyOn > fromServer.dailyOn) return fromProfile;
-  return { ...fromServer, isPro: fromServer.isPro || fromProfile.isPro };
+  return rollover({ ...fromServer, isPro: fromServer.isPro || fromProfile.isPro }, now);
 }
 
 /** Cuánto falta para la próxima medianoche (cuando se renueva el diario), en minutos. */
