@@ -74,7 +74,14 @@
       "expo-sharing",
       "expo-localization",
       "expo-web-browser",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-notifications",
+        {
+          "color": "#6D5AE6",
+          "defaultChannel": "characters"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

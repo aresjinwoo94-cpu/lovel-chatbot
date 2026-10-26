@@ -116,7 +116,7 @@ export default function ProScreen() {
             </Text>
           </View>
           <Muted className="mt-0.5 text-[12px] leading-[17px]">{t('pro.priceNote')}</Muted>
-          <View className="mt-2">{[t('pro.f1'), t('pro.f2'), t('pro.f3'), t('pro.f4')].map(check)}</View>
+          <View className="mt-2">{[t('pro.f1'), t('pro.f2'), t('pro.f3'), t('pro.f4'), t('pro.f5')].map(check)}</View>
           {isPro ? (
             <>
               <View className="mt-4 rounded-xl border border-line bg-subtle px-3 py-2.5">

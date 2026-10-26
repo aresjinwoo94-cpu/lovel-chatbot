@@ -9,6 +9,7 @@ import { AnimatedAvatar } from '@/components/AnimatedAvatar';
 import { AppSidebar } from '@/components/AppSidebar';
 import { ChatBubble } from '@/components/ChatBubble';
 import { PaywallModal } from '@/components/PaywallModal';
+import { ProactiveSheet } from '@/components/ProactiveSheet';
 import { PresencePill } from '@/components/PresencePill';
 import { Text, TextInput } from '@/components/Themed';
 import { TypingIndicator } from '@/components/TypingIndicator';
@@ -20,6 +21,7 @@ import { base64ToPlayableUri, readRecording } from '@/lib/audio';
 import { useAuth } from '@/lib/auth';
 import { canAfford, type PlatinoKind, type PlatinoState } from '@/lib/platino';
 import { setPlatino, usePlatino } from '@/lib/usePlatino';
+import { type ProactiveMode, setProactiveMode } from '@/lib/proactive';
 import { PlatinoBalance } from '@/components/Platino';
 import { DARK_BACKGROUNDS, normalizeLook } from '@/lib/character/catalog';
 import type { Presence } from '@/lib/character/types';
@@ -199,6 +201,21 @@ export default function ChatScreen() {
 
   // Primera vez (desde la bienvenida): cómo personalizarlo.
   const [showTip, setShowTip] = useState(intro === '1');
+  // WP-12: mensajes por su cuenta (apagado por defecto).
+  const [proactiveOpen, setProactiveOpen] = useState(false);
+  const proactiveMode: ProactiveMode = avatar?.proactive_mode ?? 'off';
+  const setProactive = (mode: ProactiveMode) => setAvatar((a) => (a ? { ...a, proactive_mode: mode } : a));
+  const stopProactive = async () => {
+    if (!avatar) return;
+    setProactive('off');
+    try {
+      await setProactiveMode(avatar.id, 'off');
+      showDialog(t('proactive.stopped', { name: avatar.name }));
+    } catch {
+      setProactive(proactiveMode);
+      showDialog(t('common.error'), t('chat.errorServer'));
+    }
+  };
 
   const loadOlder = useCallback(async () => {
     if (!avatarId || loadingOlder || !hasMore || messages.length === 0) return;
@@ -415,7 +432,16 @@ export default function ChatScreen() {
               <Text className={`font-semibold text-[17px] leading-[22px] tracking-tighter ${darkStage ? 'text-white' : 'text-ink'}`}>{avatar.name}</Text>
               <PresencePill presence={presence} onDark={darkStage} />
             </View>
-            {!wide ? <IconButton icon="chevron-up" variant="outline" size={34} label={t('chat.collapse')} onPress={() => setManualCollapsed(true)} /> : null}
+            <View className="flex-row items-center" style={{ gap: 8 }}>
+              <IconButton
+                icon={proactiveMode === 'off' ? 'notifications-off-outline' : 'notifications-outline'}
+                variant="outline"
+                size={34}
+                label={t('proactive.button')}
+                onPress={() => setProactiveOpen(true)}
+              />
+              {!wide ? <IconButton icon="chevron-up" variant="outline" size={34} label={t('chat.collapse')} onPress={() => setManualCollapsed(true)} /> : null}
+            </View>
           </View>
           {/* Personalizar: aspecto, voz e identidad */}
           <View pointerEvents="box-none" className={`absolute ${wide ? 'right-3 top-3' : 'right-14 top-2'}`}>
@@ -461,6 +487,7 @@ export default function ChatScreen() {
         </Text>
         <PresencePill presence={presence} />
       </View>
+      <IconButton icon={proactiveMode === 'off' ? 'notifications-off-outline' : 'notifications-outline'} label={t('proactive.button')} onPress={() => setProactiveOpen(true)} />
       <IconButton icon="share-outline" label={t('chat.export')} onPress={onExport} />
       <IconButton icon="chevron-down" label={t('chat.expand')} onPress={expandStage} />
     </View>
@@ -503,6 +530,7 @@ export default function ChatScreen() {
               localAudioUri={localAudio[item.id]}
               autoPlay={item.id === autoPlayId}
               onSpeakingChange={(s) => onVoicePlaying(item.id, s)}
+              onStopProactive={index === 0 && item.proactive && proactiveMode !== 'off' ? stopProactive : undefined}
             />
           );
         }}
@@ -586,6 +614,9 @@ export default function ChatScreen() {
       }}
     />
   );
+  const proactiveSheet = (
+    <ProactiveSheet visible={proactiveOpen} avatar={avatar} mode={proactiveMode} onChange={setProactive} onClose={() => setProactiveOpen(false)} />
+  );
 
   // ------------------------------------------------ escritorio: personaje a la izquierda, chat a la derecha
   if (wide) {
@@ -612,6 +643,7 @@ export default function ChatScreen() {
           {conversation}
         </View>
         {paywallModal}
+        {proactiveSheet}
       </SafeAreaView>
     );
   }
@@ -628,6 +660,7 @@ export default function ChatScreen() {
       )}
       {conversation}
       {paywallModal}
+      {proactiveSheet}
     </SafeAreaView>
   );
 }

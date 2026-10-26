@@ -29,6 +29,7 @@ import { DialogHost } from '@/lib/dialog';
 import { I18nProvider } from '@/lib/i18n';
 import { perfPhase } from '@/lib/perfMeter';
 import { ThemeProvider, useTheme } from '@/lib/theme';
+import { usePushResponses } from '@/lib/push';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,6 +43,7 @@ SplashScreen.preventAutoHideAsync();
  */
 function RootNavigator() {
   const { session, loading, isGuest } = useAuth();
+  usePushResponses(); // WP-12: toques en las notificaciones (Android/iOS)
   const { status: age, takeResume } = useAgeGate();
   const { colors, scheme, loaded: themeLoaded } = useTheme();
   const navTheme = useMemo(() => {

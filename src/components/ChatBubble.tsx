@@ -1,12 +1,13 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { memo } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import { AnimatedAvatar, type AvatarLike } from './AnimatedAvatar';
 import { VoicePlayer } from './VoicePlayer';
 import { Text } from '@/components/Themed';
 import { BUBBLE_SIDE } from '@/constants/theme';
+import { useI18n } from '@/lib/i18n';
 import type { Message } from '@/lib/types';
 import { useColors } from '@/lib/theme';
 
@@ -39,13 +40,16 @@ interface Props {
   autoPlay?: boolean;
   onSpeakingChange?: (speaking: boolean) => void;
   pending?: boolean;
+  /** WP-12: el último mensaje que escribió por su cuenta: "Que no me escriba" a un toque. */
+  onStopProactive?: () => void;
 }
 
 /**
  * Burbuja del chat. Personaje a la IZQUIERDA (tarjeta blanca, con su foto y su
  * nombre); tú a la DERECHA (violeta suave). Igual en móvil y en escritorio.
  */
-function ChatBubbleBase({ message, avatar, showName, showAvatar, speaking, localAudioUri, autoPlay, onSpeakingChange, pending }: Props) {
+function ChatBubbleBase({ message, avatar, showName, showAvatar, speaking, localAudioUri, autoPlay, onSpeakingChange, pending, onStopProactive }: Props) {
+  const { t } = useI18n();
   const colors = useColors();
   const isAvatar = message.role === 'avatar';
   const isLeft = (isAvatar ? BUBBLE_SIDE.avatar : BUBBLE_SIDE.user) === 'left';
@@ -92,6 +96,16 @@ function ChatBubbleBase({ message, avatar, showName, showAvatar, speaking, local
         <View style={{ width: AVATAR, marginRight: 8 }}>{showAvatar ? <AnimatedAvatar avatar={avatar} size={AVATAR} presence={speaking ? 'speaking' : 'idle'} /> : null}</View>
         {bubble}
       </View>
+      {message.proactive ? (
+        <View className="ml-[36px] mt-1 flex-row flex-wrap items-center">
+          <Text className="text-[11px] text-muted">{t('proactive.note')}</Text>
+          {onStopProactive ? (
+            <Pressable onPress={onStopProactive} accessibilityRole="button" hitSlop={8}>
+              <Text className="text-[11px] text-muted underline">{` · ${t('proactive.stop')}`}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </Animated.View>
   );
 }

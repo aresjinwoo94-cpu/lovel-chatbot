@@ -23,6 +23,7 @@ export type AnalyticsEvent =
   | 'pro_viewed'
   | 'checkout_started'
   | 'checkout_completed'
+  | 'proactive_set'
   | 'ping';
 
 const ENDPOINT = `${SUPABASE_URL}/functions/v1/track`;

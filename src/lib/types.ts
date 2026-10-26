@@ -33,6 +33,8 @@ export interface Avatar {
   preset_id: string | null;
   created_at: string;
   last_message_at: string | null;
+  /** WP-12: si escribe primero por su cuenta (apagado por defecto). */
+  proactive_mode?: 'off' | 'sometimes' | 'often';
 }
 
 export type MessageRole = 'user' | 'avatar';
@@ -49,6 +51,8 @@ export interface Message {
   audio_path: string | null;
   audio_duration_ms: number | null;
   created_at: string;
+  /** WP-12: lo escribió el personaje por su cuenta. */
+  proactive?: boolean;
 }
 
 export interface Conversation {
@@ -80,6 +84,9 @@ export interface Profile {
   platino_bought: number;
   /** Zona horaria (IANA) para la medianoche del Platino diario. */
   timezone: string;
+  /** WP-12: horario de silencio (hora local). */
+  quiet_start?: number;
+  quiet_end?: number;
   /** Cuándo confirmó que es mayor de 18 (puerta 18+). */
   adult_confirmed_at: string | null;
   created_at: string;

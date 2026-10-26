@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ProactiveSettings } from '@/components/ProactiveSettings';
 import { Button, Card, Field, ListRow, Muted, Segmented, SectionLabel, Title, ToggleRow } from '@/components/ui';
 import { callFunction } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -112,6 +113,8 @@ export default function SettingsScreen() {
             </Card>
           </>
         ) : null}
+
+        <ProactiveSettings />
 
         <SectionLabel>{t('settings.privacy')}</SectionLabel>
         <Card>
