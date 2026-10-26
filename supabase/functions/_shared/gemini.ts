@@ -43,6 +43,9 @@ async function callGemini(body: Record<string, unknown>): Promise<GenerateResult
       if (res.status === 429 || res.status >= 500 || res.status === 404) continue;
       throw new HttpError(502, `Gemini: ${lastError}`);
     }
+    // Consumo real por respuesta (WP-11: calibración del Platino con costos reales).
+    const u = (data as { usageMetadata?: Record<string, number> }).usageMetadata;
+    if (u) console.log(JSON.stringify({ ai_usage: { model, prompt: u.promptTokenCount ?? 0, cached: u.cachedContentTokenCount ?? 0, output: u.candidatesTokenCount ?? 0, thoughts: u.thoughtsTokenCount ?? 0 } }));
     if (data.promptFeedback?.blockReason) return { text: '', refused: true };
     const candidate = data.candidates?.[0];
     if (candidate?.finishReason && BLOCKED.has(candidate.finishReason)) return { text: '', refused: true };
