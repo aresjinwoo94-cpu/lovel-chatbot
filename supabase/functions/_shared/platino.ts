@@ -60,16 +60,16 @@ export async function spendPlatino(userId: string, kind: PlatinoKind, guest: boo
   return { ledgerId: r.ledgerId!, state: r.state };
 }
 
-/** Si la respuesta falló, la persona recupera su Platino (una sola vez por gasto). */
 /** Cobra 1 Platino como mensaje de texto, sin fallar (si no alcanza, no se cobra). */
 export async function chargeText(userId: string): Promise<PlatinoState | null> {
-  const { data, error } = await admin.rpc('platino_spend', { p_user: userId, p_amount: PLATINO_COST.text, p_reason: 'voice_as_text' });
+  const { data, error } = await admin.rpc('platino_spend', { p_user: userId, p_amount: PLATINO_COST.text, p_reason: 'text' });
   if (error) {
     console.error('chargeText', error);
     return null;
   }
   return (data as { state: PlatinoState }).state ?? null;
 }
+/** Si la respuesta falló, la persona recupera su Platino (una sola vez por gasto). */
 export async function refundPlatino(ledgerId: number): Promise<PlatinoState | null> {
   const { data, error } = await admin.rpc('platino_refund', { p_ledger: ledgerId });
   if (error) {

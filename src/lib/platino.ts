@@ -17,6 +17,8 @@ export const PACKS = [
   { id: 'pack_400' as const, platino: 400, usd: 1.99, kind: 'trial' as const },
   { id: 'pack_1200' as const, platino: 1200, usd: 4.99, kind: 'medium' as const },
 ];
+/** Suscripción con un pago pendiente: se arregla en el portal, no se crea otra. */
+export const SUB_PENDING = ['past_due', 'unpaid', 'incomplete'];
 export type ProductId = 'pro' | (typeof PACKS)[number]['id'];
 
 export const formatUsd = (n: number) => `$${n.toFixed(2)} USD`;

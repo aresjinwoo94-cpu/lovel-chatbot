@@ -7,7 +7,7 @@ import { Button, Card, Field, ListRow, Muted, SectionLabel, Title } from '@/comp
 import { useAuth } from '@/lib/auth';
 import { checkoutErrorKey, openBillingPortal } from '@/lib/billing';
 import { PlatinoBalance } from '@/components/Platino';
-import { DAILY_PLATINO, formatPlatino } from '@/lib/platino';
+import { DAILY_PLATINO, formatPlatino, SUB_PENDING } from '@/lib/platino';
 import { usePlatino } from '@/lib/usePlatino';
 import { countUserMessages, updateProfile } from '@/lib/data';
 import { useI18n } from '@/lib/i18n';
@@ -116,7 +116,7 @@ export default function ProfileScreen() {
           {profile?.is_pro && profile.current_period_end ? (
             <Muted className="mt-1 text-[13px]">{t('profile.renews', { date: new Date(profile.current_period_end).toLocaleDateString(language === 'en' ? 'en-US' : 'es-ES') })}</Muted>
           ) : null}
-          {profile?.is_pro ? (
+          {profile?.is_pro || SUB_PENDING.includes(profile?.subscription_status ?? '') ? (
             <Button
               title={t('pro.manage')}
               variant="secondary"

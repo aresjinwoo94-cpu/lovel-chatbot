@@ -31,7 +31,8 @@ export function usePlatino(): PlatinoState | null {
   // Fecha de referencia: cambia al pasar la medianoche para renovar el diario en pantalla.
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const id = setTimeout(() => setNow(new Date()), minutesToReset(now) * 60000 + 5000);
+    // tramos de una hora como mucho (Android avisa de temporizadores largos)
+    const id = setTimeout(() => setNow(new Date()), Math.min(minutesToReset(now) * 60000 + 5000, 3600000));
     return () => clearTimeout(id);
   }, [now]);
   const uid = session?.user.id;

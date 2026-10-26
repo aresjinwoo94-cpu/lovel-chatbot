@@ -22,25 +22,32 @@ export function checkoutErrorKey(e: unknown): 'billing.disabled' | 'billing.offl
 /** Lo que se acreditó al volver de Stripe (lo hace el webhook): Pro o un paquete con su Platino. */
 export type Purchase = { kind: 'pro' } | { kind: 'pack'; platino: number };
 
-const SINCE_KEY = 'lovel.checkout.since';
-/** Desde cuándo buscamos el crédito (en web la página se recarga al volver de Stripe). */
-function markCheckoutStart(): string {
-  const since = new Date(Date.now() - 2 * 60000).toISOString(); // margen por reloj del dispositivo
+const SINCE_KEY = 'lovel.checkout.after';
+/** Último crédito de Stripe antes de pagar: al volver buscamos uno posterior. */
+type Baseline = { afterId: number } | { since: string };
+
+async function lastStripeCredit(): Promise<number> {
+  const { data } = await supabase.from('platino_ledger').select('id').eq('source', 'stripe').order('id', { ascending: false }).limit(1);
+  return data?.[0]?.id ?? 0;
+}
+async function markCheckoutStart(): Promise<Baseline> {
+  const afterId = await lastStripeCredit().catch(() => 0);
   try {
-    if (Platform.OS === 'web') window.sessionStorage.setItem(SINCE_KEY, since);
+    if (Platform.OS === 'web') window.sessionStorage.setItem(SINCE_KEY, String(afterId));
   } catch {
     // sin almacenamiento: al volver buscamos en la última media hora
   }
-  return since;
+  return { afterId };
 }
-export function checkoutSince(): string {
+/** En web, al volver de Stripe (la página se recargó). */
+export function checkoutBaseline(): Baseline {
   try {
     const v = Platform.OS === 'web' ? window.sessionStorage.getItem(SINCE_KEY) : null;
-    if (v) return v;
+    if (v) return { afterId: Number(v) };
   } catch {
     // ídem
   }
-  return new Date(Date.now() - 30 * 60000).toISOString();
+  return { since: new Date(Date.now() - 30 * 60000).toISOString() };
 }
 
 /**
@@ -52,8 +59,8 @@ export function checkoutSince(): string {
  */
 export async function startCheckout(product: ProductId = 'pro'): Promise<Purchase | null> {
   track('checkout_started', { product });
+  const since = await markCheckoutStart();
   const { url } = await callFunction<{ url: string }>('create-checkout', { returnUrl: returnUrl(), product });
-  const since = markCheckoutStart();
   if (Platform.OS === 'web') {
     window.location.href = url;
     return null;
@@ -67,23 +74,17 @@ export const startProCheckout = () => startCheckout('pro');
 
 /**
  * El webhook puede tardar unos segundos: buscamos en el registro de Platino (solo los
- * movimientos propios) un crédito de Stripe posterior al inicio del pago, hasta ~15 s.
+ * movimientos propios) un crédito de Stripe posterior al último que había antes de pagar, hasta ~15 s.
  */
-export async function waitForPurchase(since: string, timeoutMs = 15000): Promise<Purchase | null> {
+export async function waitForPurchase(since: Baseline, timeoutMs = 15000): Promise<Purchase | null> {
   const { data: userData } = await supabase.auth.getUser();
   const userId = userData.user?.id;
   if (!userId) return null;
   const start = Date.now();
   for (;;) {
-    const { data } = await supabase
-      .from('platino_ledger')
-      .select('reason, delta')
-      .eq('user_id', userId)
-      .eq('source', 'stripe')
-      .in('reason', ['purchase', 'subscription'])
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(1);
+    let q = supabase.from('platino_ledger').select('reason, delta').eq('user_id', userId).eq('source', 'stripe').in('reason', ['purchase', 'subscription']);
+    q = 'afterId' in since ? q.gt('id', since.afterId) : q.gte('created_at', since.since);
+    const { data } = await q.order('id', { ascending: false }).limit(1);
     const row = data?.[0];
     if (row) {
       track('checkout_completed', { product: row.reason === 'purchase' ? 'pack' : 'pro' });

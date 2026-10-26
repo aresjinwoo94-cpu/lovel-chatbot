@@ -10,10 +10,10 @@ import { Text } from '@/components/Themed';
 import { Button, IconButton, Muted } from '@/components/ui';
 import { track } from '@/lib/analytics';
 import { useAuth } from '@/lib/auth';
-import { checkoutErrorKey, checkoutSince, openBillingPortal, type Purchase, startCheckout, waitForPurchase } from '@/lib/billing';
+import { checkoutErrorKey, checkoutBaseline, openBillingPortal, type Purchase, startCheckout, waitForPurchase } from '@/lib/billing';
 import { showDialog } from '@/lib/dialog';
 import { type TFunction, useI18n } from '@/lib/i18n';
-import { formatPlatino, formatUsd, PACKS, PRO, type ProductId } from '@/lib/platino';
+import { formatPlatino, formatUsd, PACKS, PRO, type ProductId, SUB_PENDING } from '@/lib/platino';
 import { useColors } from '@/lib/theme';
 import { usePlatino } from '@/lib/usePlatino';
 
@@ -35,6 +35,7 @@ export default function ProScreen() {
   const [loading, setLoading] = useState<ProductId | null>(null);
   const [confirming, setConfirming] = useState(status === 'success');
   const isPro = !!profile?.is_pro;
+  const subPending = !isPro && SUB_PENDING.includes(profile?.subscription_status ?? '');
   const month = language === 'en' ? 'month' : 'mes';
   useEffect(() => {
     track('pro_viewed');
@@ -44,7 +45,8 @@ export default function ProScreen() {
   useEffect(() => {
     if (status !== 'success') return;
     (async () => {
-      const done = await waitForPurchase(checkoutSince());
+      const done = await waitForPurchase(checkoutBaseline());
+      router.setParams({ status: undefined }); // al recargar no se vuelve a confirmar
       await refreshProfile();
       setConfirming(false);
       showDialog(done ? purchaseText(done, t, language) : t('platino.bought.pending'));
@@ -126,6 +128,11 @@ export default function ProScreen() {
                 ) : null}
               </View>
               <Button title={t('pro.manage')} variant="secondary" onPress={() => openBillingPortal().then(refreshProfile, (e) => showDialog(t('pro.manage'), t(checkoutErrorKey(e))))} className="mt-3" />
+            </>
+          ) : subPending ? (
+            <>
+              <Muted className="mt-4 text-[13px] leading-[18px]">{t('billing.subPending')}</Muted>
+              <Button title={t('pro.manage')} variant="brand" onPress={() => openBillingPortal().then(refreshProfile, (e) => showDialog(t('pro.manage'), t(checkoutErrorKey(e))))} className="mt-3" />
             </>
           ) : (
             <Button title={`${t('home.upgrade')} · ${formatUsd(PRO.usd)} / ${month}`} variant="brand" onPress={() => buy('pro')} loading={loading === 'pro'} disabled={!!loading} className="mt-4" />

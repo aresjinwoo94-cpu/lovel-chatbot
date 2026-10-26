@@ -97,3 +97,16 @@ típico gasta mucho menos. Con 2.5 Flash-Lite, el máximo del plan gratis era de
   - Pago que no abre: "no se te ha cobrado nada".
 
 Capturas (390 y 1440 px, claro y oscuro): `docs/wp11/*.jpg`.
+
+## Revisión independiente
+
+Dos rondas con un subagente que no hizo los cambios. La segunda ronda no encontró nada
+bloqueante, y los dos puntos importantes que quedaban ya están corregidos:
+- La nota de voz sin voz se cobra como mensaje.
+- Con un pago pendiente aparece "Administrar suscripción".
+
+Pendiente (no bloquea):
+- Quitar el Platino comprado ante reembolsos y disputas de Stripe (`charge.refunded`,
+  `charge.dispute.created`).
+- Limitar los 15 Platino de invitado por dispositivo.
+- Traducir al inglés los errores 4xx del servidor.
