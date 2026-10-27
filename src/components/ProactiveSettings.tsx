@@ -1,40 +1,50 @@
-import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, View } from 'react-native';
 
-import { Button, Card, IconButton, Muted, Segmented, SectionLabel } from './ui';
+import { ProactiveSheet } from './ProactiveSheet';
+import { Button, Card, IconButton, Muted, SectionLabel } from './ui';
 import { Text } from '@/components/Themed';
 import { useAuth } from '@/lib/auth';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
-import { DEFAULT_QUIET, formatHour, type ProactiveMode, setProactiveMode, setQuietHours } from '@/lib/proactive';
-import { disablePush, enablePush, pushState, type PushState } from '@/lib/push';
+import { DEFAULT_QUIET, formatHour, type ProactiveMode, setQuietHours } from '@/lib/proactive';
+import { disablePush, enablePush, PUSH_SURFACE, pushState, type PushState } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
+import { useColors } from '@/lib/theme';
+import type { Avatar } from '@/lib/types';
 
-type Row = { id: string; name: string; proactive_mode: ProactiveMode };
+type Row = Pick<Avatar, 'id' | 'name' | 'gender' | 'appearance' | 'avatar_image_url' | 'use_portrait'> & { proactive_mode: ProactiveMode };
 
 /**
- * Ajustes de WP-12: horario de silencio, qué personajes pueden escribir primero y los
- * avisos de este dispositivo. Todo apagado por defecto.
+ * Ajustes de WP-12: qué personajes pueden escribir primero (cada fila abre la misma hoja
+ * que en el chat), horario de silencio y avisos de este dispositivo. Todo apagado por defecto.
  */
 export function ProactiveSettings() {
   const { t } = useI18n();
+  const colors = useColors();
   const { profile, session, isGuest, refreshProfile } = useAuth();
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [open, setOpen] = useState<Row | null>(null);
   const [push, setPush] = useState<PushState | null>(null);
   const [busy, setBusy] = useState(false);
   const [quiet, setQuiet] = useState<[number, number]>([profile?.quiet_start ?? DEFAULT_QUIET.start, profile?.quiet_end ?? DEFAULT_QUIET.end]);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const uid = session?.user.id;
 
   useEffect(() => {
     if (!uid || isGuest) return;
     supabase
       .from('avatars')
-      .select('id, name, proactive_mode')
+      .select('id, name, gender, appearance, avatar_image_url, use_portrait, proactive_mode')
       .eq('user_id', uid)
       .order('last_message_at', { ascending: false, nullsFirst: false })
       .then(({ data }) => setRows((data as Row[] | null) ?? []));
     pushState().then(setPush, () => setPush('unsupported'));
   }, [uid, isGuest]);
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+  }, []);
 
   if (!uid) return null;
   if (isGuest) {
@@ -46,35 +56,22 @@ export function ProactiveSettings() {
     );
   }
 
-  const changeQuiet = async (i: 0 | 1, delta: number) => {
+  // Varios toques seguidos se guardan juntos (una sola petición, siempre el último valor).
+  const changeQuiet = (i: 0 | 1, delta: number) => {
     const next: [number, number] = [...quiet];
     next[i] = (next[i] + delta + 24) % 24;
-    const prev = quiet;
+    if (next[0] === next[1]) next[i] = (next[i] + delta + 24) % 24; // nunca inicio = fin
     setQuiet(next);
-    try {
-      await setQuietHours(uid, next[0], next[1]);
-      refreshProfile();
-    } catch {
-      setQuiet(prev);
-      showDialog(t('common.error'), t('chat.errorServer'));
-    }
-  };
-
-  const changeMode = async (id: string, mode: ProactiveMode) => {
-    const prev = rows;
-    setRows((r) => r?.map((x) => (x.id === id ? { ...x, proactive_mode: mode } : x)) ?? null);
-    try {
-      await setProactiveMode(id, mode);
-    } catch {
-      setRows(prev);
-      showDialog(t('common.error'), t('chat.errorServer'));
-    }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      setQuietHours(uid, next[0], next[1]).then(refreshProfile, () => showDialog(t('common.error'), t('chat.errorServer')));
+    }, 700);
   };
 
   const togglePush = async () => {
     setBusy(true);
     try {
-      setPush(push === 'on' ? await disablePush() : await enablePush(uid));
+      setPush(push === 'on' ? await disablePush() : await enablePush());
     } catch {
       showDialog(t('common.error'), t('billing.offline'));
     } finally {
@@ -94,33 +91,40 @@ export function ProactiveSettings() {
       </View>
     </View>
   );
-  const pushText = { on: t('proactive.pushOn'), off: t('proactive.pushOff'), denied: t('proactive.pushDenied'), unsupported: t('proactive.pushUnsupported') };
-  const modes: { id: ProactiveMode; label: string }[] = [
-    { id: 'off', label: t('proactive.off') },
-    { id: 'sometimes', label: t('proactive.sometimesShort') },
-    { id: 'often', label: t('proactive.often') },
-  ];
+  const pushText = {
+    on: t('proactive.pushOn'),
+    off: t('proactive.pushOff'),
+    denied: PUSH_SURFACE === 'browser' ? t('proactive.pushDenied') : t('proactive.pushDeniedDevice'),
+    unsupported: PUSH_SURFACE === 'browser' ? t('proactive.pushUnsupported') : t('proactive.pushUnsupportedDevice'),
+  };
+  const modeLabel = { off: t('proactive.off'), sometimes: t('proactive.sometimes'), often: t('proactive.often') };
 
   return (
     <>
       <SectionLabel>{t('settings.proactive')}</SectionLabel>
-      <Card className="px-4 py-3">
+      <Card>
         {rows === null ? (
-          <Muted className="text-[13px]">…</Muted>
+          <Muted className="px-4 py-3 text-[13px]">…</Muted>
         ) : rows.length === 0 ? (
-          <Muted className="text-[13px]">{t('settings.proactiveNone')}</Muted>
+          <Muted className="px-4 py-3 text-[13px]">{t('settings.proactiveNone')}</Muted>
         ) : (
           rows.map((r, i) => (
-            <View key={r.id} className={i ? 'mt-3 border-t border-line pt-3' : ''}>
-              <Text className="mb-2 font-semibold text-[14px] text-ink">{r.name}</Text>
-              <Segmented options={modes} value={r.proactive_mode} onChange={(m) => changeMode(r.id, m)} />
-            </View>
+            <Pressable
+              key={r.id}
+              onPress={() => setOpen(r)}
+              accessibilityRole="button"
+              accessibilityLabel={`${r.name}: ${modeLabel[r.proactive_mode]}`}
+              className={`flex-row items-center px-4 py-3 active:bg-subtle ${i ? 'border-t border-line' : ''}`}
+            >
+              <Ionicons name={r.proactive_mode === 'off' ? 'notifications-off-outline' : 'notifications-outline'} size={18} color={colors.ink} />
+              <Text className="ml-3 flex-1 text-[15px] text-ink">{r.name}</Text>
+              <Text className="mr-1 text-[13px] text-muted">{modeLabel[r.proactive_mode]}</Text>
+              <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+            </Pressable>
           ))
         )}
       </Card>
-      <Muted className="mt-2 px-1 text-[12px] leading-[17px]">
-        {t('proactive.rules', { from: formatHour(quiet[0]), to: formatHour(quiet[1]) })}
-      </Muted>
+      <Muted className="mt-2 px-1 text-[12px] leading-[17px]">{t('proactive.rulesSettings')}</Muted>
 
       <Card className="mt-3 px-4 py-3">
         <Text className="font-semibold text-[14px] text-ink">{t('settings.quiet')}</Text>
@@ -142,6 +146,20 @@ export function ProactiveSettings() {
           ) : null}
         </Card>
       ) : null}
+
+      <ProactiveSheet
+        visible={!!open}
+        avatar={open}
+        mode={open?.proactive_mode ?? 'off'}
+        onChange={(m) => {
+          setOpen((o) => (o ? { ...o, proactive_mode: m } : o));
+          setRows((rs) => rs?.map((x) => (x.id === open?.id ? { ...x, proactive_mode: m } : x)) ?? null);
+        }}
+        onClose={() => {
+          setOpen(null);
+          pushState().then(setPush, () => undefined);
+        }}
+      />
     </>
   );
 }

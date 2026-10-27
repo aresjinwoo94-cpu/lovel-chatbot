@@ -29,19 +29,22 @@ export interface PushPayload {
   tag: string;
 }
 
-export async function sendPush(userId: string, payload: PushPayload): Promise<{ sent: number; failed: number }> {
+/** ttlSeconds: cuánto puede esperar el aviso a un dispositivo sin conexión (nunca hasta el silencio). */
+
+export async function sendPush(userId: string, payload: PushPayload, ttlSeconds = 6 * 3600): Promise<{ sent: number; failed: number }> {
+  const ttl = Math.max(60, Math.min(ttlSeconds, 6 * 3600));
   const { data: subs } = await admin.from('push_subscriptions').select('id, kind, endpoint, p256dh, auth').eq('user_id', userId);
   let sent = 0;
   let failed = 0;
   for (const s of subs ?? []) {
     try {
       if (s.kind === 'web') {
-        await (await getWebPush()).sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh ?? '', auth: s.auth ?? '' } }, JSON.stringify(payload), { TTL: 6 * 3600, urgency: 'normal' });
+        await (await getWebPush()).sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh ?? '', auth: s.auth ?? '' } }, JSON.stringify(payload), { TTL: ttl, urgency: 'normal' });
       } else {
         const res = await fetch('https://exp.host/--/api/v2/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({ to: s.endpoint, title: payload.title, body: payload.body, data: payload, categoryId: 'proactive', sound: 'default' }),
+          body: JSON.stringify({ to: s.endpoint, title: payload.title, body: payload.body, data: payload, categoryId: 'proactive', sound: 'default', ttl }),
         });
         const out = await res.json().catch(() => ({}));
         if (out?.data?.status === 'error' && out.data.details?.error === 'DeviceNotRegistered') throw Object.assign(new Error('gone'), { statusCode: 410 });
@@ -61,7 +64,9 @@ export async function sendPush(userId: string, payload: PushPayload): Promise<{ 
 
 /** Firma para el enlace "dejar de escribirme" (sin sesión: viene de una notificación). */
 async function hmac(text: string): Promise<string> {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(Deno.env.get('PROACTIVE_SECRET') ?? ''), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const secret = Deno.env.get('PROACTIVE_SECRET');
+  if (!secret) throw new Error('Falta PROACTIVE_SECRET');
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(`off-link:${secret}`), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text)));
   return btoa(String.fromCharCode(...sig)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '').slice(0, 32);
 }
@@ -71,5 +76,9 @@ export async function offToken(avatarId: string): Promise<string> {
 export async function checkOffToken(token: string): Promise<string | null> {
   const [id, sig] = token.split('.');
   if (!id || !sig) return null;
-  return (await hmac(`off:${id}`)) === sig ? id : null;
+  const expected = await hmac(`off:${id}`);
+  // comparación en tiempo constante
+  let diff = expected.length ^ sig.length;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ (sig.charCodeAt(i) || 0);
+  return diff === 0 ? id : null;
 }

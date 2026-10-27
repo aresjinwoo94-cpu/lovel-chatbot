@@ -111,14 +111,35 @@ export async function generateOpening(opts: { system: string; instruction: strin
  * WP-12: el personaje escribe primero (modelo barato). La pausa se marca como un turno de
  * escena para que el modelo sepa que pasó el tiempo y que le toca a él.
  */
-export async function generateFirstMessage(opts: { system: string; history: ChatTurn[]; hoursSilent: number; language: 'es' | 'en' }): Promise<string | null> {
+export async function generateFirstMessage(opts: { system: string; history: ChatTurn[]; hoursSilent: number; language: 'es' | 'en'; tier: Tier }): Promise<string | null> {
   const hours = Math.max(1, Math.round(opts.hoursSilent));
-  const pause = opts.language === 'en' ? `(Some time has passed: about ${hours} h without talking. You write first.)` : `(Ha pasado un rato: unas ${hours} h sin hablar. Escribes tú primero.)`;
-  const turns: ChatTurn[] = [...opts.history];
+  const pause =
+    opts.language === 'en'
+      ? `(About ${hours} h have passed without talking. You write first, by text message. Write EVERYTHING in English, including any action between asterisks.)`
+      : `(Han pasado unas ${hours} h sin hablar. Escribes tú primero, por mensaje. Todo en español, también las acotaciones entre asteriscos.)`;
+  const turns: ChatTurn[] = opts.history.map((t) => ({ ...t }));
   const last = turns[turns.length - 1];
   if (last && last.role === 'user') last.content += `\n${pause}`;
   else turns.push({ role: 'user', content: pause });
-  const result = await geminiGenerate({ system: opts.system, turns, maxTokens: 2000, tier: 'free' });
+  const result = await geminiGenerate({ system: opts.system, turns, maxTokens: 400, tier: opts.tier });
   if (result.refused || !result.text.trim()) return null;
   return result.text.replace(/\s*\n+\s*/g, ' ').trim();
+}
+
+/** Revisor del mensaje (modelo barato): ¿cumple las reglas de cuidado y tiene contexto? */
+export async function judgeFirstMessage(opts: { system: string; situation: string; recent: { role: string; content: string; at: string }[]; message: string; when: string }): Promise<{ ok: boolean; motivo?: string }> {
+  const convo = opts.recent.map((t) => `[${t.at}] ${t.role === 'user' ? 'Persona' : 'Personaje'}: ${t.content}`).join('\n');
+  const result = await geminiGenerate({
+    system: opts.system,
+    turns: [{ role: 'user', content: `Situación de la historia (quiénes son y dónde están): ${opts.situation}\nMomento actual para la persona: ${opts.when}\n\nÚltimos mensajes:\n${convo}\n\nMensaje a revisar:\n${opts.message}` }],
+    maxTokens: 200,
+    tier: 'free',
+  });
+  const m = result.text.match(/\{[\s\S]*\}/);
+  try {
+    const j = JSON.parse(m?.[0] ?? '');
+    return { ok: j.ok === true, motivo: typeof j.motivo === 'string' ? j.motivo : undefined };
+  } catch {
+    return { ok: false, motivo: 'revisor sin respuesta válida' };
+  }
 }

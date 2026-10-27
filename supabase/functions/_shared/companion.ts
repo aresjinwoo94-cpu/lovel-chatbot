@@ -1,5 +1,5 @@
-import { generateFirstMessage, generateOpening, generateReply, loadHistory, maybeUpdateMemory } from './llm.ts';
-import { careViolations, detectLanguage, proactiveInstruction, wrongLanguage } from './proactive.ts';
+import { generateFirstMessage, generateOpening, generateReply, judgeFirstMessage, loadHistory, maybeUpdateMemory } from './llm.ts';
+import { careViolations, detectLanguage, formatWhen, JUDGE_SYSTEM, proactiveInstruction, WAIT_TOKEN, wrongLanguage } from './proactive.ts';
 import type { PlatinoState } from './platino.ts';
 import { background } from './runtime.ts';
 import { admin, type AvatarRow, type ProfileRow } from './supabase.ts';
@@ -99,22 +99,42 @@ export async function saveExchange(opts: {
 }
 
 /**
- * WP-12: mensaje que el personaje escribe por su cuenta. Se comprueba contra las reglas de
- * cuidado y el idioma; si falla se intenta hasta dos veces más y, si sigue fallando, no se envía nada.
+ * WP-12: mensaje que el personaje escribe por su cuenta. Pasa tres filtros: frases prohibidas
+ * (reglas de cuidado), idioma y un revisor; si falla se intenta hasta dos veces más y, si
+ * sigue fallando, no se envía nada. El personaje también puede decidir esperar.
  */
-export async function writeFirst(opts: { avatar: AvatarRow; profile: ProfileRow; hoursSilent: number }): Promise<{ text: string | null; rejected: string[] }> {
+export async function writeFirst(opts: { avatar: AvatarRow; profile: ProfileRow; now: Date; lastAt: Date | null }): Promise<{ text: string | null; rejected: string[]; waited?: boolean }> {
   const history = await loadHistory(opts.avatar.id, 30);
   // Idioma de la conversación (lo último que escribió la persona); si no hay, el del perfil.
   const lastUser = [...history].reverse().find((t) => t.role === 'user')?.content ?? '';
   const language = detectLanguage(lastUser) ?? (opts.profile.language === 'en' ? 'en' : 'es');
-  const system = `${systemFor(opts.avatar, opts.profile)}\n\n## Ahora mismo\n${proactiveInstruction(language)}`;
+  const tz = opts.profile.timezone || 'UTC';
+  // Últimos mensajes con su fecha (para respetar el tiempo: "mañana tengo el examen" dicho ayer).
+  const { data: recentRows } = await admin.from('messages').select('role, content, created_at').eq('avatar_id', opts.avatar.id).order('created_at', { ascending: false }).limit(6);
+  const recent = (recentRows ?? []).reverse().map((m) => ({ role: m.role as string, content: m.content as string, at: formatWhen(new Date(m.created_at as string), tz, language) }));
+  const lastUserRow = [...recent].reverse().find((m) => m.role === 'user');
+  const when = {
+    now: formatWhen(opts.now, tz, language),
+    last: opts.lastAt ? formatWhen(opts.lastAt, tz, language) : language === 'en' ? 'a while ago' : 'hace un rato',
+    lastUser: lastUserRow ? `(${lastUserRow.at}) «${lastUserRow.content}»` : undefined,
+  };
+  // El idioma va también al principio: el prompt base está en español y el modelo barato tiende a seguirlo.
+  const head = language === 'en' ? 'OUTPUT LANGUAGE: ENGLISH. Every word you write (dialogue and the action between asterisks) must be in English.\n\n' : '';
+  const system = `${head}${systemFor(opts.avatar, opts.profile)}\n\n## Ahora mismo\n${proactiveInstruction(language, when)}`;
+  const hoursSilent = opts.lastAt ? (opts.now.getTime() - opts.lastAt.getTime()) / 3600_000 : 24;
   const rejected: string[] = [];
   for (let i = 0; i < 3; i++) {
-    const text = await generateFirstMessage({ system, history, hoursSilent: opts.hoursSilent, language });
+    // primer intento con el modelo más barato; los reintentos, con el Flash-Lite mejor (sigue mejor idioma y reglas)
+    const text = await generateFirstMessage({ system, history, hoursSilent, language, tier: i === 0 ? 'free' : 'pro' });
     if (!text) continue;
+    if (text.includes(WAIT_TOKEN)) return { text: null, rejected, waited: true };
     const bad = careViolations(text);
     if (wrongLanguage(text, language)) bad.push(language === 'en' ? 'idioma (no está en inglés)' : 'idioma (no está en español)');
-    if (!bad.length) return { text, rejected };
+    if (!bad.length) {
+      const verdict = await judgeFirstMessage({ system: JUDGE_SYSTEM, situation: opts.avatar.situation_description, recent, message: text, when: when.now });
+      if (verdict.ok) return { text, rejected };
+      bad.push(`revisor: ${verdict.motivo ?? 'rechazado'}`);
+    }
     rejected.push(`${bad.join(', ')}: ${text}`);
   }
   return { text: null, rejected };

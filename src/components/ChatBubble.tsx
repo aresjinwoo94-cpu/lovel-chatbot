@@ -98,11 +98,14 @@ function ChatBubbleBase({ message, avatar, showName, showAvatar, speaking, local
       </View>
       {message.proactive ? (
         <View className="ml-[36px] mt-1 flex-row flex-wrap items-center">
-          <Text className="text-[11px] text-muted">{t('proactive.note')}</Text>
+          <Text className="text-[12px] text-muted">{t('proactive.note')}</Text>
           {onStopProactive ? (
-            <Pressable onPress={onStopProactive} accessibilityRole="button" hitSlop={8}>
-              <Text className="text-[11px] text-muted underline">{` · ${t('proactive.stop')}`}</Text>
-            </Pressable>
+            <>
+              <Text className="text-[12px] text-muted"> · </Text>
+              <Pressable onPress={onStopProactive} accessibilityRole="button" hitSlop={10}>
+                <Text className="text-[12px] font-semibold text-muted underline">{t('proactive.stop')}</Text>
+              </Pressable>
+            </>
           ) : null}
         </View>
       ) : null}

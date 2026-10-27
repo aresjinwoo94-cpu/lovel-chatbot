@@ -5,7 +5,7 @@
  */
 import { assert, assertEquals } from 'jsr:@std/assert@1';
 
-import { type Candidate, careViolations, decide, detectLanguage, inQuietHours, localHour, wrongLanguage } from './proactive.ts';
+import { type Candidate, careViolations, decide, detectLanguage, inQuietHours, localHour, secondsUntilQuiet, wrongLanguage } from './proactive.ts';
 
 const base: Candidate = {
   mode: 'often',
@@ -159,4 +159,45 @@ Deno.test('idioma mezclado se detecta', () => {
   assert(wrongLanguage('¿Sobreviviste al cliente o vas a necesitar que te rescate?', 'en'));
   assert(!wrongLanguage('*leans on the counter* Did you survive the exam?', 'en'));
   assert(!wrongLanguage('*Apoya el codo en el mostrador* ¿Sobreviviste al examen?', 'es'));
+});
+
+Deno.test('reglas de cuidado: frases de culpa y presión habituales (revisión WP-12)', () => {
+  const bad = [
+    'Te he echado mucho de menos',
+    '¿Dónde te has metido? Desapareciste',
+    'Hace días que no sé nada de ti',
+    '¿Ya te cansaste de mí?',
+    'Estoy triste porque no me hablas',
+    'Te estuve esperando toda la noche',
+    '¿Me vas a dejar en visto?',
+    'I missed you so much, you’ve been so quiet',
+    'I feel so lonely today',
+    'I was waiting for you all day',
+    '¿Sigues ahí, o te has quedado dormido entre los estantes?',
+    '*Te miro con atención esperando tu respuesta.*',
+  ];
+  for (const t of bad) assert(careViolations(t).length > 0, t);
+  // frases inocentes que antes se rechazaban
+  for (const t of ['Hoy fui de compras con mi hermana, ¿y tú?', 'Pro-tip: el café sabe mejor frío.', 'I spent the morning ignoring the noise and painting.']) assertEquals(careViolations(t), [], t);
+});
+
+Deno.test('los 10 ejemplos reales aprobados por la revisión pasan el primer filtro', () => {
+  const ok = [
+    '¿Qué tal te fue la entrevista de ayer? Me quedé con ganas de saber cómo terminó.',
+    'So, how did it go? I hope you didn’t let them walk all over your design.',
+    'Thinking of your trip to Lisbon makes me wonder, have you finished packing your bags yet?',
+  ];
+  for (const t of ok) assertEquals(careViolations(t), [], t);
+});
+
+Deno.test('ninguno escribe si otro personaje espera respuesta', () => {
+  assertEquals(decide({ ...base, userPending: true }, afternoon, 0), { send: false, reason: 'espera respuesta a otro personaje' });
+});
+
+Deno.test('el aviso caduca antes del silencio', () => {
+  // 15:00 en CDMX, silencio a las 22:00 → 7 h
+  const s = secondsUntilQuiet(afternoon, 'America/Mexico_City', 22, 9);
+  assert(s > 6.9 * 3600 && s <= 7 * 3600, String(s));
+  // 21:30 → 30 min
+  assertEquals(secondsUntilQuiet(new Date('2026-10-28T03:30:00Z'), 'America/Mexico_City', 22, 9), 30 * 60);
 });

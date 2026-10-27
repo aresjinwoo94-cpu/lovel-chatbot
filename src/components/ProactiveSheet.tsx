@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth';
 import { showDialog } from '@/lib/dialog';
 import { useI18n } from '@/lib/i18n';
 import { DEFAULT_QUIET, formatHour, PROACTIVE_DAILY, type ProactiveMode, setProactiveMode } from '@/lib/proactive';
-import { disablePush, enablePush, pushState, type PushState } from '@/lib/push';
+import { disablePush, enablePush, PUSH_SURFACE, pushState, type PushState } from '@/lib/push';
 import { useColors } from '@/lib/theme';
 
 interface Props {
@@ -45,22 +45,23 @@ export function ProactiveSheet({ visible, avatar, mode, onChange, onClose }: Pro
     if (!avatar || next === mode) return;
     const prev = mode;
     onChange(next);
+    // Al encenderlo por primera vez, pedimos los avisos ya, dentro del toque (Safari y Firefox lo exigen).
+    const asking = next !== 'off' && push === 'off' && session ? enablePush().catch(() => 'off' as const) : null;
     try {
       await setProactiveMode(avatar.id, next);
       track('proactive_set', { mode: next });
-      // Al encenderlo por primera vez, ofrecemos los avisos (con el toque de la persona).
-      if (next !== 'off' && push === 'off' && session) setPush(await enablePush(session.user.id).catch(() => 'off' as const));
     } catch {
       onChange(prev);
       showDialog(t('common.error'), t('chat.errorServer'));
     }
+    if (asking) setPush(await asking);
   };
 
   const togglePush = async () => {
     if (!session) return;
     setBusy(true);
     try {
-      setPush(push === 'on' ? await disablePush() : await enablePush(session.user.id));
+      setPush(push === 'on' ? await disablePush() : await enablePush());
     } catch {
       showDialog(t('common.error'), t('billing.offline'));
     } finally {
@@ -73,7 +74,12 @@ export function ProactiveSheet({ visible, avatar, mode, onChange, onClose }: Pro
     { id: 'sometimes', label: t('proactive.sometimes'), hint: t('proactive.sometimesHint') },
     { id: 'often', label: t('proactive.often'), hint: t('proactive.oftenHint', { n: isPro ? PROACTIVE_DAILY.pro : PROACTIVE_DAILY.free }) },
   ];
-  const pushText = { on: t('proactive.pushOn'), off: t('proactive.pushOff'), denied: t('proactive.pushDenied'), unsupported: t('proactive.pushUnsupported') };
+  const pushText = {
+    on: t('proactive.pushOn'),
+    off: t('proactive.pushOff'),
+    denied: PUSH_SURFACE === 'browser' ? t('proactive.pushDenied') : t('proactive.pushDeniedDevice'),
+    unsupported: PUSH_SURFACE === 'browser' ? t('proactive.pushUnsupported') : t('proactive.pushUnsupportedDevice'),
+  };
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>

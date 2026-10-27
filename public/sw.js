@@ -29,11 +29,13 @@ self.addEventListener('notificationclick', (event) => {
   }
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const c of list) {
-        if ('focus' in c) {
-          c.navigate(url).catch(() => undefined);
-          return c.focus();
-        }
+      // Una pestaña de la app ya abierta: la llevamos al chat (si no se puede, abrimos otra).
+      const tab = list.find((c) => 'focus' in c);
+      if (tab) {
+        return tab
+          .navigate(url)
+          .then((c) => (c || tab).focus())
+          .catch(() => self.clients.openWindow(url));
       }
       return self.clients.openWindow(url);
     }),

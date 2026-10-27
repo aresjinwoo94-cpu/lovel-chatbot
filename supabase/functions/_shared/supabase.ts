@@ -24,6 +24,9 @@ export interface ProfileRow {
   free_voice_used: number;
   store_voice: boolean;
   adult_confirmed_at: string | null;
+  timezone?: string | null;
+  quiet_start?: number;
+  quiet_end?: number;
 }
 
 export interface AvatarRow {

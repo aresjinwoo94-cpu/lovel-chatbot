@@ -13,6 +13,7 @@ import type { Profile } from './types';
 import { track } from './analytics';
 import { perfPhase } from './perfMeter';
 import { deviceTimezone } from './platino';
+import { releasePush } from './push';
 
 /** Cuentas nuevas ya contadas en la analítica (una vez por usuario y arranque). */
 const counted = new Set<string>();
@@ -219,6 +220,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** `local`: tras borrar la cuenta el servidor ya no reconoce la sesión; basta con olvidarla aquí. */
   const signOut = useCallback(async (scope: 'global' | 'local' = 'global') => {
+    // WP-12: este dispositivo deja de recibir avisos de esta cuenta (antes de perder la sesión).
+    if (scope === 'global') await releasePush().catch(() => undefined);
     await supabase.auth.signOut({ scope });
     resetThreads();
     AsyncStorage.removeItem(PROFILE_KEY).catch(() => {});
