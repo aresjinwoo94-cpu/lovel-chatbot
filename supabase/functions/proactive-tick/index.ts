@@ -30,7 +30,7 @@ interface Row {
 const MAX_SENDS = 40;
 const PARALLEL = 8;
 /** Pasado este tiempo no se empiezan más envíos (la función tiene un límite de tiempo). */
-const BUDGET_MS = 90_000;
+const BUDGET_MS = 60_000; // + un lote en curso: cabe en el límite de 150 s
 
 const OFF_LABEL = { es: 'Que no me escriba', en: 'Stop writing first' };
 
