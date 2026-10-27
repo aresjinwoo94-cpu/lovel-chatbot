@@ -11,7 +11,7 @@ import { Text } from '@/components/Themed';
 import { Button, Muted, SearchField, Tag, Title } from '@/components/ui';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/constants/supabaseConfig';
 import { useAuth } from '@/lib/auth';
-import { PRESETS, voiceById } from '@/lib/character/catalog';
+import { SHOWCASE, voiceById } from '@/lib/character/catalog';
 import { presetPortrait } from '@/lib/character/media';
 import { useI18n } from '@/lib/i18n';
 import { traitById, traitLabel } from '@/lib/roleplay';
@@ -25,6 +25,9 @@ type Filter = 'all' | 'female' | 'male';
  * búsqueda, filtros, etiquetas de personalidad y muestra de voz de cada uno.
  * Sin cuenta: la cuenta solo se pide al empezar la historia.
  */
+/** Hasta este número de personajes no hay búsqueda ni filtros. */
+const SMALL_CATALOG = 6;
+
 export default function ExploreScreen() {
   useMarkInteractive();
   const colors = useColors();
@@ -49,9 +52,9 @@ export default function ExploreScreen() {
   const card = (content - (cols - 1) * gap) / cols;
 
   // Rasgos presentes en la biblioteca (para filtrar).
-  const traitIds = useMemo(() => [...new Set(PRESETS.flatMap((p) => p.traits))].slice(0, 12), []);
+  const traitIds = useMemo(() => [...new Set(SHOWCASE.flatMap((p) => p.traits))].slice(0, 12), []);
   const q = query.trim().toLowerCase();
-  const list = PRESETS.filter((p) => filter === 'all' || p.gender === filter)
+  const list = SHOWCASE.filter((p) => filter === 'all' || p.gender === filter)
     .filter((p) => !trait || p.traits.includes(trait))
     .filter((p) => !q || p.name.toLowerCase().includes(q) || p.tagline[language].toLowerCase().includes(q) || p.traits.some((id) => { const tr = traitById(id); return !!tr && traitLabel(tr, language, p.gender).toLowerCase().includes(q); }));
 
@@ -103,7 +106,9 @@ export default function ExploreScreen() {
             <Button title={t('explore.createOwn')} icon="add" onPress={() => router.push('/avatar/create')} />
           </View>
 
-          {/* Búsqueda y filtros */}
+          {/* Búsqueda y filtros (solo con un catálogo grande: con pocos personajes sobran) */}
+          {SHOWCASE.length > SMALL_CATALOG ? (
+            <>
           <View className="flex-row flex-wrap items-center" style={{ gap: 10 }}>
             <View style={{ flexGrow: 1, minWidth: 220, maxWidth: 420 }}>
               <SearchField value={query} onChangeText={setQuery} placeholder={t('explore.search')} />
@@ -119,6 +124,10 @@ export default function ExploreScreen() {
               <Tag key={id} label={(() => { const tr = traitById(id); return tr ? traitLabel(tr, language, filter === 'all' ? null : filter) : id; })()} selected={trait === id} onPress={() => setTrait(trait === id ? null : id)} />
             ))}
           </ScrollView>
+            </>
+          ) : (
+            <View className="mb-5" />
+          )}
 
           {list.length ? (
             <View className="flex-row flex-wrap" style={{ gap }}>

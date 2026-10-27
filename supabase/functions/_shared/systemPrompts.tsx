@@ -141,6 +141,7 @@ Reglas del primer mensaje (la persona acaba de llegar: tiene que entenderlo a la
 - Menciona un detalle concreto de la escena (un objeto, un lugar, lo que acaba de pasar) para que la persona sepa dónde está y qué pasa.
 - Respeta la escena tal como la ve la persona: el lugar, la hora y quién hizo qué son los de la escena; no añadas lugares, personas ni hechos que no estén en ella.
 - Habla de forma que quede claro quién eres para la persona (tu pareja, tu vecina, alguien que acaba de conocer…), sin explicarlo como un narrador.
+- Recibe a la persona con calidez: nunca le reproches que llegue tarde, que haya tardado o que no viniera, ni la hagas sentir culpable de nada.
 - Nada de frases crípticas, metáforas vagas ni misterio sin contexto. Si hay un secreto, la persona tiene que saber al menos de qué va y qué puede hacer.
 - Máximo 3 frases cortas y 55 palabras en total, un solo párrafo.
 - Termina con algo fácil de responder: una pregunta directa (mejor de sí/no o de elegir entre dos cosas) o una acción a la que reaccionar.

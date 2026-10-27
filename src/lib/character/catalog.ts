@@ -423,7 +423,7 @@ const v = (id: string, speed = 1, style = 0.35) => ({ id, speed, style });
 export const PRESETS: CharacterPreset[] = [
   {
     id: 'nyx', name: 'Nyx', gender: 'female', age: 26,
-    tagline: { es: 'Gótica misteriosa que te pone a prueba', en: 'A mysterious goth who puts you to the test' },
+    tagline: { es: 'Librera gótica, irónica y acogedora', en: 'A goth bookseller, wry and welcoming' },
     traits: ['mysterious', 'proud', 'sarcastic'],
     look: makeLook({ model: 'noir', hairColor: '#7A2338', eyeColor: '#C8283F', expression: 'smug', background: 'night', voice: v('pFZP5JQG7iQjIQuC4Bku', 0.95, 0.45) }),
   },
@@ -494,6 +494,13 @@ export const PRESETS: CharacterPreset[] = [
     look: makeLook({ model: 'shibu', hairColor: '#2B2A3A', eyeColor: '#6E8FD8', outfitColor: '#2E3A5C', accessories: ['glasses_round'], expression: 'calm', background: 'starry', voice: v('Xb7hH8MSUJpSbSDYk0k2', 0.98, 0.25) }),
   },
 ];
+
+/**
+ * Validación con usuarios reales: solo se enseñan estos (los más limpios en el QA visual,
+ * 2 mujeres y 2 hombres). El resto sigue en PRESETS para quien ya los tenga.
+ */
+export const SHOWCASE_IDS = ['nyx', 'irene', 'ren', 'dante'] as const;
+export const SHOWCASE: CharacterPreset[] = SHOWCASE_IDS.map((id) => PRESETS.find((p) => p.id === id)!).filter(Boolean);
 
 export const presetById = (id: string | null | undefined) => PRESETS.find((p) => p.id === id);
 export const DEFAULT_FEMALE = PRESETS[0];

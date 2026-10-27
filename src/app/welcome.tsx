@@ -11,7 +11,7 @@ import { Text } from '@/components/Themed';
 import { Button, IconButton, Muted } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
 import { AGE_RANGES, bodyAllowedForAge, hairAllowedForAge } from '@/lib/character/ageRanges';
-import { type CharacterPreset, PRESETS } from '@/lib/character/catalog';
+import { type CharacterPreset, SHOWCASE } from '@/lib/character/catalog';
 import { faceImage, presetPortrait } from '@/lib/character/media';
 import { createFromDraft, isAvatarLimit } from '@/lib/createCharacter';
 import { showDialog } from '@/lib/dialog';
@@ -45,7 +45,7 @@ const pick = <T,>(list: T[]) => list[Math.floor(Math.random() * list.length)];
 
 /** Personaje de la biblioteca que mejor encaja con lo elegido (género y edad). */
 function choosePreset(who: Who, age: number): CharacterPreset {
-  const byGender = PRESETS.filter((p) => who === 'any' || p.gender === who);
+  const byGender = SHOWCASE.filter((p) => who === 'any' || p.gender === who);
   // mejor uno cuya ropa y peinado ya encajen con esa edad (así cambia solo el rostro)
   const fits = byGender.filter((p) => bodyAllowedForAge(p.look.model, age) && (!p.look.hair || hairAllowedForAge(p.look.hair, age)));
   const pool = fits.length ? fits : byGender;
@@ -76,7 +76,7 @@ function Option({ title, hint, selected, onPress, left }: { title: string; hint?
 }
 
 function Faces({ gender }: { gender: Who }) {
-  const list = PRESETS.filter((p) => gender === 'any' || p.gender === gender).slice(0, 3);
+  const list = SHOWCASE.filter((p) => gender === 'any' || p.gender === gender).slice(0, 3);
   return (
     <View className="mr-3 flex-row">
       {list.map((p, i) => (
@@ -185,7 +185,8 @@ export default function Welcome() {
         <ScrollView contentContainerClassName="flex-grow justify-center px-6 pb-10">
           <View className="w-full self-center" style={{ maxWidth: 440 }}>
             <Animated.View entering={FadeInDown.duration(400)} className="mb-8 flex-row justify-center">
-              {['nyx', 'kai', 'sol'].map((id, i) => (
+              {/* el set de validación, con Nyx en el centro */}
+              {['ren', 'nyx', 'irene'].map((id, i) => (
                 <View
                   key={id}
                   className="overflow-hidden rounded-2xl border-2 border-paper bg-subtle"

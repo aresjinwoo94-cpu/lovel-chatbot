@@ -28,8 +28,8 @@ export async function replyAsAvatar(opts: { avatar: AvatarRow; profile: ProfileR
 }
 
 const FALLBACK_OPENING = {
-  es: (name: string) => `*${name} levanta la vista y te sonríe, como si llevara un rato esperándote.* Por fin llegas… ¿Tienes un momento? Hay algo que quiero contarte.`,
-  en: (name: string) => `*${name} looks up and smiles, as if they had been waiting for you.* You're finally here… Do you have a minute? There's something I want to tell you.`,
+  es: (name: string) => `*${name} levanta la vista y te sonríe.* ¡Hola! Qué alegría verte por aquí. ¿Tienes un momento? Hay algo que quiero contarte.`,
+  en: (name: string) => `*${name} looks up and smiles.* Hi! It's so good to see you. Do you have a minute? There's something I want to tell you.`,
 };
 
 /**

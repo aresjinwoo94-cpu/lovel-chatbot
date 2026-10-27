@@ -17,8 +17,8 @@ const VOICE_IDS = new Set([
 ]);
 
 const PHRASE = {
-  es: 'Hola… por fin llegas. Tenía muchas ganas de verte. ¿Me cuentas qué tal tu día?',
-  en: 'Hey… you finally made it. I was really looking forward to seeing you. How was your day?',
+  es: '¡Hola! Qué alegría verte. ¿Me cuentas qué tal tu día?',
+  en: 'Hi! It’s so good to see you. How was your day?',
 };
 
 serve(async (req) => {
@@ -26,7 +26,7 @@ serve(async (req) => {
   if (!voiceId || !VOICE_IDS.has(voiceId)) throw new HttpError(400, 'Voz no disponible');
   const l = lang === 'en' ? 'en' : 'es';
   // con el modelo en el nombre: al cambiar de modelo, la muestra se regenera con la voz real
-  const path = `${voiceId}-${l}-${TTS_MODEL}.mp3`;
+  const path = `${voiceId}-${l}-${TTS_MODEL}-v2.mp3`; // v2: saludo cálido (sin "por fin llegas")
   const publicUrl = `${requireEnv('SUPABASE_URL')}/storage/v1/object/public/voice-previews/${path}`;
 
   const { data: existing } = await admin.storage.from('voice-previews').list('', { search: path, limit: 1 });
