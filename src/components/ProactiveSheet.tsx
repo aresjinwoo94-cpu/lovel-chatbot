@@ -53,6 +53,9 @@ export function ProactiveSheet({ visible, avatar, mode, onChange, onClose }: Pro
     } catch {
       onChange(prev);
       showDialog(t('common.error'), t('chat.errorServer'));
+      // no se guardó: los avisos pedidos en este toque no se quedan activados
+      if (asking && (await asking) === 'on') setPush(await disablePush().catch(() => 'off' as const));
+      return;
     }
     if (asking) setPush(await asking);
   };

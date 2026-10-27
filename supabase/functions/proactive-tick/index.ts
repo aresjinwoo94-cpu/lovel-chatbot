@@ -5,7 +5,7 @@
  */
 import { writeFirst } from '../_shared/companion.ts';
 import { HttpError, json, serve } from '../_shared/http.ts';
-import { type Candidate, DAILY_LIMIT, decide, type ProactiveMode, secondsUntilQuiet } from '../_shared/proactive.ts';
+import { type Candidate, DAILY_LIMIT, decide, type ProactiveMode, secondsUntilQuiet, shuffle } from '../_shared/proactive.ts';
 import { offToken, sendPush } from '../_shared/push.ts';
 import { admin, type AvatarRow, getProfile } from '../_shared/supabase.ts';
 
@@ -27,8 +27,10 @@ interface Row {
 }
 
 /** Envíos por pasada (cada uno llama a la IA) y cuántos a la vez: el resto, la próxima hora. */
-const MAX_SENDS = 60;
-const PARALLEL = 6;
+const MAX_SENDS = 40;
+const PARALLEL = 8;
+/** Pasado este tiempo no se empiezan más envíos (la función tiene un límite de tiempo). */
+const BUDGET_MS = 90_000;
 
 const OFF_LABEL = { es: 'Que no me escriba', en: 'Stop writing first' };
 
@@ -41,7 +43,7 @@ serve(async (req) => {
   const { data, error } = await admin.rpc('proactive_candidates');
   if (error) throw error;
   // Orden al azar: si hay más candidatos que envíos por pasada, nadie queda siempre al final.
-  const rows = ((data ?? []) as Row[]).filter((r) => !opts.avatarId || r.avatar_id === opts.avatarId).sort(() => Math.random() - 0.5);
+  const rows = shuffle(((data ?? []) as Row[]).filter((r) => !opts.avatarId || r.avatar_id === opts.avatarId));
   const results: Record<string, unknown>[] = [];
 
   // 1) Decidir (barato, sin red). Como mucho un personaje por persona en cada pasada.
@@ -108,7 +110,14 @@ serve(async (req) => {
       return { avatar: r.avatar_id, send: false, reason: 'error' };
     }
   };
-  for (let i = 0; i < chosen.length; i += PARALLEL) results.push(...(await Promise.all(chosen.slice(i, i + PARALLEL).map(send))));
+  const started = Date.now();
+  for (let i = 0; i < chosen.length; i += PARALLEL) {
+    if (Date.now() - started > BUDGET_MS) {
+      for (const { r } of chosen.slice(i)) results.push({ avatar: r.avatar_id, send: false, reason: 'sin tiempo en esta pasada' });
+      break;
+    }
+    results.push(...(await Promise.all(chosen.slice(i, i + PARALLEL).map(send))));
+  }
 
   return json({ now: now.toISOString(), candidates: rows.length, results });
 });

@@ -1,5 +1,6 @@
 import { generateFirstMessage, generateOpening, generateReply, judgeFirstMessage, loadHistory, maybeUpdateMemory } from './llm.ts';
-import { careViolations, detectLanguage, formatWhen, JUDGE_SYSTEM, proactiveInstruction, WAIT_TOKEN, wrongLanguage } from './proactive.ts';
+import { careViolations, detectLanguage, dropForeignActions, formatWhen, JUDGE_SYSTEM, proactiveInstruction, WAIT_TOKEN, wrongLanguage } from './proactive.ts';
+import { PERSONAS } from './roleplay.ts';
 import type { PlatinoState } from './platino.ts';
 import { background } from './runtime.ts';
 import { admin, type AvatarRow, type ProfileRow } from './supabase.ts';
@@ -128,14 +129,23 @@ export async function writeFirst(opts: { avatar: AvatarRow; profile: ProfileRow;
     const text = await generateFirstMessage({ system, history, hoursSilent, language, tier: i === 0 ? 'free' : 'pro' });
     if (!text) continue;
     if (text.includes(WAIT_TOKEN)) return { text: null, rejected, waited: true };
-    const bad = careViolations(text);
-    if (wrongLanguage(text, language)) bad.push(language === 'en' ? 'idioma (no está en inglés)' : 'idioma (no está en español)');
+    const clean = dropForeignActions(text, language);
+    const bad = careViolations(clean);
+    if (wrongLanguage(clean, language)) bad.push(language === 'en' ? 'idioma (no está en inglés)' : 'idioma (no está en español)');
     if (!bad.length) {
-      const verdict = await judgeFirstMessage({ system: JUDGE_SYSTEM, situation: opts.avatar.situation_description, recent, message: text, when: when.now });
-      if (verdict.ok) return { text, rejected };
+      const verdict = await judgeFirstMessage({
+        system: JUDGE_SYSTEM,
+        character: `${opts.avatar.name}, ${opts.avatar.age} años. ${PERSONAS[opts.avatar.preset_id ?? '']?.text ?? ''}`.trim(),
+        person: opts.profile.display_name ? `se llama ${opts.profile.display_name}` : 'nombre desconocido',
+        situation: opts.avatar.situation_description,
+        recent,
+        message: clean,
+        when: when.now,
+      });
+      if (verdict.ok) return { text: clean, rejected };
       bad.push(`revisor: ${verdict.motivo ?? 'rechazado'}`);
     }
-    rejected.push(`${bad.join(', ')}: ${text}`);
+    rejected.push(`${bad.join(', ')}: ${clean}`);
   }
   return { text: null, rejected };
 }

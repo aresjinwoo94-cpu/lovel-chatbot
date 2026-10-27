@@ -121,8 +121,10 @@ Rechaza (ok=false) si el mensaje:
 4. no retoma nada concreto de la conversación (saludo genérico) o no es fácil de responder;
 5. describe gestos como si estuviera físicamente junto a la persona (mirarla, tocarla, darle algo en mano, esperar delante de ella su respuesta), salvo que la situación diga que viven o están juntos;
 6. contradice el tiempo: usa la fecha y hora de cada mensaje y la actual (p. ej. pregunta cómo fue algo que según esas fechas todavía no ha pasado);
-7. supone el género de la persona sin que se sepa.
-Está BIEN (no rechaces por esto): acotaciones de lo que el personaje hace donde está (en su taller, su estudio, su casa), mandar una foto, una invitación amable sin prisa, y las bromas propias del personaje si no culpan ni presionan.`;
+7. supone el género de la persona sin que se sepa (si la persona dijo algo que lo marca, como "estoy cansada", sí se sabe);
+8. se inventa hechos que contradicen la conversación (algo que nunca se dijo o pasó) o no encaja con quién es el personaje;
+9. tiene errores de gramática u ortografía, o frases que un hablante nativo no diría ("¿Te pasa bien…?", "¿Hace trato?").
+Está BIEN (no rechaces por esto): llamar a la persona por su nombre, acotaciones de lo que el personaje hace donde está (en su taller, su estudio, su casa; también aficiones de su forma de ser), mandar una foto, una invitación amable sin prisa, y las bromas propias del personaje si no culpan ni presionan.`;
 /** Idioma aproximado de un texto (español o inglés), o null si no se puede saber. */
 export function detectLanguage(text: string): 'es' | 'en' | null {
   const words = text.toLowerCase().match(/[a-záéíóúñü']+/g) ?? [];
@@ -154,9 +156,36 @@ export function formatWhen(d: Date, tz: string, lang: 'es' | 'en'): string {
 /** Segundos hasta que empieza el horario de silencio (para que un aviso retrasado no llegue dentro). */
 export function secondsUntilQuiet(now: Date, tz: string, quietStart: number, quietEnd: number): number {
   if (quietStart === quietEnd) return 6 * 3600;
-  for (let m = 1; m <= 24 * 60; m++) {
-    const t = new Date(now.getTime() + m * 60_000);
-    if (inQuietHours(localHour(tz, t), quietStart, quietEnd)) return m * 60;
+  let minute = now.getUTCMinutes();
+  try {
+    minute = Number(new Intl.DateTimeFormat('en-GB', { timeZone: tz, minute: '2-digit' }).format(now)) % 60;
+  } catch {
+    // zona inválida: minutos UTC
   }
-  return 6 * 3600;
+  const hour = localHour(tz, now);
+  if (inQuietHours(hour, quietStart, quietEnd)) return 60;
+  // horas completas hasta la hora de inicio del silencio, menos los minutos ya pasados de esta
+  const hours = (quietStart - hour + 24) % 24 || 24;
+  return hours * 3600 - minute * 60;
+}
+
+/** Quita las acotaciones *…* escritas en otro idioma (el diálogo se conserva). */
+export function dropForeignActions(text: string, lang: 'es' | 'en'): string {
+  return text
+    .replace(/\*([^*]+)\*/g, (m, inner: string) => {
+      const d = detectLanguage(inner);
+      return d !== null && d !== lang ? ' ' : m;
+    })
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Baraja (Fisher-Yates, uniforme). */
+export function shuffle<T>(items: T[], rand = Math.random): T[] {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }

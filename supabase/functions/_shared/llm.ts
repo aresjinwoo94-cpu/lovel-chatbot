@@ -127,11 +127,11 @@ export async function generateFirstMessage(opts: { system: string; history: Chat
 }
 
 /** Revisor del mensaje (modelo barato): ¿cumple las reglas de cuidado y tiene contexto? */
-export async function judgeFirstMessage(opts: { system: string; situation: string; recent: { role: string; content: string; at: string }[]; message: string; when: string }): Promise<{ ok: boolean; motivo?: string }> {
+export async function judgeFirstMessage(opts: { system: string; character: string; person: string; situation: string; recent: { role: string; content: string; at: string }[]; message: string; when: string }): Promise<{ ok: boolean; motivo?: string }> {
   const convo = opts.recent.map((t) => `[${t.at}] ${t.role === 'user' ? 'Persona' : 'Personaje'}: ${t.content}`).join('\n');
   const result = await geminiGenerate({
     system: opts.system,
-    turns: [{ role: 'user', content: `Situación de la historia (quiénes son y dónde están): ${opts.situation}\nMomento actual para la persona: ${opts.when}\n\nÚltimos mensajes:\n${convo}\n\nMensaje a revisar:\n${opts.message}` }],
+    turns: [{ role: 'user', content: `Personaje: ${opts.character}\nPersona: ${opts.person}\nSituación de la historia (quiénes son y dónde están): ${opts.situation}\nMomento actual para la persona: ${opts.when}\n\nÚltimos mensajes:\n${convo}\n\nMensaje a revisar:\n${opts.message}` }],
     maxTokens: 200,
     tier: 'free',
   });

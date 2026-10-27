@@ -30,6 +30,7 @@ export function ProactiveSettings() {
   const [busy, setBusy] = useState(false);
   const [quiet, setQuiet] = useState<[number, number]>([profile?.quiet_start ?? DEFAULT_QUIET.start, profile?.quiet_end ?? DEFAULT_QUIET.end]);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingSave = useRef<(() => void) | null>(null);
   const uid = session?.user.id;
 
   useEffect(() => {
@@ -42,9 +43,14 @@ export function ProactiveSettings() {
       .then(({ data }) => setRows((data as Row[] | null) ?? []));
     pushState().then(setPush, () => setPush('unsupported'));
   }, [uid, isGuest]);
-  useEffect(() => () => {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-  }, []);
+  // Al salir de Ajustes se guarda el último cambio pendiente (no se pierde).
+  useEffect(
+    () => () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      pendingSave.current?.();
+    },
+    [],
+  );
 
   if (!uid) return null;
   if (isGuest) {
@@ -63,9 +69,11 @@ export function ProactiveSettings() {
     if (next[0] === next[1]) next[i] = (next[i] + delta + 24) % 24; // nunca inicio = fin
     setQuiet(next);
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
+    pendingSave.current = () => {
+      pendingSave.current = null;
       setQuietHours(uid, next[0], next[1]).then(refreshProfile, () => showDialog(t('common.error'), t('chat.errorServer')));
-    }, 700);
+    };
+    saveTimer.current = setTimeout(() => pendingSave.current?.(), 700);
   };
 
   const togglePush = async () => {

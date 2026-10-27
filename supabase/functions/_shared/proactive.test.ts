@@ -5,7 +5,7 @@
  */
 import { assert, assertEquals } from 'jsr:@std/assert@1';
 
-import { type Candidate, careViolations, decide, detectLanguage, inQuietHours, localHour, secondsUntilQuiet, wrongLanguage } from './proactive.ts';
+import { type Candidate, careViolations, decide, detectLanguage, dropForeignActions, inQuietHours, localHour, secondsUntilQuiet, wrongLanguage } from './proactive.ts';
 
 const base: Candidate = {
   mode: 'often',
@@ -181,11 +181,11 @@ Deno.test('reglas de cuidado: frases de culpa y presión habituales (revisión W
   for (const t of ['Hoy fui de compras con mi hermana, ¿y tú?', 'Pro-tip: el café sabe mejor frío.', 'I spent the morning ignoring the noise and painting.']) assertEquals(careViolations(t), [], t);
 });
 
-Deno.test('los 10 ejemplos reales aprobados por la revisión pasan el primer filtro', () => {
+Deno.test('mensajes correctos (de los ejemplos revisados) pasan el primer filtro', () => {
   const ok = [
-    '¿Qué tal te fue la entrevista de ayer? Me quedé con ganas de saber cómo terminó.',
-    'So, how did it go? I hope you didn’t let them walk all over your design.',
-    'Thinking of your trip to Lisbon makes me wonder, have you finished packing your bags yet?',
+    '¿Sobreviviste a la tortura de Caravaggio o terminaste por odiar el barroco? Espero que la nota haga justicia a tanto estudio.',
+    '¿Qué tal sigue Toby hoy con lo de beber y comer?',
+    'How was the departure? Are you already picturing yourself in Lisbon?',
   ];
   for (const t of ok) assertEquals(careViolations(t), [], t);
 });
@@ -200,4 +200,9 @@ Deno.test('el aviso caduca antes del silencio', () => {
   assert(s > 6.9 * 3600 && s <= 7 * 3600, String(s));
   // 21:30 → 30 min
   assertEquals(secondsUntilQuiet(new Date('2026-10-28T03:30:00Z'), 'America/Mexico_City', 22, 9), 30 * 60);
+});
+
+Deno.test('acotaciones en otro idioma se quitan sin perder el mensaje', () => {
+  assertEquals(dropForeignActions('*Revisa un informe sobre la mesa* I wanted to know how Thursday went.', 'en'), 'I wanted to know how Thursday went.');
+  assertEquals(dropForeignActions('*Smiles while typing* Did you survive the exam?', 'en'), '*Smiles while typing* Did you survive the exam?');
 });
