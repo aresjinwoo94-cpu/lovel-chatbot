@@ -26,6 +26,13 @@ const PRESET_PORTRAITS: Record<string, ImageSourcePropType> = {
   elio: require('@/assets/characters/presets/elio.jpg'),
   vera: require('@/assets/characters/presets/vera.jpg'),
   vita: require('@/assets/characters/presets/vita.jpg'),
+  // WP-13, lote 1 (ocultos hasta validar)
+  lucia: require('@/assets/characters/presets/lucia.jpg'),
+  carla: require('@/assets/characters/presets/carla.jpg'),
+  paula: require('@/assets/characters/presets/paula.jpg'),
+  hugo: require('@/assets/characters/presets/hugo.jpg'),
+  gael: require('@/assets/characters/presets/gael.jpg'),
+  bruno: require('@/assets/characters/presets/bruno.jpg'),
 };
 
 const PRESET_FACES: Record<string, ImageSourcePropType> = {
@@ -41,6 +48,13 @@ const PRESET_FACES: Record<string, ImageSourcePropType> = {
   elio: require('@/assets/characters/faces/elio.jpg'),
   vera: require('@/assets/characters/faces/vera.jpg'),
   vita: require('@/assets/characters/faces/vita.jpg'),
+  // WP-13, lote 1 (ocultos hasta validar)
+  lucia: require('@/assets/characters/faces/lucia.jpg'),
+  carla: require('@/assets/characters/faces/carla.jpg'),
+  paula: require('@/assets/characters/faces/paula.jpg'),
+  hugo: require('@/assets/characters/faces/hugo.jpg'),
+  gael: require('@/assets/characters/faces/gael.jpg'),
+  bruno: require('@/assets/characters/faces/bruno.jpg'),
 };
 
 const MODEL_PORTRAITS: Record<string, ImageSourcePropType> = {

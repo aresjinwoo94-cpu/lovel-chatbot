@@ -403,7 +403,8 @@ export const LOOK_DEFAULTS: Omit<CharacterLook, 'model'> = {
 
 export const makeLook = (l: Partial<CharacterLook> & { model: string }): CharacterLook => {
   const m = modelById(l.model);
-  const look = { ...LOOK_DEFAULTS, ...l, hair: l.hair ?? m?.needsHair ?? null };
+  // los modelos VRM 1 no aceptan peinados de otros modelos (se rompe la cabeza): igual que en el creador
+  const look = { ...LOOK_DEFAULTS, ...l, hair: m?.vrm1 ? null : (l.hair ?? m?.needsHair ?? null) };
   return m?.alwaysPlain ? { ...look, plainOutfit: true } : look;
 };
 
@@ -498,37 +499,37 @@ export const PRESETS: CharacterPreset[] = [
     id: 'lucia', name: 'Lucía', gender: 'female', age: 20,
     tagline: { es: 'Tu nueva compañera de piso, mandona con cariño', en: 'Your new flatmate, bossy in a caring way' },
     traits: ['caring', 'extrovert', 'funny'],
-    look: makeLook({ model: 'aria', hair: 'victoria', hairColor: '#8A5A3C', eyeColor: '#D98F2B', skinTone: '#E9BB98', outfitColor: '#5C7FB8', expression: 'smile', background: 'sky', voice: v('FGY2WhTYpPnrIDTdsKH5', 1.05, 0.5) }),
+    look: makeLook({ model: 'mei', hair: 'victoria', hairColor: '#8A5A3C', eyeColor: '#D98F2B', skinTone: '#E9BB98', outfitColor: '#5C7FB8', expression: 'smile', background: 'sky', voice: v('FGY2WhTYpPnrIDTdsKH5', 1.05, 0.5) }),
   },
   {
     id: 'carla', name: 'Carla', gender: 'female', age: 26,
     tagline: { es: 'Compañera de oficina que te pide fingir ser su pareja', en: 'A coworker who asks you to be her fake date' },
     traits: ['extrovert', 'playful', 'loyal'],
-    look: makeLook({ model: 'mei', hairColor: '#4A3026', eyeColor: '#7A4A2E', skinTone: '#CF9670', plainOutfit: true, outfitColor: '#B8323F', expression: 'smile', background: 'dusk', voice: v('cgSgspJ2msm6clMCkdW9', 1.03, 0.55) }),
+    look: makeLook({ model: 'mei', hair: 'bibi', hairColor: '#4A3026', eyeColor: '#7A4A2E', skinTone: '#CF9670', plainOutfit: true, outfitColor: '#D4A53C', expression: 'smile', background: 'blush', voice: v('cgSgspJ2msm6clMCkdW9', 1.03, 0.55) }),
   },
   {
-    id: 'paula', name: 'Paula', gender: 'female', age: 34,
+    id: 'paula', name: 'Paula', gender: 'female', age: 28,
     tagline: { es: 'Florista que empieza de cero tras su divorcio', en: 'A florist starting over after her divorce' },
     traits: ['kind', 'optimistic', 'clumsy'],
-    look: makeLook({ model: 'shibu', hairColor: '#E3A27E', eyeColor: '#4FA36B', outfitColor: '#C9A77E', accessories: ['flower'], expression: 'smile', background: 'mint', voice: v('XrExE9yKIg1WjnnlVkGX', 0.98, 0.4) }),
+    look: makeLook({ model: 'shibu', hair: 'mei', hairColor: '#2B2A3A', eyeColor: '#4FA36B', plainOutfit: true, outfitColor: '#C9A77E', expression: 'calm', background: 'lilac', voice: v('XrExE9yKIg1WjnnlVkGX', 0.98, 0.4) }),
   },
   {
     id: 'hugo', name: 'Hugo', gender: 'male', age: 20,
     tagline: { es: 'Tu rival por la beca, serio y orgulloso', en: 'Your scholarship rival, serious and proud' },
     traits: ['serious', 'proud', 'intellectual'],
-    look: makeLook({ model: 'fumiriya', hairColor: '#2B2A3A', eyeColor: '#8C95A6', outfitColor: '#3A3644', expression: 'serious', background: 'studio', voice: v('TX3LPaxmHKxFdv7VOQHJ', 1, 0.2) }),
+    look: makeLook({ model: 'fumiriya', hairColor: '#2B2A3A', eyeColor: '#8C95A6', outfitColor: '#5C7FB8', expression: 'serious', background: 'white', voice: v('TX3LPaxmHKxFdv7VOQHJ', 1, 0.2) }),
   },
   {
     id: 'gael', name: 'Gael', gender: 'male', age: 24,
     tagline: { es: 'Tu mejor amigo, bromista y protector', en: 'Your best friend, playful and protective' },
     traits: ['protective', 'funny', 'loyal'],
-    look: makeLook({ model: 'hair_m', hairColor: '#4A3026', eyeColor: '#4FA36B', skinTone: '#DDAA7C', plainOutfit: true, outfitColor: '#27365E', expression: 'smile', background: 'city', voice: v('iP95p4xoKVk53GoZ742B', 1.02, 0.45) }),
+    look: makeLook({ model: 'hair_m', hairColor: '#4A3026', eyeColor: '#4FA36B', skinTone: '#DDAA7C', plainOutfit: true, outfitColor: '#6B7343', expression: 'smile', background: 'forest', voice: v('iP95p4xoKVk53GoZ742B', 1.02, 0.45) }),
   },
   {
     id: 'bruno', name: 'Bruno', gender: 'male', age: 26,
     tagline: { es: 'El hermano mayor de tu mejor amiga', en: 'Your best friend’s older brother' },
     traits: ['reserved', 'caring', 'shy'],
-    look: makeLook({ model: 'fumiriya', hairColor: '#8E8277', eyeColor: '#D98F2B', outfitColor: '#2E4A3A', expression: 'calm', background: 'ocean', voice: v('N2lVS1w4EtoT3dr4eOWO', 0.97, 0.3) }),
+    look: makeLook({ model: 'fumiriya', hairColor: '#7A3B2A', eyeColor: '#D98F2B', outfitColor: '#2E4A3A', expression: 'calm', background: 'sunset', voice: v('N2lVS1w4EtoT3dr4eOWO', 0.97, 0.3) }),
   },
 ];
 

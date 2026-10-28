@@ -59,6 +59,36 @@
       "look": "0f3fd4e6c269",
       "status": "approved",
       "checkedAt": "2026-10-25"
+    },
+    "lucia": {
+      "look": "d71d287661d0",
+      "status": "approved",
+      "checkedAt": "2026-10-28"
+    },
+    "carla": {
+      "look": "5b3a01bc246f",
+      "status": "approved",
+      "checkedAt": "2026-10-28"
+    },
+    "paula": {
+      "look": "9ea6137f072f",
+      "status": "approved",
+      "checkedAt": "2026-10-28"
+    },
+    "hugo": {
+      "look": "4c5638f57941",
+      "status": "approved",
+      "checkedAt": "2026-10-28"
+    },
+    "gael": {
+      "look": "d627b68715b0",
+      "status": "approved",
+      "checkedAt": "2026-10-28"
+    },
+    "bruno": {
+      "look": "bc3ba4ed715a",
+      "status": "approved",
+      "checkedAt": "2026-10-28"
     }
   },
   "engine": "e061764f6c08"
